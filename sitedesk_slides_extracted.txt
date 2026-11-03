@@ -1,0 +1,421 @@
+=== SLIDE 1 ===
+IT Consultant Challenge 2026 – Round 1 · Executive summary
+SiteDesk: from a customer’s material list 
+to a confirmed order in under 2 minutes
+An AI counter assistant for Company A’s stores in Denmark, Norway and Sweden
+12→<2
+minutes per material list
+≥30%
+of out-of-stock lines saved
+~€14M
+a year at full rollout (€6.5M hard)
+PROBLEM
+Counter staff re-key long material  
+lists line by line into legacy  
+POS/ERP systems, and out-of-
+stock answers depend on who  
+is on shift – slow, inconsistent,  
+lost sales.
+CHOICE
+Fix the counter first – where  
+Denmark’s manual work, Norway’s  
+store operations and Sweden’s  
+fulfilment errors start.
+SOLUTION
+SiteDesk reads any list (PDF, Excel,  
+email), matches SKUs, checks  
+stock and suggests equivalent  
+substitutes; staff confirm in one  
+click. Browser-only, on top of  
+today’s systems, EU-hosted AI.
+ASK
+€0.6M for a 12-week MVP in 10  
+Norwegian stores , with a go/no-go  
+in week 12.
+Team estimates; assumptions A1–A7 on slide 9. 12-minute baseline measured in discovery (A3). Hard = rescued sales + fewer order errors.
+
+=== SLIDE 2 ===
+Three markets, three priorities – they all meet at the  
+store counter
+NORWAY
+Store operations
+Every store and every  
+associate works  
+differently; substitutes  
+depend on who is  
+on shift.
+SWEDEN
+Delivery & fulfilment
+Lists mis-keyed at the  
+counter turn into wrong  
+picks and re-deliveries.
+DENMARK
+Manual processes
+Every line is read,  
+searched and re-keyed  
+by hand: ~12 min per  
+list (A3).
+
+The counter
+list → order
+WHO FEELS IT
+Counter associates  who turn lists  into orders
+Trade contractors (B2B) and DIY  customers (B2C)  who bring or email 20–
+35-line material lists (PDF, Excel, email)
+Yard staff  who pick the goods
+WHY IT MATTERS
+In a highly competitive market, contractors  
+switch merchants after a few bad  
+experiences – waiting time and “sorry, out  
+of stock” lose sales.
+PROBLEM · PRIORITY · SOLUTION · MVP · IMPACT · SCALE
+A3: ~12 min per list is a team estimate, to be measured in discovery. Market priorities from the official case brief. 2 / 10
+
+=== SLIDE 3 ===
+The real problem: the counter runs on memory, not  
+on data
+TODAY AT THE COUNTER
+List arrives: PDF · Excel · email
+1 Read the list line by line Slow
+2 Search each SKU in the legacy POS/ERP Slow
+3 Check stock Manual
+4
+Out of stock? Experienced staff  
+suggest an alternative; new staff  
+say “sorry”
+Lost sale
+5 Re-key everything into the POS Error-prone
+FIVE WHYS
+1 Why do customers wait ~12 min and leave with gaps?  → Every line is  searched and re-keyed by hand.
+2 Why by hand?  → Legacy POS/ERP systems, different in each country, were  built for checkout, not for reading a customer’s list.
+3 Why does the result depend on who serves you?  → Product-equivalence  know-how lives in experienced people’s heads, not in a system.
+4 Why hasn’t it been fixed?  → Each market built its own tools; the cost is  spread over hundreds of stores and invisible at group level.
+5 Root cause: no shared, data-driven way to turn a customer’s list into  an order  – so every counter improvises.
+SO WHAT Software alone won’t fix it – the counter needs one standard, shared product data  and a tool that makes them  the default.
+PROBLEM · PRIORITY · SOLUTION · MVP · IMPACT · SCALE
+A3: ~12 min per list is a team estimate, measured in discovery. Root-cause chain is team analysis of the case brief. 3 / 10
+
+=== SLIDE 4 ===
+Why the counter first: the highest impact Company A  
+can ship within a quarter
+Option
+Impact  
+30%
+Cross-market  
+20%
+Time to market  
+25%
+Feasibility  
+15%
+Fixes root cause  
+10%
+Weighted 
+score
+SiteDesk – AI counter assistant 4 5 4 4 4 4.20
+One harmonised ERP 5 5 1 1 5 3.40
+Store task & routine app (NO) 3 3 4 4 2 3.30
+Back-office RPA (DK) 3 2 4 4 1 3.00
+Delivery management system (SE) 4 3 2 3 2 2.95
+WHY NOT  
+THE OTHERS
+ERP – right destination, wrong first step: 2–3 years before customers feel it;  
+SiteDesk’s shared data model is its first brick.
+Delivery system  – optimises the delivery of orders that were already wrong at the  
+counter; fix the input first.
+Store app  – standardises routines, not the moment customers wait.
+RPA – automates today’s broken steps in one market and breaks when  
+screens change.
+ROBUSTNESS CHECK
+4.20 vs  3.90
+Move half of the time-to-market weight to  
+impact – SiteDesk still leads the ERP option.
+PROBLEM · PRIORITY · SOLUTION · MVP · IMPACT · SCALE
+Scores 1–5 (darker = higher) are team judgement, to be validated with Company A in discovery. Weighted score = Σ score × weight. 4 / 10
+
+=== SLIDE 5 ===
+SiteDesk: AI reads the list, people make the call
+1 AI
+Read
+Upload a PDF or Excel file,  
+or paste an email. AI  
+extracts item, quantity and  
+unit – in Danish, Norwegian,  
+Swedish or English.
+2  AI
+Match
+Semantic search maps free  
+text to the right SKU with a  
+confidence score. Lines  
+under 80% turn amber with  
+3 candidates.
+3  AI
+Check & substitute
+In stock or out of stock? For  
+gaps: up to 2 in-stock SKUs  
+with equal or better specs.
+4  PEOPLE
+Confirm & push
+The associate confirms with  
+the customer. The order  
+goes to the POS/ERP (CSV if  
+the API is down) or is saved  
+as a quote.
+~12 min of manual lookup
+→ <2 min, with a ~30-second review
+“Sorry, we don’t have it”
+→ “Not in stock – here’s an equivalent  
+we have”
+Depends on who is on shift
+→ The same answer at every counter
+BEYOND THE  
+SOFTWARE
+One Nordic counter standard  · associates measured on accuracy and substitutions , not only sales · a named owner  for  
+product data · co-designed  with counter staff and works councils
+PROBLEM · PRIORITY · SOLUTION · MVP · IMPACT · SCALE
+A3: 12 → <2 min per list is a team target; baseline measured in discovery. Thresholds from the SiteDesk spec (FR-02, FR-04, FR-05). 5 / 10
+
+=== SLIDE 6 ===
+One counter, five moments: what changes for staff  
+and customers
+07:00 Save quote & pre-pick.  A contractor emails 35 lines for a  
+14:00 pick-up → quote saved, pick list printed for the yard;  
+at 14:00 stock and prices are re-checked and the goods  
+are ready.
+09:30 List intake.  A 20-line PDF is dropped in → items,  
+quantities, units and SKUs filled in; uncertain  
+lines highlighted.
+09:31 Stockout.  2 lines out of stock → “See alternatives” → an  
+in-stock equivalent → the customer agrees.
+11:00 Units & trade shorthand.  “45x95 C24 – 120 m” → 25  
+lengths of 4.8 m · “plasterboard 13 mm – 60 m²” → 21  
+boards (rounded up, flagged) · “trykimp. 22x95 terr.” at  
+65% → the associate picks from 3 candidates; SiteDesk  
+learns the term.
+Any time Confirm & push.  Final human review → one click → order  
+in the POS/ERP.
+SiteDesk NO-STORE-042 · SD-NO-8821
+Customer wrote Sold as SKU Qty Stock
+Confidenc
+e
+45x95 C24 – 120 m length 4.8 m TIM-4595-48 25 In stock >90%
+plasterboard 13 mm  
+– 60 m²
+board 1.2 ×  
+2.4 m GYP-13-1224 21 ↑ In stock >90%
+trykimp. 22x95 terr. pick 1 of 3 – – – 65%  check
+Salt-resistant  
+cement 50 kg bag 50 kg CEM-SALT-50 20 Out of  stock >90%
+↳ alternative bag 50 kg CEM-PRO-50 20 In stock equal spec
+Stock updated 09:31 See alternatives Confirm order
+PROBLEM · PRIORITY · SOLUTION · MVP · IMPACT · SCALE
+Illustrative screen. Conversions use catalog attributes: 120 m ÷ 4.8 m = 25 lengths; 60 m² ÷ 2.88 m² per board = 20.8 → 21 (↑ = rounded up). 6 / 10
+
+=== SLIDE 7 ===
+Built once, connected locally – sovereign by design
+EU/EEA-HOSTED  
+· GDPR
+SiteDesk Core (shared)
+Document Parsing Engine  
+reads messy lists in 4 languages
+Semantic SKU Matcher  
+free text → SKU + confidence
+Alternative Engine  
+spec-safe substitutes
+Learning dictionary  
+learns from every correction
+REST API
+Local Connector · DK  
+catalog & stock in  
+orders out · DA · DKK
+Local Connector · NO  
+catalog & stock in  
+orders out · NO · NOK
+Local Connector · SE  
+catalog & stock in  
+orders out · SV · SEK
+Legacy ERP/POS · DK Legacy ERP/POS · NO Legacy ERP/POS · SE
+CONFIRM PAYLOAD (CORE →  
+LOCAL CONNECTOR)
+{  
+"session_id":  "SD-NO-8821",  
+"store_location":  "NO-STORE-042",  
+"customer":  {  
+"type":  "B2B_Contractor",  
+"client_id":  "NO-B2B-1092"
+  },  
+"parsed_items":  [{  
+"original_text":  "Salt-resistant cement  
+50 kg",  
+"matched_sku":  "CEM-SALT-50",  
+"quantity":  20,  
+"stock_status":  "out_of_stock",  
+"fulfillment_action":  "substituted",  
+"final_sku":  "CEM-PRO-50"
+  }]  
+}
+No personal data: the customer is only a client_id from the  
+legacy system.
+Personal  data masked  
+before AI
+AI gateway:  European or  
+open models
+Every AI  suggestion and  
+decision logged
+Works without AI  (manual search  
++ CSV)
+<3 s for a 20-line list No new  hardware, 5-min  
+training
+PROBLEM · PRIORITY · SOLUTION · MVP · IMPACT · SCALE
+Source: SiteDesk spec – FR-01 to FR-07, NFR-02 to NFR-07. A new market adds one Local Connector; the Core is not changed. 7 / 10
+
+=== SLIDE 8 ===
+MVP: live in 10 Norwegian stores in 12 weeks, with a  
+clear go/no-go
+Why Norway first:  store operations is Norway’s most urgent priority – and SiteDesk lives at the store counter.
+IN SCOPE · 7 FUNCTIONS
+List intake
+SKU matching with confidence
+Unit conversion
+Stock check + substitutes
+Confirm & push (CSV fallback)
+Saved quotes & pick lists
+Logging & learning from corrections
+NOT YET
+– Customer self-upload portal
+– Delivery-slot booking
+– Stock across nearby stores
+– Danish and Swedish connectors
+– ERP replacement
+WEEKS 1–2
+Discover
+Shadow 3 stores · measure  
+today’s time per list · collect  
+~2,000 real lists as a test set ·  
+confirm POS/ERP access · clean  
+the top 5,000 SKUs
+WEEKS 3–8
+Build
+Three 2-week sprints:  
+intake & matching →  
+stock & substitutes →  
+confirm, quotes &  
+connector
+WEEKS 9–12
+Pilot
+10 pilot stores vs  
+10 control stores  
+→ week-12 gate
+Week 12: go / no-go
+12→<2 Time-to-serve , minutes per list
+≥30% Substitution acceptance  of out-of-stock lines
+≥70% Zero-touch:  lines matched at  >90% confidence, no edit
+≤2% Guardrail:  wrong among  those lines
+TEAM OF ~7 · BUDGET ~€0.6M (A7)
+Company A product owner and counter super-users ·  
+delivery lead · UX designer · 2 full-stack developers ·  
+AI engineer · integration engineer
+PROBLEM · PRIORITY · SOLUTION · MVP · IMPACT · SCALE
+A3: today’s 12-minute baseline is measured in weeks 1–2. A7: MVP budget ~€0.6M. Control stores isolate SiteDesk’s effect. 8 / 10
+
+=== SLIDE 9 ===
+~€14M a year at full rollout – hard benefits alone pay  
+back in year 2
+€7.5M
++€3.2M
++€3.4M ~€14.0M
+€7.5M soft
+€6.5M hard
+Time released (soft)
+1.125M lists × 10 min saved  
+= 187,500 h × €40 →  
+€7.5M; time of ~117 FTE  
+back to selling, no  
+headcount cuts
+Out-of-stock sales  
+rescued (hard)
+1.125M lists × 1 out-of-stock  
+line × €75 × 30% accepted  
+× 50% otherwise lost ×  
+25% margin → €3.2M
+Fewer order  
+errors (hard)
+1.125M lists × 5% with an  
+error × €120 × 50% fewer  
+→ €3.4M
+Total a year
+of which €6.5M  
+hard: rescued sales  
++ fewer errors
+3-YEAR VIEW
+Cost ≈ €5.0M
+MVP €0.6M · build €3.5M incl. MVP · run  
+€0.5M a year
+Hard benefits ≈ €12.4M
+ramp 20% → 70% → 100% over 3 years
+→ Payback during year 2
+Still covers its cost at 50% of the  
+hard benefits.
+Assumptions  · A1 ~300 stores (DK 120 · SE 100 · NO 80; brief: “hundreds”) · A2  15 bulk lists per store per day × 250 days = 1.125M lists a year · A3  12 → <2 min  
+per list (team target; baseline measured in discovery) · A4  €40/h fully loaded; 1,600 productive hours per FTE · A5  20 lines per list, 5% out of stock, €75 per line,  
+25% gross margin · A6  5% of manually keyed lists contain an error costing ~€120 · A7 MVP €0.6M; full build €3.5M; run €0.5M a year
+PROBLEM · PRIORITY · SOLUTION · MVP · IMPACT · SCALE
+Full rollout = ~300 stores (A1). Soft = time released; hard = rescued sales + fewer errors. Totals computed before rounding. 9 / 10
+
+=== SLIDE 10 ===
+Prove it where it’s most urgent, scale it where it’s  
+biggest
+CONFIGURED PER MARKET
+Local Connector to that market’s  
+POS/ERP · product vocabulary  
+(DA/NO/SV) · currency and pricing  
+rules · store routines · legal context  
+(Norway is EEA, not EU)
+BUILT ONCE
+Core AI engines · UI · learning  
+dictionary · counter standard · KPIs ·  
+rollout playbook
+Wave 0
+M0–3
+Wave 1
+M4–9
+Wave 2
+M10–15
+Wave 3
+M16–24
+NO Pilot · 10  stores All Norwegian  stores Live Live
+DK Denmark  pilot All Danish  stores Live
+SE
+Pilot +  
+fulfilment  
+add-on
+All Swedish  
+stores + self-
+upload
+Most urgent:  
+store operations
+Biggest  
+impact:  manual  
+work, largest  
+store base
+Add-on:  pre-
+pick + delivery-
+slot promise
+Shared product  
+& order data:  
+first step to  
+harmonised  
+systems
+DECISION TODAY
+1 Approve €0.6M  for the  
+12-week MVP
+2 Name 10 pilot + 10  
+control stores in Norway
+3 Open catalog and stock  
+data access
+4 Agree the go/no-go  
+criteria now
+Readiness gate before each new market:  POS/ERP access confirmed · top 5,000 SKUs cleaned · local process owner named · super-users trained
+People:  staff – co-design, works councils involved early, “time back for customers”, not headcount cuts · customers – nothing new to learn; they  keep sending lists as today.
+Fix the counter – and the store, the yard and the truck all get easier.
+PROBLEM · PRIORITY · SOLUTION · MVP · IMPACT · SCALE
+◆ = readiness gate · M = months from MVP start · A1: ~300 stores (DK 120 · SE 100 · NO 80) · A7: MVP €0.6M. 10 / 10

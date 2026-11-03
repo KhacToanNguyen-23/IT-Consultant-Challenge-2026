@@ -1,0 +1,820 @@
+<!-- Same content as Desktop/SiteDesk_Presentation.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SiteDesk — IT Consultant Challenge 2026 (10-Slide Deck)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg-primary: #0b1120;
+    --bg-card: #151f32;
+    --bg-card-alt: #1c2942;
+    --border-color: #243552;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --accent-blue: #38bdf8;
+    --accent-indigo: #818cf8;
+    --accent-emerald: #34d399;
+    --accent-amber: #fbbf24;
+    --accent-rose: #f43f5e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background-color: #020617;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+    padding: 40px 0;
+  }
+
+  .slide {
+    width: 1440px;
+    height: 810px; /* 16:9 Ratio */
+    background: radial-gradient(circle at 10% 10%, #172554 0%, var(--bg-primary) 60%);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 48px 56px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  }
+
+  /* Slide Header */
+  .slide-header {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .tagline {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent-blue);
+  }
+  .action-title {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.25;
+    color: #ffffff;
+    max-width: 1150px;
+  }
+  .subtitle {
+    font-size: 15px;
+    color: var(--text-secondary);
+    font-weight: 400;
+  }
+
+  /* Slide Footer */
+  .slide-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border-color);
+    padding-top: 14px;
+  }
+  .footer-breadcrumbs {
+    font-weight: 600;
+    letter-spacing: 1.5px;
+  }
+
+  /* Content Containers */
+  .slide-content {
+    flex: 1;
+    display: flex;
+    gap: 24px;
+    align-items: stretch;
+    margin: 24px 0 16px 0;
+  }
+
+  /* Components */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .card-header {
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--accent-blue);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-body {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+  }
+  .card-body strong { color: #ffffff; }
+
+  /* Big Metric Callouts */
+  .metrics-row {
+    display: flex;
+    gap: 20px;
+    width: 100%;
+  }
+  .metric-card {
+    flex: 1;
+    background: linear-gradient(135deg, rgba(30, 58, 138, 0.4) 0%, rgba(15, 23, 42, 0.6) 100%);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+  }
+  .metric-value {
+    font-size: 38px;
+    font-weight: 800;
+    color: #ffffff;
+    background: linear-gradient(to right, #38bdf8, #818cf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .metric-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+
+  /* Table styling */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th {
+    background: var(--bg-card-alt);
+    color: var(--text-primary);
+    font-weight: 700;
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 2px solid var(--border-color);
+  }
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-secondary);
+  }
+  tr:hover td { background: rgba(56, 189, 248, 0.05); }
+
+  /* Badges */
+  .badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .badge-success { background: rgba(52, 211, 153, 0.15); color: var(--accent-emerald); border: 1px solid rgba(52, 211, 153, 0.3); }
+  .badge-danger { background: rgba(244, 63, 94, 0.15); color: var(--accent-rose); border: 1px solid rgba(244, 63, 94, 0.3); }
+  .badge-warning { background: rgba(251, 191, 36, 0.15); color: var(--accent-amber); border: 1px solid rgba(251, 191, 36, 0.3); }
+
+  /* Print Stylesheet for exact 16:9 PDF export */
+  @media print {
+    body { padding: 0; background: none; gap: 0; }
+    .slide {
+      width: 100vw;
+      height: 100vh;
+      border: none;
+      border-radius: 0;
+      page-break-after: always;
+      box-shadow: none;
+    }
+    @page { size: 16in 9in; margin: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SLIDE 1 -->
+<div class="slide" id="slide-1">
+  <div class="slide-header">
+    <div class="tagline">Netcompany & Code Mely · IT Consultant Challenge 2026 · Round 1</div>
+    <div class="action-title">SiteDesk: From Customer Material List to Confirmed Order in &lt;2 Minutes</div>
+    <div class="subtitle">An AI counter assistant unifying store intake across Denmark, Norway, and Sweden</div>
+  </div>
+
+  <div class="metrics-row">
+    <div class="metric-card">
+      <div class="metric-value">12 → &lt;2 min</div>
+      <div class="metric-label">Per Material List (&lt;30s human review)</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value">≥ 30%</div>
+      <div class="metric-label">Out-of-Stock Lines Rescued via AI</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value">~€14.0M</div>
+      <div class="metric-label">Annual Group Value (€6.5M Hard Cash)</div>
+    </div>
+  </div>
+
+  <div class="slide-content" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
+    <div class="card">
+      <div class="card-header">1. Problem</div>
+      <div class="card-body">Staff manually re-key 20–35 line lists into legacy POS/ERP. Stockout advice depends on who is on shift—<strong>slow, inconsistent, lost sales</strong>.</div>
+    </div>
+    <div class="card">
+      <div class="card-header">2. Strategic Choice</div>
+      <div class="card-body"><strong>Fix the counter first</strong>. It is the common root where Denmark’s manual work, Norway’s store variance, and Sweden’s delivery errors begin.</div>
+    </div>
+    <div class="card">
+      <div class="card-header">3. Solution</div>
+      <div class="card-body"><strong>SiteDesk</strong> reads any list (PDF/Excel/Email), matches SKUs, checks stock, and suggests equal-spec substitutes. <strong>Zero hardware CapEx</strong>.</div>
+    </div>
+    <div class="card">
+      <div class="card-header">4. The Ask</div>
+      <div class="card-body"><strong>€0.6M</strong> for a 12-week MVP across 10 Norwegian stores with a firm Go/No-go gate in Week 12. <strong>Payback in Year 2</strong>.</div>
+    </div>
+  </div>
+
+  <div class="slide-footer">
+    <div class="footer-breadcrumbs">EXECUTIVE SUMMARY</div>
+    <div>Slide 1 / 10</div>
+  </div>
+</div>
+
+<!-- SLIDE 2 -->
+<div class="slide" id="slide-2">
+  <div class="slide-header">
+    <div class="tagline">01 · Identify: Market Context</div>
+    <div class="action-title">Three Markets, Three Priorities — They All Converge at the Store Counter</div>
+    <div class="subtitle">Company A's cross-border challenges stem from a single operational bottleneck</div>
+  </div>
+
+  <div class="slide-content" style="display: flex; flex-direction: column; gap: 20px;">
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+      <div class="card" style="border-top: 4px solid var(--accent-blue);">
+        <div class="card-header">Norway · Store Operations</div>
+        <div class="card-body">
+          High operational variance between stores. Technical advisory and substitution depend entirely on personal employee memory.
+        </div>
+      </div>
+      <div class="card" style="border-top: 4px solid var(--accent-rose);">
+        <div class="card-header">Sweden · Delivery &amp; Fulfilment</div>
+        <div class="card-body">
+          Lists mis-keyed at the counter directly cause incorrect warehouse picks, delayed jobs, and expensive job-site re-deliveries.
+        </div>
+      </div>
+      <div class="card" style="border-top: 4px solid var(--accent-amber);">
+        <div class="card-header">Denmark · Manual Processes</div>
+        <div class="card-body">
+          Labor-heavy clerical routine. Every single line is manually searched and re-keyed: <strong>~12 min per list</strong>.
+        </div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div class="card">
+        <div class="card-header" style="color: #ffffff;">Who Feels the Pain?</div>
+        <div class="card-body">
+          • <strong>Counter Associates:</strong> Bogged down in manual typing instead of active advisory.<br>
+          • <strong>B2B Contractors &amp; DIYers:</strong> Wait hours for basic order confirmations.<br>
+          • <strong>Yard &amp; Logistics Crews:</strong> Pick and transport wrong goods due to counter typos.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header" style="color: #ffffff;">Strategic Urgency</div>
+        <div class="card-body">
+          In a hyper-competitive Nordic market, <strong>contractors switch merchants after 2–3 botched experiences</strong>. Counter wait times and "sorry, out of stock" directly lead to permanent customer churn.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-footer">
+    <div class="footer-breadcrumbs">01 · IDENTIFY · PROBLEM CONTEXT</div>
+    <div>Slide 2 / 10</div>
+  </div>
+</div>
+
+<!-- SLIDE 3 -->
+<div class="slide" id="slide-3">
+  <div class="slide-header">
+    <div class="tagline">01 · Identify: Root Cause Analysis</div>
+    <div class="action-title">The Real Problem: Counter Operations Run on Personal Memory, Not System Data</div>
+    <div class="subtitle">Five-Whys analysis reveals why software replacement alone cannot solve the crisis</div>
+  </div>
+
+  <div class="slide-content" style="display: grid; grid-template-columns: 1fr 1.3fr; gap: 24px;">
+    <div class="card">
+      <div class="card-header">Today's Broken Counter Flow</div>
+      <div class="card-body" style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="background: var(--bg-card-alt); padding: 10px 14px; border-radius: 6px;">1. <strong>Receive List:</strong> Messy PDF, Excel, or raw email</div>
+        <div style="background: var(--bg-card-alt); padding: 10px 14px; border-radius: 6px;">2. <strong>Search SKU:</strong> Manual keyword typing in legacy POS <span class="badge badge-warning">Slow (~12m)</span></div>
+        <div style="background: var(--bg-card-alt); padding: 10px 14px; border-radius: 6px;">3. <strong>Check Stock:</strong> Individual item query per line <span class="badge badge-warning">Manual</span></div>
+        <div style="background: var(--bg-card-alt); padding: 10px 14px; border-radius: 6px;">4. <strong>Stockout:</strong> Seniors advise alternatives; juniors say "sorry" <span class="badge badge-danger">Lost Sales</span></div>
+        <div style="background: var(--bg-card-alt); padding: 10px 14px; border-radius: 6px;">5. <strong>Re-Key Order:</strong> Type 20–35 lines into POS <span class="badge badge-danger">5% Error Rate</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">5 Whys Root-Cause Chain</div>
+      <div class="card-body" style="display: flex; flex-direction: column; gap: 12px;">
+        <div><strong>Symptom:</strong> Customers wait ~12 min per list and leave unfulfilled.</div>
+        <div style="color: var(--accent-blue);">↓ <em>Why?</em> Every line is manually searched, converted, and re-keyed by hand.</div>
+        <div style="color: var(--accent-blue);">↓ <em>Why?</em> Legacy POS/ERP was designed for checkout, not list ingestion.</div>
+        <div style="color: var(--accent-blue);">↓ <em>Why?</em> Technical product equivalence lives in senior staff's heads.</div>
+        <div style="color: var(--accent-blue);">↓ <em>Why?</em> Each country built siloed tools; costs are hidden across hundreds of stores.</div>
+        <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid var(--accent-blue); padding: 12px; border-radius: 8px; color: #ffffff;">
+          <strong>⇒ ROOT CAUSE:</strong> <strong>No shared, data-driven engine to convert raw customer lists into clean ERP orders.</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-footer">
+    <div class="footer-breadcrumbs">01 · IDENTIFY · ROOT CAUSE</div>
+    <div>Slide 3 / 10</div>
+  </div>
+</div>
+
+<!-- SLIDE 4 -->
+<div class="slide" id="slide-4">
+  <div class="slide-header">
+    <div class="tagline">02 · Prioritise: Strategic Evaluation</div>
+    <div class="action-title">Why the Counter First: Highest Business Impact Deliverable in One Quarter</div>
+    <div class="subtitle">Scoring initiatives across strategic impact, speed, and organizational feasibility</div>
+  </div>
+
+  <div class="slide-content" style="display: flex; flex-direction: column; gap: 18px;">
+    <div class="card" style="padding: 0; overflow: hidden;">
+      <table>
+        <thead>
+          <tr>
+            <th>Proposed Initiative</th>
+            <th>Impact (30%)</th>
+            <th>Cross-Market (20%)</th>
+            <th>Speed (25%)</th>
+            <th>Feasibility (15%)</th>
+            <th>Root Cause (10%)</th>
+            <th>Weighted Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="background: rgba(56, 189, 248, 0.15); font-weight: 700; color: #ffffff;">
+            <td>★ SiteDesk (AI Counter Layer)</td>
+            <td>4</td><td>5</td><td>4</td><td>4</td><td>4</td>
+            <td style="color: var(--accent-blue); font-size: 16px;">4.20</td>
+          </tr>
+          <tr>
+            <td>Harmonised Group ERP</td>
+            <td>5</td><td>5</td><td>1</td><td>1</td><td>5</td>
+            <td>3.40</td>
+          </tr>
+          <tr>
+            <td>Store Routine &amp; Task App (NO)</td>
+            <td>3</td><td>3</td><td>4</td><td>4</td><td>2</td>
+            <td>3.30</td>
+          </tr>
+          <tr>
+            <td>Back-Office RPA (DK)</td>
+            <td>3</td><td>2</td><td>4</td><td>4</td><td>1</td>
+            <td>3.00</td>
+          </tr>
+          <tr>
+            <td>Delivery Management System (SE)</td>
+            <td>4</td><td>3</td><td>2</td><td>3</td><td>2</td>
+            <td>2.95</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div class="card">
+        <div class="card-header">Why Not the Others?</div>
+        <div class="card-body">
+          • <strong>Harmonised ERP:</strong> 2–3 years before business impact. Violates time-to-market.<br>
+          • <strong>Delivery System (SE):</strong> Optimizes delivery of orders that were <em>already wrong at input</em>.<br>
+          • <strong>Store Routine App (NO):</strong> Standardizes checklists, but ignores waiting customers.
+        </div>
+      </div>
+      <div class="card" style="border-left: 4px solid var(--accent-emerald);">
+        <div class="card-header" style="color: var(--accent-emerald);">Robustness Stress-Test</div>
+        <div class="card-body">
+          <strong>Score: 4.20 vs. 3.90</strong><br>
+          Even if we shift 50% of the Time-to-Market weight directly to Impact, <strong>SiteDesk still beats the ERP option</strong>. It delivers immediate value while laying the exact data foundation required for future group ERP harmonisation.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-footer">
+    <div class="footer-breadcrumbs">02 · PRIORITISE · EVALUATION MATRIX</div>
+    <div>Slide 4 / 10</div>
+  </div>
+</div>
+
+<!-- SLIDE 5 -->
+<div class="slide" id="slide-5">
+  <div class="slide-header">
+    <div class="tagline">03 · Solve: Operational Workflow</div>
+    <div class="action-title">SiteDesk: AI Accelerates Lookup, Humans Retain the Final Decision</div>
+    <div class="subtitle">A 4-step human-in-the-loop operational pipeline converting chaos into clean orders</div>
+  </div>
+
+  <div class="slide-content" style="display: flex; flex-direction: column; gap: 20px;">
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
+      <div class="card">
+        <div class="card-header">1. READ (AI)</div>
+        <div class="card-body">
+          Uploads PDF/Excel or pastes text.<br>
+          Extracts items, quantities, and units in <strong>DA, NO, SV, EN</strong>.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">2. MATCH (AI)</div>
+        <div class="card-body">
+          Semantic search maps messy trade text to SKUs with confidence scores (>80%).
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">3. SUBSTITUTE (AI)</div>
+        <div class="card-body">
+          Real-time store stock check.<br>
+          Suggests up to 2 equal/better spec in-stock alternatives.
+        </div>
+      </div>
+      <div class="card" style="border: 1px solid var(--accent-emerald);">
+        <div class="card-header" style="color: var(--accent-emerald);">4. CONFIRM (HUMAN)</div>
+        <div class="card-body">
+          Staff reviews in <strong>&lt;30s</strong>, confirms with customer, and pushes clean order to POS/ERP.
+        </div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div class="card">
+        <div class="card-header">Measurable Operational Shift</div>
+        <div class="card-body">
+          • <strong>Lookup Time:</strong> ~12 min manual search → <strong>&lt;2 min total</strong>.<br>
+          • <strong>Stockout Answer:</strong> "Sorry, out of stock" → <strong>"Approved equivalent right here"</strong>.<br>
+          • <strong>Service Quality:</strong> Depends on who is on shift → <strong>100% consistent advice</strong>.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">Beyond Software: People &amp; Process</div>
+        <div class="card-body">
+          • <strong>Nordic Counter Standard:</strong> Staff measured on accuracy &amp; saved sales, not raw volume.<br>
+          • <strong>Product Data Stewardship:</strong> Dedicated data owners maintaining catalog specs.<br>
+          • <strong>No Headcount Cuts:</strong> Time saved is returned to active customer consulting.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-footer">
+    <div class="footer-breadcrumbs">03 · SOLVE · OPERATIONAL WORKFLOW</div>
+    <div>Slide 5 / 10</div>
+  </div>
+</div>
+
+<!-- SLIDE 6 -->
+<div class="slide" id="slide-6">
+  <div class="slide-header">
+    <div class="tagline">03 · Solve: Daily In-Store Reality</div>
+    <div class="action-title">One Counter, Five Moments: Eliminating Chaos from the Daily Routine</div>
+    <div class="subtitle">Demonstrating practical unit conversion, trade slang resolution, and stockout rescue</div>
+  </div>
+
+  <div class="slide-content" style="display: grid; grid-template-columns: 1fr 1.6fr; gap: 24px;">
+    <div class="card">
+      <div class="card-header">5 Operational Moments</div>
+      <div class="card-body" style="display: flex; flex-direction: column; gap: 12px; font-size: 13px;">
+        <div><strong>07:00 · Pre-Pick:</strong> 35-line email → Auto-saved quote, pick-list printed for yard before arrival.</div>
+        <div><strong>09:30 · List Intake:</strong> 20-line PDF dropped → 90% auto-matched in seconds.</div>
+        <div><strong>09:31 · Stockout Salvage:</strong> Out-of-stock line → AI recommends equal spec → Customer accepts.</div>
+        <div><strong>11:00 · Unit Conversion:</strong> "120m lumber" → 25 lengths (4.8m); slang "trykimp" resolved via top candidates.</div>
+        <div><strong>Anytime · 1-Click Push:</strong> Final human review → Instant sync into POS/ERP.</div>
+      </div>
+    </div>
+
+    <div class="card" style="padding: 16px; background: #0f172a; border-color: #334155;">
+      <div style="font-size: 12px; font-weight: 700; color: var(--accent-blue); margin-bottom: 8px;">
+        SiteDesk Counter UI Mockup · Store NO-STORE-042
+      </div>
+      <table style="font-size: 12px;">
+        <thead>
+          <tr>
+            <th>Customer Wrote</th>
+            <th>Sold As</th>
+            <th>Matched SKU</th>
+            <th>Qty</th>
+            <th>Stock</th>
+            <th>Confidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>45x95 C24 – 120 m</td>
+            <td>Length 4.8m</td>
+            <td>TIM-4595-48</td>
+            <td>25</td>
+            <td><span class="badge badge-success">In Stock</span></td>
+            <td>&gt;90%</td>
+          </tr>
+          <tr>
+            <td>Plasterboard 13mm – 60 m²</td>
+            <td>Board 1.2x2.4</td>
+            <td>GYP-13-1224</td>
+            <td>21 ↑</td>
+            <td><span class="badge badge-success">In Stock</span></td>
+            <td>&gt;90%</td>
+          </tr>
+          <tr>
+            <td>trykimp. 22x95 terr.</td>
+            <td>Pick 1 of 3</td>
+            <td>[Select...]</td>
+            <td>--</td>
+            <td><span class="badge badge-warning">Check</span></td>
+            <td>65% (Amber)</td>
+          </tr>
+          <tr style="background: rgba(244, 63, 94, 0.08);">
+            <td>Salt-resistant cement 50kg</td>
+            <td>Bag 50kg</td>
+            <td>CEM-SALT-50</td>
+            <td>20</td>
+            <td><span class="badge badge-danger">Out of Stock</span></td>
+            <td>&gt;90%</td>
+          </tr>
+          <tr style="background: rgba(52, 211, 153, 0.08);">
+            <td>↳ Suggested Alternative</td>
+            <td>Bag 50kg</td>
+            <td>CEM-PRO-50</td>
+            <td>20</td>
+            <td><span class="badge badge-success">In Stock</span></td>
+            <td>Equal Spec</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="display: flex; justify-content: space-between; margin-top: 14px; font-size: 12px;">
+        <span style="color: var(--text-muted);">Stock updated: 09:31</span>
+        <div>
+          <button style="background: #334155; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-right: 8px;">View Alternatives</button>
+          <button style="background: var(--accent-blue); color: #020617; border: none; padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 700;">Confirm Order (Enter)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-footer">
+    <div class="footer-breadcrumbs">03 · SOLVE · PRACTICAL SCENARIO</div>
+    <div>Slide 6 / 10</div>
+  </div>
+</div>
+
+<!-- SLIDE 7 -->
+<div class="slide" id="slide-7">
+  <div class="slide-header">
+    <div class="tagline">03 · Solve: Architecture &amp; Security</div>
+    <div class="action-title">Built Once Globally, Connected Locally — Sovereign &amp; Secure by Design</div>
+    <div class="subtitle">A non-invasive 2-tier architecture resolving fragmented cross-border legacy systems</div>
+  </div>
+
+  <div class="slide-content" style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px;">
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+      <div class="card" style="border-left: 4px solid var(--accent-blue);">
+        <div class="card-header">SiteDesk Core (Shared Global Intelligence)</div>
+        <div class="card-body">
+          Document Parsing Engine · Semantic SKU Matcher · Spec-Safe Alternative Engine · Learning Dictionary.
+        </div>
+      </div>
+
+      <div style="text-align: center; color: var(--accent-blue); font-weight: 700; font-size: 13px;">
+        ↓ REST API / Webhooks (Non-invasive Integration)
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+        <div class="card" style="padding: 14px;">
+          <div style="font-size: 12px; font-weight: 700; color: #ffffff;">Denmark</div>
+          <div style="font-size: 11px; color: var(--text-secondary);">DKK · Navision ERP</div>
+        </div>
+        <div class="card" style="padding: 14px;">
+          <div style="font-size: 12px; font-weight: 700; color: #ffffff;">Norway</div>
+          <div style="font-size: 11px; color: var(--text-secondary);">NOK · Local POS</div>
+        </div>
+        <div class="card" style="padding: 14px;">
+          <div style="font-size: 12px; font-weight: 700; color: #ffffff;">Sweden</div>
+          <div style="font-size: 11px; color: var(--text-secondary);">SEK · Movex WMS</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Sovereign AI &amp; Enterprise Security</div>
+      <div class="card-body" style="display: flex; flex-direction: column; gap: 10px; font-size: 13px;">
+        <div>• <strong>European Sovereignty:</strong> Hosted in EU/EEA (Mistral/open models); zero data sent outside Europe.</div>
+        <div>• <strong>Privacy by Design:</strong> Personal data automatically masked before AI; uses only internal <code>client_id</code>.</div>
+        <div>• <strong>Audit-Ready:</strong> Logs all AI recommendations compliant with EU AI Act.</div>
+        <div>• <strong>Offline Resilience:</strong> If AI or API drops, staff fall back to manual search &amp; CSV export. <strong>Zero store downtime</strong>.</div>
+        <div>• <strong>Ultra-Low Cost:</strong> Browser-based. Runs on existing counter PCs.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-footer">
+    <div class="footer-breadcrumbs">03 · SOLVE · ARCHITECTURE &amp; SECURITY</div>
+    <div>Slide 7 / 10</div>
+  </div>
+</div>
+
+<!-- SLIDE 8 -->
+<div class="slide" id="slide-8">
+  <div class="slide-header">
+    <div class="tagline">03 · Solve: 12-Week MVP Delivery</div>
+    <div class="action-title">MVP Delivery: Live in 10 Norwegian Stores in 12 Weeks with Clear Gates</div>
+    <div class="subtitle">Focusing strictly on store counter validation before group-wide rollout</div>
+  </div>
+
+  <div class="slide-content" style="display: flex; flex-direction: column; gap: 16px;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div class="card">
+        <div class="card-header" style="color: var(--accent-emerald);">In Scope (7 Core MVP Functions)</div>
+        <div class="card-body">
+          List intake · SKU matching · Unit conversion · Stock check · Spec alternatives · Saved quotes/pick-list · Audit logging.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header" style="color: var(--text-muted);">Out of Scope (Roadmap Phase 2)</div>
+        <div class="card-body">
+          Customer self-upload portal · Delivery-slot booking · Multi-store cross-border stock pings · Complete ERP replacement.
+        </div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+      <div class="card" style="border-top: 3px solid var(--accent-blue);">
+        <div class="card-header">Weeks 1–2 · Discover</div>
+        <div class="card-body">Shadow 3 stores · Benchmark timing baseline · Collect 2,000 real lists · Clean top 5,000 SKUs.</div>
+      </div>
+      <div class="card" style="border-top: 3px solid var(--accent-indigo);">
+        <div class="card-header">Weeks 3–8 · Build</div>
+        <div class="card-body">Three 2-week sprints: Intake &amp; Match → Stock &amp; Substitutes → POS Push &amp; Quote Saving.</div>
+      </div>
+      <div class="card" style="border-top: 3px solid var(--accent-emerald);">
+        <div class="card-header">Weeks 9–12 · Pilot</div>
+        <div class="card-body">Deploy across 10 pilot stores vs. 10 control stores in Norway. Weekly KPI verification.</div>
+      </div>
+    </div>
+
+    <div class="metrics-row">
+      <div class="metric-card" style="padding: 12px;">
+        <div class="metric-value" style="font-size: 26px;">12 → &lt;2 min</div>
+        <div class="metric-label">Time-to-Serve</div>
+      </div>
+      <div class="metric-card" style="padding: 12px;">
+        <div class="metric-value" style="font-size: 26px;">≥ 30%</div>
+        <div class="metric-label">Substitution Acceptance</div>
+      </div>
+      <div class="metric-card" style="padding: 12px;">
+        <div class="metric-value" style="font-size: 26px;">≥ 70%</div>
+        <div class="metric-label">Zero-Touch Automation</div>
+      </div>
+      <div class="metric-card" style="padding: 12px;">
+        <div class="metric-value" style="font-size: 26px;">≤ 2%</div>
+        <div class="metric-label">Error Guardrail Rate</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-footer">
+    <div class="footer-breadcrumbs">03 · SOLVE · 12-WEEK MVP PLAN</div>
+    <div>Slide 8 / 10</div>
+  </div>
+</div>
+
+<!-- SLIDE 9 -->
+<div class="slide" id="slide-9">
+  <div class="slide-header">
+    <div class="tagline">Impact &amp; Financials</div>
+    <div class="action-title">~€14.0M Annual Value at Full Rollout — Hard Benefits Pay Back in Year 2</div>
+    <div class="subtitle">Robust business case separating soft productivity gains from hard cash savings</div>
+  </div>
+
+  <div class="slide-content" style="display: flex; flex-direction: column; gap: 16px;">
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+      <div class="card" style="border-top: 4px solid var(--text-secondary);">
+        <div class="card-header" style="color: var(--text-secondary);">€7.5M · Time Released (Soft)</div>
+        <div class="card-body">
+          1.125M lists × 10 min saved = 187,500 hrs.<br>
+          Equivalent to <strong>~117 FTE redirected</strong> from clerical typing to customer advisory. Zero layoffs.
+        </div>
+      </div>
+      <div class="card" style="border-top: 4px solid var(--accent-emerald);">
+        <div class="card-header" style="color: var(--accent-emerald);">€3.2M · Rescued Sales (Hard)</div>
+        <div class="card-body">
+          1.125M lists × 1 stockout line × €75 avg × 30% accepted × 50% otherwise lost × 25% gross margin.
+        </div>
+      </div>
+      <div class="card" style="border-top: 4px solid var(--accent-blue);">
+        <div class="card-header" style="color: var(--accent-blue);">€3.4M · Reduced Errors (Hard)</div>
+        <div class="card-body">
+          1.125M lists × 5% baseline error rate × €120 average cost per error × 50% reduction in wrong picks.
+        </div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1.3fr; gap: 20px;">
+      <div class="card" style="background: linear-gradient(135deg, rgba(30, 58, 138, 0.4), var(--bg-card)); border-color: var(--accent-blue);">
+        <div class="card-header" style="color: #ffffff;">3-Year Investment &amp; Payback</div>
+        <div class="card-body">
+          • <strong>Total 3-Year Cost:</strong> €5.0M (€0.6M MVP + €2.9M build + €0.5M/yr run).<br>
+          • <strong>Hard Cash Benefits:</strong> €12.4M ramp over 3 years (20% → 70% → 100%).<br>
+          • <strong>Payback Period: Within Year 2</strong> (Covers costs even if hard benefits drop by 50%).
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">Key Model Assumptions</div>
+        <div class="card-body" style="font-size: 12px; line-height: 1.4;">
+          <strong>A1:</strong> ~300 stores (DK 120, SE 100, NO 80) · <strong>A2:</strong> 15 bulk lists/store/day × 250 days = 1.125M lists/yr · <strong>A3:</strong> 12 → &lt;2 min/list · <strong>A4:</strong> €40/h fully loaded cost · <strong>A5:</strong> €75 line value, 25% margin · <strong>A6:</strong> 5% errors costing €120 · <strong>A7:</strong> €0.6M MVP budget.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-footer">
+    <div class="footer-breadcrumbs">IMPACT · BUSINESS CASE</div>
+    <div>Slide 9 / 10</div>
+  </div>
+</div>
+
+<!-- SLIDE 10 -->
+<div class="slide" id="slide-10">
+  <div class="slide-header">
+    <div class="tagline">04 · Scale: Nordic Rollout &amp; Governance</div>
+    <div class="action-title">Prove in Norway, Scale Across the Nordics — The Foundation for Harmonisation</div>
+    <div class="subtitle">A phased, de-risked 24-month roadmap with clear organizational readiness gates</div>
+  </div>
+
+  <div class="slide-content" style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 24px;">
+    <div class="card">
+      <div class="card-header">4-Wave Strategic Rollout Roadmap</div>
+      <div class="card-body" style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="background: var(--bg-card-alt); padding: 12px; border-radius: 8px; border-left: 3px solid var(--accent-blue);">
+          <strong>Wave 0 (M0–3) · Norway Pilot:</strong> 10 stores. Validate &lt;2 min time-to-serve and substitution models.
+        </div>
+        <div style="background: var(--bg-card-alt); padding: 12px; border-radius: 8px; border-left: 3px solid var(--accent-indigo);">
+          <strong>Wave 1 (M4–9) · Norway Full + Denmark Pilot:</strong> Roll out to all 80 Norwegian stores; pilot in Denmark.
+        </div>
+        <div style="background: var(--bg-card-alt); padding: 12px; border-radius: 8px; border-left: 3px solid var(--accent-amber);">
+          <strong>Wave 2 (M10–15) · Denmark Full + Sweden Pilot:</strong> Eliminate Danish manual entry; add pre-pick in Sweden.
+        </div>
+        <div style="background: var(--bg-card-alt); padding: 12px; border-radius: 8px; border-left: 3px solid var(--accent-emerald);">
+          <strong>Wave 3 (M16–24) · Full Nordic Harmonisation:</strong> Live across ~300 stores. Shared data model established.
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+      <div class="card" style="border-left: 4px solid var(--accent-emerald);">
+        <div class="card-header" style="color: var(--accent-emerald);">Decision Required Today</div>
+        <div class="card-body" style="font-size: 13px;">
+          1. <strong>Approve €0.6M budget</strong> for the 12-week MVP.<br>
+          2. <strong>Designate 10 pilot + 10 control stores</strong> in Norway.<br>
+          3. <strong>Grant API/read access</strong> to catalog and store inventory.<br>
+          4. <strong>Lock in the Week-12 Go/No-go criteria</strong>.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">Readiness Gate Before Each Wave</div>
+        <div class="card-body" style="font-size: 12px;">
+          ✓ POS/ERP read access confirmed<br>
+          ✓ Top 5,000 SKUs cleansed with local unit attributes<br>
+          ✓ Local Process Owner named &amp; super-users trained
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-footer">
+    <div class="footer-breadcrumbs">04 · SCALE · ROADMAP &amp; DECISION</div>
+    <div>Slide 10 / 10</div>
+  </div>
+</div>
+
+</body>
+</html>
