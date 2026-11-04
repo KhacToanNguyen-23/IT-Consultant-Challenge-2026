@@ -36,7 +36,7 @@ interface ParseResponse {
 interface ConfirmResponse {
   order_id: string;
   export_format: string;
-  data: unknown;
+  exported_data: unknown;
 }
 
 interface LineState {
@@ -324,7 +324,7 @@ export default function Home() {
   const copyExport = async () => {
     if (!order) return;
     try {
-      await navigator.clipboard.writeText(formatExportData(order.data));
+      await navigator.clipboard.writeText(formatExportData(order.exported_data));
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1600);
     } catch {
@@ -909,7 +909,7 @@ export default function Home() {
                       Export payload
                     </p>
                     <pre className="max-h-64 overflow-auto rounded-lg bg-slate-900 p-3 text-xs leading-5 text-slate-100">
-                      {formatExportData(order.data) || "No export data returned."}
+                      {formatExportData(order.exported_data) || "No export data returned."}
                     </pre>
                   </div>
                 </div>
