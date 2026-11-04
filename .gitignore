@@ -52,3 +52,8 @@ pgdata/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local tooling
+.playwright-mcp/
+frontend/next-env.d.ts
+*.tsbuildinfo

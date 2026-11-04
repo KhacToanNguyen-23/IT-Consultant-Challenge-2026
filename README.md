@@ -28,16 +28,27 @@ cd IT-Consultant-Challenge-2026
 # 2. Tạo file cấu hình môi trường từ mẫu
 cp .env.example .env
 
-# 3. Khởi động cả 3 services (Frontend + Backend + PostgreSQL)
+# 3. Khởi động cả 4 services (Frontend + Backend + PostgreSQL/pgvector + mock-pos)
 docker compose up --build
 ```
 
 ### 3. Địa chỉ truy cập
 * 🌐 **Frontend (Web Counter UI):** [http://localhost:3000](http://localhost:3000)
 * ⚡ **Backend API & Swagger Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
+* 🧪 **mock-pos [simulated] POS/ERP:** [http://localhost:8001/docs](http://localhost:8001/docs)
 * 🗄️ **PostgreSQL Database:** `localhost:5432` (`user: postgres`, `password: password123`, `db: sitedesk_db`)
 
 ---
+
+## 🧭 Màn hình & luồng (branch `feat/ui-flow2`)
+* `/` — nhận danh sách: **Tại quầy** (Luồng 1: paste/PDF/XLSX/CSV) hoặc **Email báo giá** (Luồng 2: dán email khách).
+* `/sessions/[id]` — xem trước dòng đã đọc → Analyze → bảng rà soát (exceptions first, chip thuộc tính, quy đổi, tồn, thay thế) → Confirm (POS hoặc CSV fallback) / Lưu báo giá.
+* `/quotes`, `/quotes/[id]` — Luồng 2: SAVED → SENT → ghi nhận khách xác nhận → Prepare (kiểm lại giá/tồn, diff trước→sau) → in báo giá / phiếu soạn → Confirm. Hết hạn tính khi mở, có Huỷ.
+* Header có 2 công tắc demo **AI fail** / **POS fail** (MVP-FR-033). Trang báo giá có mục *Demo: đổi giá/tồn trên mock-pos* để quay cảnh diff.
+
+> ⚠️ Matcher hiện là **placeholder theo luật + token overlap** (`backend/services/matcher.py::semantic_score`). AI owner thay bằng pgvector + multilingual-e5-small; phần hard rules/bands/gap giữ nguyên. Seed hiện có 16 SKU giả lập trong `mock-pos/seeds/` — data owner thay bằng bộ 60–80 SKU (SRS §6.3). Bảng DB tạo bằng `create_all` khi khởi động (chưa có Alembic).
+>
+> Nếu đã chạy bản cũ (image `postgres:15-alpine`), chạy `docker compose down -v` một lần để tạo lại volume với image pgvector.
 
 ## 📁 Cấu trúc thư mục (Monorepo)
 ```text

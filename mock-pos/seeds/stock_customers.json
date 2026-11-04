@@ -1,0 +1,33 @@
+{
+  "_note": "DEV PLACEHOLDER. Stock per store (on-hand) + customers (pseudonymous, no PII) + discount tiers (simulated).",
+  "store_id": "DK-CPH-04",
+  "stock": {
+    "SKU-DK-4595-480": 140,
+    "SKU-DK-4595-C18-480": 200,
+    "SKU-DK-45120-480": 0,
+    "SKU-DK-45120-C30-480": 60,
+    "SKU-DK-3570-360": 300,
+    "SKU-GYP-STD-125": 300,
+    "SKU-GYP-MR-125": 0,
+    "SKU-GYP-MR-125-B": 40,
+    "SKU-RW-095": 5,
+    "SKU-ISOVER-095": 42,
+    "SKU-RW-145": 30,
+    "SKU-CEM-25-STD": 80,
+    "SKU-MORT-25": 0,
+    "SKU-DECK-28120-420": 400,
+    "SKU-DECK-28120-NTR-420": 120,
+    "SKU-DECK-28145-420": 12
+  },
+  "customers": [
+    {"client_id": "C-88921", "type": "B2B", "discount_tier": "TRADE_2", "market": "DK"},
+    {"client_id": "C-77310", "type": "B2B", "discount_tier": "TRADE_1", "market": "DK"},
+    {"client_id": "C-65002", "type": "B2B", "discount_tier": "TRADE_2", "market": "DK"},
+    {"client_id": "DK-CPH-04-WALKIN", "type": "B2C_WalkIn", "discount_tier": "NONE", "market": "DK"}
+  ],
+  "discount_tiers": [
+    {"tier_code": "NONE", "market": "DK", "discount_rate": 0.0, "valid_from": "2026-01-01", "simulated": true},
+    {"tier_code": "TRADE_1", "market": "DK", "discount_rate": 0.05, "valid_from": "2026-01-01", "simulated": true},
+    {"tier_code": "TRADE_2", "market": "DK", "discount_rate": 0.10, "valid_from": "2026-01-01", "simulated": true}
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "_note": "DEV PLACEHOLDER seed (16 SKU) so UI/Flow 2 can run end-to-end. AI/data owner replaces with the 60-80 SKU seed per SRS v2 section 6.3. Prices simulated.",
+  "catalog_version": "dev-placeholder-2026-11-04",
+  "items": [
+    {"sku": "SKU-DK-4595-480", "name": "Konstruktionstræ 45x95 C24 4.8m", "category": "timber", "selling_unit": "piece_4.8m", "pack_size": 4.8, "unit_price": 100.00, "currency": "DKK",
+     "technical_specs": {"cross_section_mm": "45x95", "strength_grade": "C24", "length_m": 4.8}, "aliases": {"da": ["træ 45x95", "regel 45x95"], "en": ["timber 45x95"]}},
+    {"sku": "SKU-DK-4595-C18-480", "name": "Konstruktionstræ 45x95 C18 4.8m", "category": "timber", "selling_unit": "piece_4.8m", "pack_size": 4.8, "unit_price": 85.00, "currency": "DKK",
+     "technical_specs": {"cross_section_mm": "45x95", "strength_grade": "C18", "length_m": 4.8}, "aliases": {"da": ["træ 45x95 c18"]}},
+    {"sku": "SKU-DK-45120-480", "name": "Konstruktionstræ 45x120 C24 4.8m", "category": "timber", "selling_unit": "piece_4.8m", "pack_size": 4.8, "unit_price": 130.00, "currency": "DKK",
+     "technical_specs": {"cross_section_mm": "45x120", "strength_grade": "C24", "length_m": 4.8}, "aliases": {}},
+    {"sku": "SKU-DK-45120-C30-480", "name": "Konstruktionstræ 45x120 C30 4.8m", "category": "timber", "selling_unit": "piece_4.8m", "pack_size": 4.8, "unit_price": 142.00, "currency": "DKK",
+     "technical_specs": {"cross_section_mm": "45x120", "strength_grade": "C30", "length_m": 4.8}, "aliases": {}},
+    {"sku": "SKU-DK-3570-360", "name": "Lægte 35x70 C18 3.6m", "category": "timber", "selling_unit": "piece_3.6m", "pack_size": 3.6, "unit_price": 42.00, "currency": "DKK",
+     "technical_specs": {"cross_section_mm": "35x70", "strength_grade": "C18", "length_m": 3.6}, "aliases": {"da": ["lægte 35x70"]}},
+
+    {"sku": "SKU-GYP-STD-125", "name": "Gipsplade standard 12.5mm 1200x2400", "category": "gypsum", "selling_unit": "board", "pack_size": null, "unit_price": 69.00, "currency": "DKK",
+     "technical_specs": {"thickness_mm": 12.5, "board_type": "standard", "moisture_resistant": false}, "aliases": {"da": ["gips 12.5"]}},
+    {"sku": "SKU-GYP-MR-125", "name": "Gipsplade vådrum 12.5mm 1200x2400", "category": "gypsum", "selling_unit": "board", "pack_size": null, "unit_price": 95.00, "currency": "DKK",
+     "technical_specs": {"thickness_mm": 12.5, "board_type": "moisture", "moisture_resistant": true}, "aliases": {"da": ["vådrumsgips"]}},
+    {"sku": "SKU-GYP-MR-125-B", "name": "Vådrumsplade Brand B 12.5mm 1200x2400", "category": "gypsum", "selling_unit": "board", "pack_size": null, "unit_price": 99.00, "currency": "DKK",
+     "technical_specs": {"thickness_mm": 12.5, "board_type": "moisture", "moisture_resistant": true, "brand": "B"}, "aliases": {}},
+
+    {"sku": "SKU-RW-095", "name": "Rockwool FlexiBatts 95mm (2.88 m2/pk)", "category": "insulation", "selling_unit": "pack", "pack_size": 2.88, "unit_price": 120.50, "currency": "DKK",
+     "technical_specs": {"thickness_mm": 95, "material": "stone_wool", "brand": "Rockwool"}, "aliases": {"da": ["flexibatts 95"]}},
+    {"sku": "SKU-ISOVER-095", "name": "Isover Plus 95mm (2.88 m2/pk)", "category": "insulation", "selling_unit": "pack", "pack_size": 2.88, "unit_price": 125.50, "currency": "DKK",
+     "technical_specs": {"thickness_mm": 95, "material": "glass_wool", "brand": "Isover"}, "aliases": {}},
+    {"sku": "SKU-RW-145", "name": "Rockwool FlexiBatts 145mm (1.8 m2/pk)", "category": "insulation", "selling_unit": "pack", "pack_size": 1.8, "unit_price": 135.00, "currency": "DKK",
+     "technical_specs": {"thickness_mm": 145, "material": "stone_wool", "brand": "Rockwool"}, "aliases": {}},
+
+    {"sku": "SKU-CEM-25-STD", "name": "Cement standard 25kg", "category": "cement", "selling_unit": "bag", "pack_size": null, "unit_price": 55.00, "currency": "DKK",
+     "technical_specs": {"bag_weight_kg": 25, "product_type": "cement"}, "aliases": {"da": ["cement sæk"]}},
+    {"sku": "SKU-MORT-25", "name": "Murmørtel KC 50/700 25kg", "category": "cement", "selling_unit": "bag", "pack_size": null, "unit_price": 62.00, "currency": "DKK",
+     "technical_specs": {"bag_weight_kg": 25, "product_type": "mortar"}, "aliases": {"da": ["mørtel", "murmørtel"]}},
+
+    {"sku": "SKU-DECK-28120-420", "name": "Terrassebræt trykimprægneret 28x120 4.2m", "category": "decking", "selling_unit": "piece_4.2m", "pack_size": 4.2, "unit_price": 48.00, "currency": "DKK",
+     "technical_specs": {"cross_section_mm": "28x120", "treatment": ["pressure_treated"], "length_m": 4.2}, "aliases": {"da": ["terrassebrædder 28x120"]}},
+    {"sku": "SKU-DECK-28120-NTR-420", "name": "Terrassebræt NTR/AB 28x120 4.2m", "category": "decking", "selling_unit": "piece_4.2m", "pack_size": 4.2, "unit_price": 55.00, "currency": "DKK",
+     "technical_specs": {"cross_section_mm": "28x120", "treatment": ["pressure_treated", "ntr_ab"], "length_m": 4.2}, "aliases": {}},
+    {"sku": "SKU-DECK-28145-420", "name": "Terrassebræt trykimprægneret 28x145 4.2m", "category": "decking", "selling_unit": "piece_4.2m", "pack_size": 4.2, "unit_price": 59.00, "currency": "DKK",
+     "technical_specs": {"cross_section_mm": "28x145", "treatment": ["pressure_treated"], "length_m": 4.2}, "aliases": {}}
+  ]
+}

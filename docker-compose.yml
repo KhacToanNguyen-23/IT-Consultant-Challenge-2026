@@ -1,7 +1,7 @@
 services:
-  # 1. DATABASE: PostgreSQL
+  # 1. DATABASE: PostgreSQL 15 + pgvector (SRS v2 §12.1)
   db:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15
     container_name: sitedesk_db
     restart: always
     environment:
@@ -15,12 +15,33 @@ services:
     networks:
       - sitedesk_net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d sitedesk_db"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
-  # 2. BACKEND: Python FastAPI
+  # 2. MOCK-POS [simulated] POS/ERP/PIM/WMS
+  mock-pos:
+    build:
+      context: ./mock-pos
+      dockerfile: Dockerfile
+    container_name: sitedesk_mock_pos
+    restart: always
+    ports:
+      - "8001:8001"
+    environment:
+      FAIL_MODE: ${MOCK_POS_FAIL_MODE:-false}
+    volumes:
+      - ./mock-pos:/app
+    networks:
+      - sitedesk_net
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request;urllib.request.urlopen('http://localhost:8001/health')\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # 3. BACKEND: Python FastAPI (Core API)
   backend:
     build:
       context: ./backend
@@ -30,17 +51,32 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password123}@db:5432/${POSTGRES_DB:-sitedesk_db}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://postgres:password123@db:5432/sitedesk_db}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai_compatible}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-local}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-intfloat/multilingual-e5-small}
+      AI_FAIL_MODE: ${AI_FAIL_MODE:-false}
+      MATCH_HIGH_THRESHOLD: ${MATCH_HIGH_THRESHOLD:-0.90}
+      MATCH_REVIEW_THRESHOLD: ${MATCH_REVIEW_THRESHOLD:-0.80}
+      AMBIGUITY_GAP: ${AMBIGUITY_GAP:-0.05}
+      CONNECTOR_MODE: ${CONNECTOR_MODE:-api}
+      MOCK_POS_URL: ${MOCK_POS_URL:-http://mock-pos:8001}
+      DEFAULT_MARKET: ${DEFAULT_MARKET:-DK}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
     depends_on:
       db:
+        condition: service_healthy
+      mock-pos:
         condition: service_healthy
     volumes:
       - ./backend:/app
     networks:
       - sitedesk_net
 
-  # 3. FRONTEND: Next.js (React)
+  # 4. FRONTEND: Next.js (React)
   frontend:
     build:
       context: ./frontend
@@ -48,9 +84,10 @@ services:
     container_name: sitedesk_frontend
     restart: always
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT:-3000}:3000"
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      WATCHPACK_POLLING: "true" # hot reload through Windows/WSL bind mounts
     depends_on:
       - backend
     volumes:

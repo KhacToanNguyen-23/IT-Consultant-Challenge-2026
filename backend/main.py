@@ -1,41 +1,59 @@
-import os
+import logging
+import time
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+
+from api import catalog, quotes, sessions
+from api.common import ApiError, api_error_handler
+from config import settings
+from db.database import SessionLocal, init_db
+from services import seed
+
+log = logging.getLogger("sitedesk")
 
 app = FastAPI(
     title="SiteDesk Core API",
-    description="AI-Assisted Trade Counter Engine for Company A (DK/NO/SE)",
-    version="1.0.0"
+    description="AI-Assisted Trade Counter Engine for Company A (DK/NO/SE). POS/ERP/catalog/stock/price are simulated.",
+    version="0.2.0",
 )
 
-# CORS setup for Frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_exception_handler(ApiError, api_error_handler)
+app.include_router(sessions.router)
+app.include_router(quotes.router)
+app.include_router(catalog.router)
 
-class HealthResponse(BaseModel):
-    status: str
-    service: str
-    database: str
+
+@app.on_event("startup")
+def startup() -> None:
+    init_db()
+    with SessionLocal() as db:
+        seed.ensure_reference(db)
+        for attempt in range(10):  # mock-pos may still be booting
+            try:
+                log.warning("catalog sync: %s", seed.sync_from_pos(db))
+                break
+            except Exception as e:  # noqa: BLE001
+                db.rollback()
+                log.warning("catalog sync failed (%s), retrying", e)
+                time.sleep(2)
+
 
 @app.get("/", tags=["General"])
 def root():
-    return {
-        "message": "Welcome to SiteDesk Core API",
-        "docs_url": "/docs",
-        "version": "1.0.0"
-    }
+    return {"message": "Welcome to SiteDesk Core API", "docs_url": "/docs", "version": app.version}
 
-@app.get("/api/health", response_model=HealthResponse, tags=["General"])
-def health_check():
-    db_status = "connected" if os.getenv("DATABASE_URL") else "not_configured"
-    return {
-        "status": "healthy",
-        "service": "SiteDesk FastAPI Backend",
-        "database": db_status
-    }
+
+@app.get("/api/health", tags=["General"])
+def legacy_health():
+    from db.database import SessionLocal as _S
+    from api.catalog import health
+    with _S() as db:
+        return health(db)
