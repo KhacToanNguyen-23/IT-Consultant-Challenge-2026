@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, JSON, Text
+from sqlalchemy import Column, Integer, String, Float, DateTime, JSON
 from datetime import datetime
 from .database import Base
 
@@ -34,7 +34,7 @@ class QuoteSession(Base):
     quote_id = Column(String(50), unique=True, index=True, nullable=False)
     store_id = Column(String(50), default="DK-CPH-04")
     client_id = Column(String(50), default="C-88921")
-    processing_time_seconds = Column(Integer, default=0)
+    processing_time_seconds = Column(Float, default=0.0)
     zero_touch_ratio = Column(Float, default=0.0)
     items_data = Column(JSON, default=list)
     created_at = Column(DateTime, default=datetime.utcnow)
