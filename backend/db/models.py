@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, JSON
+from pgvector.sqlalchemy import Vector
 from datetime import datetime
 from .database import Base
 
@@ -15,6 +16,7 @@ class Product(Base):
     price = Column(Float, nullable=False)
     stock_qty = Column(Integer, default=0)
     technical_specs = Column(JSON, default=dict)
+    embedding = Column(Vector(384), nullable=True)
 
 class StoreDictionary(Base):
     """Self-learning trade slang dictionary (FR-07)"""
