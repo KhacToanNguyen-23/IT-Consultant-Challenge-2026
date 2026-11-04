@@ -23,16 +23,41 @@ UNIT_MAP = {
 UNIT_TOKEN = r"[A-Za-zæøåÆØÅäöÄÖ²2.]+"
 NUM = r"\d+(?:[.,]\d+)?"
 
+# order matters: more specific groups first ("terrassebræt" before generic "træ")
 CATEGORY_KEYWORDS = {
-    "timber": ["træ", "trae", "tre ", "trä", "timber", "regel", "reglar", "lægte", "laegte", "konstruktionstræ", "planke", "c24", "c18", "c30", "c16", "c14"],
-    "gypsum": ["gips", "gypsum", "vådrum", "våtrom", "våtrum", "drywall"],
-    "insulation": ["isolering", "isolasjon", "insulation", "rockwool", "isover", "batts", "mineraluld", "stenuld", "glasuld"],
-    "cement": ["cement", "sement", "mørtel", "mortel", "murbruk", "mortar", "beton"],
-    "decking": ["terrasse", "terrassebræt", "deck", "trall", "terrassebord"],
+    "decking": ["terrasse", "terrassebræt", "deck", "trall", "terrassebord", "komposit"],
+    "gypsum": ["gips", "gypsum", "vådrum", "våtrom", "våtrum", "drywall", "plasterboard", "brandplade", "brannplate", "brandskiva"],
+    "insulation": ["isolering", "isolasjon", "insulation", "rockwool", "isover", "knauf", "batts", "mineraluld", "stenuld",
+                   "glasuld", "steinull", "glassull", "stenull", "glasull"],
+    "cement": ["cement", "sement", "mørtel", "mortel", "murbruk", "mortar", "beton", "fliseklæb", "flislim", "tile adhesive",
+               "fugemasse", "grout", "flydespartel", "avretting", "flytspackel", "puds", "filtsand", "kalkbruk"],
+    "timber": ["træ", "trae", "tre ", "trä", "timber", "regel", "reglar", "lægte", "laegte", "lekte", "läkt", "konstruktionstræ",
+               "virke", "planke", "stud", "c24", "c18", "c30", "c16", "c14"],
 }
 MOISTURE_WORDS = ["vådrum", "våtrom", "våtrum", "moisture", "wet room", "fugt", "mr "]
-TREATMENT_WORDS = {"pressure_treated": ["trykimp", "imprægneret", "impregnert", "impregnerad", "pressure", "tryckimp"],
-                   "ntr_ab": ["ntr", "ntr/ab", " ab "]}
+BOARD_TYPE_WORDS = {  # gypsum must-match "type"
+    "moisture": MOISTURE_WORDS,
+    "fire": ["brandgips", "brandplade", "brannplate", "brandskiva", "fire board", "fireboard", "fire-rated", "brandsikker"],
+    "impact": ["robust", "slagfast", "impact"],
+    "standard": ["standard", "normal", "almindelig", "alm.", "vanlig"],
+}
+TREATMENT_WORDS = {"pressure_treated": ["trykimp", "imprægneret", "impregnert", "impregnerad", "pressure", "tryckimp", " ntr", "ntr/ab"],
+                   "ntr_ab": ["ntr", "ntr/ab", " ab "],
+                   "thermo": ["thermo", "termo"],
+                   "hardwood": ["hårdttræ", "hårdt træ", "hardwood", "hardved", "hårdträ"],
+                   "composite": ["komposit", "composite", "kompositt"]}
+PRODUCT_TYPE_WORDS = {  # cement group must-match "type"; more specific first
+    "rapid_cement": ["hurtigcement", "rapid", "hurtighærdende"],
+    "white_cement": ["hvid cement", "white cement", "hvit sement", "vit cement"],
+    "lime_mortar": ["kalkmørtel", "kalkbruk", "lime mortar"],
+    "mortar": ["mørtel", "mortel", "murbruk", "mortar", "murmørtel"],
+    "concrete": ["beton", "betong", "concrete", "tørbeton"],
+    "tile_adhesive": ["fliseklæb", "flislim", "tile adhesive", "fliselim"],
+    "grout": ["fugemasse", "grout", "fugmassa", " fug "],
+    "levelling": ["flydespartel", "avretting", "flytspackel", "self-levelling", "levelling"],
+    "render": ["puds", "filtsand", "render", "puts"],
+    "cement": ["cement", "sement"],
+}
 
 
 def _num(s: str) -> float:
@@ -204,11 +229,18 @@ def extract_attributes(text: str, length_hint: Optional[float] = None) -> dict:
         attrs["bag_weight_kg"] = float(kg.group(1))
     if any(w in low for w in MOISTURE_WORDS):
         attrs["moisture_resistant"] = True
-    treat = [k for k, words in TREATMENT_WORDS.items() if any(w in low for w in words)]
-    if treat:
-        attrs["treatment"] = treat
+    if cat == "gypsum":
+        bt = next((t for t, words in BOARD_TYPE_WORDS.items() if any(w in low for w in words)), None)
+        if bt:
+            attrs["board_type"] = bt
+    if cat == "decking":
+        treat = [k for k, words in TREATMENT_WORDS.items() if any(w in low for w in words)]
+        if treat:
+            attrs["treatment"] = treat
     if cat == "cement":
-        attrs["product_type"] = "mortar" if any(w in low for w in ["mørtel", "mortel", "murbruk", "mortar"]) else "cement"
+        pt = next((t for t, words in PRODUCT_TYPE_WORDS.items() if any(w in low for w in words)), None)
+        if pt:
+            attrs["product_type"] = pt
     for brand in ["rockwool", "isover", "knauf", "gyproc"]:
         if brand in low:
             attrs["brand"] = brand.capitalize() if brand != "rockwool" else "Rockwool"

@@ -11,6 +11,7 @@ const ATTR_LABEL: Record<string, string> = {
   strength_grade: "cấp cường độ (C18/C24…)",
   thickness_mm: "độ dày",
   moisture_resistant: "loại thường/vådrum",
+  board_type: "loại tấm (thường/vådrum/chống cháy)",
   bag_weight_kg: "trọng lượng bao",
   product_type: "loại (xi măng/vữa)",
   treatment: "xử lý gỗ",

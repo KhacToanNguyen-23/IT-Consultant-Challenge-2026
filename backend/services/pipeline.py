@@ -39,7 +39,29 @@ def load_stock(skus: list[str], store_id: str) -> Optional[dict[str, dict]]:
         return None
 
 
-def match_line(line: SessionLine, products: dict[str, dict]) -> None:
+def line_attrs(line: SessionLine) -> dict:
+    length_hint = (line.attributes or {}).get("length_hint")
+    attrs = parser.extract_attributes(line.parsed_name or "", None)
+    if length_hint:
+        attrs["length_hint"] = length_hint
+    return attrs
+
+
+def match_lines(db: Session, lines: list[SessionLine], products: dict[str, dict]) -> dict:
+    """Batch: embed all readable lines once, vector top-k per line, then hard rules per line."""
+    from services import retrieval
+
+    readable = [l for l in lines if l.parse_status != "UNREADABLE" and l.parsed_name]
+    attrs = {l.line_id: line_attrs(l) for l in readable}
+    sem, timings = retrieval.semantic_candidates(db, [l.parsed_name for l in readable],
+                                                 [attrs[l.line_id].get("category") for l in readable])
+    sem_by_line = {l.line_id: s for l, s in zip(readable, sem)}
+    for l in lines:
+        match_line(l, products, sem_by_line.get(l.line_id))
+    return timings
+
+
+def match_line(line: SessionLine, products: dict[str, dict], semantic: Optional[dict] = None) -> None:
     """(Re)compute candidates for the line from its current parsed fields."""
     line.line_status = "NEEDS_CLARIFICATION"
     if line.parse_status == "UNREADABLE" or not line.parsed_name:
@@ -47,12 +69,10 @@ def match_line(line: SessionLine, products: dict[str, dict]) -> None:
         line.match_score, line.score_band, line.attributes = None, None, {}
         line.reasons = ["Dòng không đọc được — cần nhập tay"]
         return
-    length_hint = (line.attributes or {}).get("length_hint")
-    attrs = parser.extract_attributes(line.parsed_name, None)
-    if length_hint:
-        attrs["length_hint"] = length_hint
+    attrs = line_attrs(line)
     line.attributes = attrs
-    cands = matcher.match(line.parsed_name, {k: v for k, v in attrs.items() if k != "length_hint"}, list(products.values()))
+    cands = matcher.match(line.parsed_name, {k: v for k, v in attrs.items() if k != "length_hint"},
+                          list(products.values()), semantic)
     line.candidates = cands
     if cands:
         top = cands[0]
@@ -221,6 +241,8 @@ def serialize_line(l: SessionLine, products: dict[str, dict]) -> dict:
             continue
         val = specs[a]
         unit = {"thickness_mm": " mm", "length_m": " m", "bag_weight_kg": " kg"}.get(a, "")
+        val = {"moisture": "vådrum", "fire": "brand", "impact": "robust", "pressure_treated": "trykimp."}.get(val, val) \
+            if isinstance(val, str) else ([{"pressure_treated": "trykimp.", "ntr_ab": "NTR/AB"}.get(v, v) for v in val] if isinstance(val, list) else val)
         label = ", ".join(val) if isinstance(val, list) else (("vådrum" if val else "standard") if a == "moisture_resistant" else f"{val:g}{unit}" if isinstance(val, (int, float)) and not isinstance(val, bool) else f"{val}{unit}")
         if a not in attrs:
             tone = "slate"

@@ -27,14 +27,25 @@ def ensure_reference(db: Session) -> None:
 
 def sync_from_pos(db: Session) -> dict:
     items, version = pos_client.catalog()
+    seen = set()
     for i in items:
-        p = db.get(Product, i["sku"]) or Product(sku=i["sku"])
+        seen.add(i["sku"])
+        p = db.get(Product, i["sku"])
+        if p is None:
+            p = Product(sku=i["sku"])
+            db.add(p)
+        text_changed = (p.name, p.category, p.technical_specs, p.aliases) != (
+            i["name"], i["category"], i.get("technical_specs") or {}, i.get("aliases") or {})
         p.market = settings.default_market
         p.name, p.category, p.selling_unit = i["name"], i["category"], i["selling_unit"]
         p.pack_size, p.currency, p.unit_price = i.get("pack_size"), i["currency"], i["unit_price"]
         p.technical_specs, p.aliases = i.get("technical_specs") or {}, i.get("aliases") or {}
         p.catalog_version, p.active = version, True
-        db.merge(p)
+        if text_changed:
+            p.embedding = None  # re-embedded by the reindex hook
+    for p in db.query(Product).filter(Product.active.is_(True)).all():
+        if p.sku not in seen:
+            p.active = False  # removed from source catalog; kept for FK history
     data = pos_client.customers()
     for t in data.get("discount_tiers", []):
         db.merge(DiscountTier(tier_code=t["tier_code"], market=t["market"], discount_rate=t["discount_rate"],

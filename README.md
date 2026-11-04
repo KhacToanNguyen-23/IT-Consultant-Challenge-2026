@@ -46,7 +46,17 @@ docker compose up --build
 * `/quotes`, `/quotes/[id]` — Luồng 2: SAVED → SENT → ghi nhận khách xác nhận → Prepare (kiểm lại giá/tồn, diff trước→sau) → in báo giá / phiếu soạn → Confirm. Hết hạn tính khi mở, có Huỷ.
 * Header có 2 công tắc demo **AI fail** / **POS fail** (MVP-FR-033). Trang báo giá có mục *Demo: đổi giá/tồn trên mock-pos* để quay cảnh diff.
 
-> ⚠️ Matcher hiện là **placeholder theo luật + token overlap** (`backend/services/matcher.py::semantic_score`). AI owner thay bằng pgvector + multilingual-e5-small; phần hard rules/bands/gap giữ nguyên. Seed hiện có 16 SKU giả lập trong `mock-pos/seeds/` — data owner thay bằng bộ 60–80 SKU (SRS §6.3). Bảng DB tạo bằng `create_all` khi khởi động (chưa có Alembic).
+## 🤖 Data & AI (branch `feat/data-ai`)
+* **Seed:** `python mock-pos/seeds/generate.py` sinh 62 SKU / 5 nhóm (deterministic, có validator). Backend tự sync khi khởi động.
+* **Matching:** `multilingual-e5-small` (local, CPU) + pgvector top-10 → hard rules (must-match loại hẳn, thiếu thuộc tính → hỏi lại, gap 0.05 → cap 0.89). Model tải nền khi khởi động (~0.5 GB lần đầu, cache ở volume `hf_cache`); chưa sẵn sàng / AI fail → tự chuyển chế độ luật.
+* **Lệnh:**
+  ```bash
+  docker compose exec backend pytest -q                       # 35 unit tests
+  docker compose exec backend python -m scripts.reindex_catalog
+  docker compose exec backend python -m scripts.evaluate --perf 20   # → backend/reports/evaluation_<date>.md
+  ```
+* **Đánh giá:** `backend/seeds/evaluation.jsonl` (98 dòng, label do AI soạn, `reviewed=false` → **cần người duyệt từng dòng** trước khi trích số). Không chỉnh luật/alias dựa trên bộ này.
+* Bảng DB tạo bằng `create_all` khi khởi động (chưa có Alembic).
 >
 > Nếu đã chạy bản cũ (image `postgres:15-alpine`), chạy `docker compose down -v` một lần để tạo lại volume với image pgvector.
 

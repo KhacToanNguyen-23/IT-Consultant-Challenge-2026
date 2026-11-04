@@ -4,6 +4,7 @@ import time
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from ai import embedding
 from api import catalog, quotes, sessions
 from api.common import ApiError, api_error_handler
 from config import settings
@@ -44,6 +45,13 @@ def startup() -> None:
                 db.rollback()
                 log.warning("catalog sync failed (%s), retrying", e)
                 time.sleep(2)
+
+    def _reindex_missing():
+        from services import retrieval
+        with SessionLocal() as db:
+            log.warning("embedding reindex: %s products", retrieval.reindex(db, only_missing=True))
+
+    embedding.load_in_background(after=_reindex_missing)
 
 
 @app.get("/", tags=["General"])

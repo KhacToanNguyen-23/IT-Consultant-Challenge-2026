@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from api.common import ApiError
 from config import runtime, settings
 from db.database import get_db
-from db.models import Customer, OrderSession, Quote, SessionLine
+from db.models import AiInvocation, Customer, OrderSession, Quote, SessionLine
 from services import connector, parser, pii, pipeline, telemetry
 from services.pipeline import now
 
@@ -197,7 +197,7 @@ def patch_line(session_id: str, line_no: int, body: LinePatch, db: Session = Dep
         if s.status not in ("DRAFT", "PARSED"):
             products = pipeline.load_products(db)
             if "item_text" in changed:
-                pipeline.match_line(l, products)
+                pipeline.match_lines(db, [l], products)
             pipeline.evaluate(l, products, pipeline.load_stock(list(products), s.store_id))
             refresh_status(s, lines_of(db, s))
     s.last_activity_at = now()
@@ -218,12 +218,15 @@ def analyze(session_id: str, body: AnalyzeBody = AnalyzeBody(), db: Session = De
         raise ApiError(400, "NO_LINES", "Chưa có dòng nào — hãy ingest trước")
     t0 = time.perf_counter()
     timings = {}
-    s.ai_fail_mode = runtime["ai_fail_mode"]
     products = pipeline.load_products(db)
     t = time.perf_counter()
-    for l in lines:
-        pipeline.match_line(l, products)
+    rt = pipeline.match_lines(db, lines, products)
     timings["match_ms"] = round((time.perf_counter() - t) * 1000, 1)
+    timings.update(embed_ms=rt["embed_ms"], vector_ms=rt["vector_ms"], match_mode=rt["mode"])
+    # degraded = AI toggled off OR embedding not ready/failed → rules + manual search (banner in UI)
+    s.ai_fail_mode = runtime["ai_fail_mode"] or rt["mode"] != "embedding"
+    db.add(AiInvocation(session_id=s.session_id, step="embed_and_retrieve", latency_ms=int(rt["embed_ms"] + rt["vector_ms"]),
+                        status=rt["mode"]))
     t = time.perf_counter()
     stock = pipeline.load_stock(list(products), s.store_id)
     timings["stock_ms"] = round((time.perf_counter() - t) * 1000, 1)

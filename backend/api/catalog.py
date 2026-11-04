@@ -10,6 +10,7 @@ from api.common import ApiError
 from config import runtime
 from db.database import get_db
 from db.models import Customer
+from ai.embedding import status as embedding_status
 from services import pipeline, pos_client, seed
 from services.matcher import MUST_MATCH, _tokens
 
@@ -52,8 +53,8 @@ def health(db: Session = Depends(get_db)):
         dbs = "down"
     pos = pos_client.health()
     mock = "down" if pos.get("status") != "ok" else ("fail_mode" if pos.get("fail_mode") else "up")
-    degraded = dbs != "up" or mock != "up" or runtime["ai_fail_mode"]
-    return {"status": "degraded" if degraded else "healthy", "database": dbs, "embedding": "rules_placeholder",
+    degraded = dbs != "up" or mock != "up" or runtime["ai_fail_mode"] or embedding_status()["status"] != "up"
+    return {"status": "degraded" if degraded else "healthy", "database": dbs, "embedding": embedding_status(),
             "llm": "disabled", "mock_pos": mock, "ai_fail_mode": runtime["ai_fail_mode"],
             "pos_fail_mode": bool(pos.get("fail_mode"))}
 

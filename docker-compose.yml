@@ -73,6 +73,8 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      - hf_cache:/root/.cache/huggingface # embedding model weights (~0.5 GB), downloaded once
+      - ./mock-pos/seeds:/seeds:ro # read-only: tests + evaluation use the same seed catalog
     networks:
       - sitedesk_net
 
@@ -99,6 +101,7 @@ services:
 
 volumes:
   pgdata:
+  hf_cache:
 
 networks:
   sitedesk_net:

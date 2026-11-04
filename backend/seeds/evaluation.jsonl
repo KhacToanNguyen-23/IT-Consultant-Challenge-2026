@@ -1,0 +1,98 @@
+{"id": "E001", "text": "Timber 45x95 C24 - 120 m", "language": "EN", "kind": "easy", "expected_skus": ["SKU-DK-4595-480"], "must_clarify": false, "note": "slide-9 example", "reviewed": false}
+{"id": "E002", "text": "Konstruktionstræ 45x95 C24 4,8 m - 25 stk", "language": "DA", "kind": "easy", "expected_skus": ["SKU-DK-4595-480"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E003", "text": "45x95 C18 - 30 stk", "language": "DA", "kind": "easy", "expected_skus": ["SKU-DK-4595-C18-480"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E004", "text": "regel 45 x 95 c18 30 stk", "language": "DA", "kind": "slang", "expected_skus": ["SKU-DK-4595-C18-480"], "must_clarify": false, "note": "spaces around x", "reviewed": false}
+{"id": "E005", "text": "Spær 45x195 C24 8 stk", "language": "DA", "kind": "slang", "expected_skus": ["SKU-DK-45195-540"], "must_clarify": false, "note": "spær = rafter", "reviewed": false}
+{"id": "E006", "text": "45x195 C30 5,4m 6 stk", "language": "DA", "kind": "easy", "expected_skus": ["SKU-DK-45195-C30-540"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E007", "text": "Bjælke 45x220 C24 - 4 stk", "language": "DA", "kind": "slang", "expected_skus": ["SKU-DK-45220-540"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E008", "text": "Lægte 35x70 C18 - 40 stk", "language": "DA", "kind": "easy", "expected_skus": ["SKU-DK-3570-C18-360"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E009", "text": "Lægter 36x48 C18 50 stk", "language": "DA", "kind": "easy", "expected_skus": ["SKU-DK-3648-C18-360"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E010", "text": "Brædder 22x95 C18 - 20 stk", "language": "DA", "kind": "slang", "expected_skus": ["SKU-DK-2295-C18-360"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E011", "text": "45x45 C18 lægte 3,6m 12 stk", "language": "DA", "kind": "easy", "expected_skus": ["SKU-DK-4545-C18-360"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E012", "text": "Konstruksjonsvirke 48x98 C24 - 30 stk", "language": "NO", "kind": "other_lang", "expected_skus": ["SKU-DK-4898-480"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E013", "text": "Konstruksjonsvirke 48x148 C24 20 stk", "language": "NO", "kind": "other_lang", "expected_skus": ["SKU-DK-48148-480"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E014", "text": "Bjelke 48x198 C24 6 stk", "language": "NO", "kind": "other_lang", "expected_skus": ["SKU-DK-48198-540"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E015", "text": "Reglar 45x95 C24, 30 st", "language": "SV", "kind": "other_lang", "expected_skus": ["SKU-DK-4595-480"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E016", "text": "Konstruktionsvirke 45x145 C24 - 12 st", "language": "SV", "kind": "other_lang", "expected_skus": ["SKU-DK-45145-480"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E017", "text": "Konstruktionsvirke 45x145 C30 12 st", "language": "SV", "kind": "other_lang", "expected_skus": ["SKU-DK-45145-C30-480"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E018", "text": "Stud 45x70 C24 - 40 pcs", "language": "EN", "kind": "other_lang", "expected_skus": ["SKU-DK-4570-480"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E019", "text": "45x70 C18 stud 4.8m 10 pcs", "language": "EN", "kind": "easy", "expected_skus": ["SKU-DK-4570-C18-480"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E020", "text": "45x120 C24 - 60 m", "language": "DA", "kind": "easy", "expected_skus": ["SKU-DK-45120-480"], "must_clarify": false, "note": "out of stock in seed", "reviewed": false}
+{"id": "E021", "text": "45x120 C30 konstruktionstræ 10 stk", "language": "DA", "kind": "easy", "expected_skus": ["SKU-DK-45120-C30-480"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E022", "text": "Træ 45x170 C24 8 stk", "language": "DA", "kind": "easy", "expected_skus": ["SKU-DK-45170-480"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E023", "text": "45x245 C24 bjælke 2 stk", "language": "DA", "kind": "easy", "expected_skus": ["SKU-DK-45245-540"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E024", "text": "Timber 45x95 C30 - 20 pcs", "language": "EN", "kind": "trap", "expected_skus": [], "must_clarify": true, "note": "no 45x95 C30 in catalog; must not fall back to C24", "reviewed": false}
+{"id": "E025", "text": "Konstruktionstræ 45x120 C18 10 stk", "language": "DA", "kind": "trap", "expected_skus": [], "must_clarify": true, "note": "no 45x120 C18; C24 would be an unrequested upgrade", "reviewed": false}
+{"id": "E026", "text": "45x100 C24 regel 10 stk", "language": "DA", "kind": "trap", "expected_skus": [], "must_clarify": true, "note": "45x100 does not exist; 45x95 is NOT the same", "reviewed": false}
+{"id": "E027", "text": "Regel 45x95 - 20 stk", "language": "DA", "kind": "missing", "expected_skus": ["SKU-DK-4595-480", "SKU-DK-4595-C18-480"], "must_clarify": true, "note": "grade missing → ask", "reviewed": false}
+{"id": "E028", "text": "Træ 45x145 10 stk", "language": "DA", "kind": "missing", "expected_skus": ["SKU-DK-45145-480", "SKU-DK-45145-C30-480"], "must_clarify": true, "note": "grade missing", "reviewed": false}
+{"id": "E029", "text": "Reglar 45x70 20 st", "language": "SV", "kind": "missing", "expected_skus": ["SKU-DK-4570-480", "SKU-DK-4570-C18-480"], "must_clarify": true, "note": "grade missing", "reviewed": false}
+{"id": "E030", "text": "konstruktionstræ C24 30 stk", "language": "DA", "kind": "missing", "expected_skus": [], "must_clarify": true, "note": "cross-section missing", "reviewed": false}
+{"id": "E031", "text": "Gipsplade standard 12,5 mm - 20 plader", "language": "DA", "kind": "easy", "expected_skus": ["SKU-GYP-STD-125"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E032", "text": "Gips standard 9,5mm 10 plader", "language": "DA", "kind": "easy", "expected_skus": ["SKU-GYP-STD-095"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E033", "text": "Gipsplader normal 15 mm 12 stk", "language": "DA", "kind": "slang", "expected_skus": ["SKU-GYP-STD-150"], "must_clarify": false, "note": "normal = standard", "reviewed": false}
+{"id": "E034", "text": "Gips vådrum 12.5mm - 10 plader", "language": "DA", "kind": "easy", "expected_skus": ["SKU-GYP-MR-125", "SKU-GYP-MR-125-B"], "must_clarify": false, "note": "two wet-room boards", "reviewed": false}
+{"id": "E035", "text": "Vådrumsgips 15mm 6 plader", "language": "DA", "kind": "slang", "expected_skus": ["SKU-GYP-MR-150"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E036", "text": "Brandgips 12,5mm 15 plader", "language": "DA", "kind": "easy", "expected_skus": ["SKU-GYP-FIRE-125"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E037", "text": "Brandplade 15 mm - 8 stk", "language": "DA", "kind": "slang", "expected_skus": ["SKU-GYP-FIRE-150"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E038", "text": "Robust gips 12,5 mm 10 plader", "language": "DA", "kind": "slang", "expected_skus": ["SKU-GYP-IMP-125"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E039", "text": "Slagfast gipsplade 12.5mm 4 stk", "language": "DA", "kind": "slang", "expected_skus": ["SKU-GYP-IMP-125"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E040", "text": "Våtromsplate 12.5 mm 8 plater", "language": "NO", "kind": "other_lang", "expected_skus": ["SKU-GYP-MR-125", "SKU-GYP-MR-125-B"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E041", "text": "Gipsplate standard 12,5 mm 30 plater", "language": "NO", "kind": "other_lang", "expected_skus": ["SKU-GYP-STD-125"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E042", "text": "Brannplate 15mm 10 plater", "language": "NO", "kind": "other_lang", "expected_skus": ["SKU-GYP-FIRE-150"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E043", "text": "Gipsskiva standard 12,5 mm 25 st", "language": "SV", "kind": "other_lang", "expected_skus": ["SKU-GYP-STD-125"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E044", "text": "Våtrumsskiva 12,5mm 6 st", "language": "SV", "kind": "other_lang", "expected_skus": ["SKU-GYP-MR-125", "SKU-GYP-MR-125-B"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E045", "text": "Plasterboard standard 12.5mm x 20", "language": "EN", "kind": "other_lang", "expected_skus": ["SKU-GYP-STD-125"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E046", "text": "Moisture board 12.5mm 10 boards", "language": "EN", "kind": "other_lang", "expected_skus": ["SKU-GYP-MR-125", "SKU-GYP-MR-125-B"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E047", "text": "Gips 12,5 mm 20 plader", "language": "DA", "kind": "missing", "expected_skus": ["SKU-GYP-STD-125", "SKU-GYP-MR-125", "SKU-GYP-FIRE-125", "SKU-GYP-IMP-125", "SKU-GYP-MR-125-B"], "must_clarify": true, "note": "type missing → ask", "reviewed": false}
+{"id": "E048", "text": "Brandgips 18mm 5 plader", "language": "DA", "kind": "trap", "expected_skus": [], "must_clarify": true, "note": "18 mm not stocked; 15 mm is NOT equal", "reviewed": false}
+{"id": "E049", "text": "Vådrumsgips 9,5mm 4 plader", "language": "DA", "kind": "trap", "expected_skus": [], "must_clarify": true, "note": "no 9.5 wet-room board; standard 9.5 must not be offered", "reviewed": false}
+{"id": "E050", "text": "Gipsplade 6,5 mm standard 4 plader", "language": "DA", "kind": "easy", "expected_skus": ["SKU-GYP-STD-065"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E051", "text": "Rockwool FlexiBatts 95mm - 15 pk", "language": "DA", "kind": "easy", "expected_skus": ["SKU-RW-095"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E052", "text": "Isover 95 mm 10 pk", "language": "DA", "kind": "easy", "expected_skus": ["SKU-ISOVER-095"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E053", "text": "Isolering 95mm 60 m2", "language": "DA", "kind": "easy", "expected_skus": ["SKU-RW-095", "SKU-ISOVER-095"], "must_clarify": false, "note": "brand not stated: either is right", "reviewed": false}
+{"id": "E054", "text": "Stenuld 145 mm - 20 pakker", "language": "DA", "kind": "slang", "expected_skus": ["SKU-RW-145"], "must_clarify": false, "note": "stenuld = stone wool", "reviewed": false}
+{"id": "E055", "text": "Mineraluld 195mm 8 pk", "language": "DA", "kind": "slang", "expected_skus": ["SKU-RW-195", "SKU-ISOVER-195"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E056", "text": "Rockwool 220 mm batts 6 pk", "language": "DA", "kind": "easy", "expected_skus": ["SKU-RW-220"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E057", "text": "Isolering 45 mm 3 pk", "language": "DA", "kind": "easy", "expected_skus": ["SKU-RW-045"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E058", "text": "Knauf 120mm 10 pk", "language": "DA", "kind": "easy", "expected_skus": ["SKU-KNAUF-120"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E059", "text": "Isolasjon 70 mm 12 pk", "language": "NO", "kind": "other_lang", "expected_skus": ["SKU-RW-070", "SKU-ISOVER-070"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E060", "text": "Steinull 145mm 10 pakker", "language": "NO", "kind": "other_lang", "expected_skus": ["SKU-RW-145"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E061", "text": "Isolering 120 mm 30 m2", "language": "SV", "kind": "other_lang", "expected_skus": ["SKU-RW-120", "SKU-KNAUF-120"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E062", "text": "Glasull 195 mm 5 paket", "language": "SV", "kind": "other_lang", "expected_skus": ["SKU-ISOVER-195"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E063", "text": "Insulation batts 95mm 12 packs", "language": "EN", "kind": "other_lang", "expected_skus": ["SKU-RW-095", "SKU-ISOVER-095"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E064", "text": "Glass wool 145mm 8 packs", "language": "EN", "kind": "other_lang", "expected_skus": ["SKU-ISOVER-145"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E065", "text": "Isolering 100 mm 10 pk", "language": "DA", "kind": "trap", "expected_skus": [], "must_clarify": true, "note": "100 mm not stocked; 95 is NOT equal", "reviewed": false}
+{"id": "E066", "text": "Rockwool 150mm 6 pk", "language": "DA", "kind": "trap", "expected_skus": [], "must_clarify": true, "note": "150 not stocked; 145 is NOT equal", "reviewed": false}
+{"id": "E067", "text": "Isolering til loft 20 pk", "language": "DA", "kind": "missing", "expected_skus": [], "must_clarify": true, "note": "thickness missing", "reviewed": false}
+{"id": "E068", "text": "Cement 25 kg - 4 sække", "language": "DA", "kind": "easy", "expected_skus": ["SKU-CEM-25-STD"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E069", "text": "Murmørtel 25kg - 5 sække", "language": "DA", "kind": "easy", "expected_skus": ["SKU-MORT-25"], "must_clarify": false, "note": "out of stock, no safe substitute", "reviewed": false}
+{"id": "E070", "text": "Kalkmørtel 20 kg 6 sække", "language": "DA", "kind": "easy", "expected_skus": ["SKU-MORT-20-LIME"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E071", "text": "Hurtigcement 25kg 2 sække", "language": "DA", "kind": "slang", "expected_skus": ["SKU-CEM-25-RAPID"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E072", "text": "Hvid cement 25 kg 1 sæk", "language": "DA", "kind": "easy", "expected_skus": ["SKU-CEM-25-WHITE"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E073", "text": "Tørbeton 25kg 10 sække", "language": "DA", "kind": "slang", "expected_skus": ["SKU-CONC-25"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E074", "text": "Fliseklæb 20kg 3 sække", "language": "DA", "kind": "easy", "expected_skus": ["SKU-TILE-20"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E075", "text": "Fugemasse grå 5 kg 2 spande", "language": "DA", "kind": "easy", "expected_skus": ["SKU-GROUT-05"], "must_clarify": false, "note": "unit 'spande' unknown → still matches SKU", "reviewed": false}
+{"id": "E076", "text": "Flydespartel 20 kg 4 sække", "language": "DA", "kind": "easy", "expected_skus": ["SKU-LEVEL-20"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E077", "text": "Puds 25kg 6 sække", "language": "DA", "kind": "slang", "expected_skus": ["SKU-RENDER-25"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E078", "text": "Sement 25 kg 8 sekker", "language": "NO", "kind": "other_lang", "expected_skus": ["SKU-CEM-25-STD"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E079", "text": "Murbruk 25 kg 5 sekker", "language": "NO", "kind": "other_lang", "expected_skus": ["SKU-MORT-25"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E080", "text": "Flislim 20kg 2 sekker", "language": "NO", "kind": "other_lang", "expected_skus": ["SKU-TILE-20"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E081", "text": "Betong 25 kg 12 säckar", "language": "SV", "kind": "other_lang", "expected_skus": ["SKU-CONC-25"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E082", "text": "Tile adhesive 20kg x 4 bags", "language": "EN", "kind": "other_lang", "expected_skus": ["SKU-TILE-20"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E083", "text": "Mørtel 20 kg 5 sække", "language": "DA", "kind": "trap", "expected_skus": [], "must_clarify": true, "note": "only lime mortar is 20 kg; plain mortar 20 kg does not exist", "reviewed": false}
+{"id": "E084", "text": "Cement 50 kg 2 sække", "language": "DA", "kind": "trap", "expected_skus": [], "must_clarify": true, "note": "50 kg bag not stocked", "reviewed": false}
+{"id": "E085", "text": "Cement 10 sække", "language": "DA", "kind": "missing", "expected_skus": ["SKU-CEM-25-STD"], "must_clarify": true, "note": "bag weight missing → ask", "reviewed": false}
+{"id": "E086", "text": "Terrassebræt 28x120 trykimp 10 x 4.2m", "language": "DA", "kind": "easy", "expected_skus": ["SKU-DECK-28120-420", "SKU-DECK-28120-NTR-420"], "must_clarify": false, "note": "NTR satisfies pressure-treated", "reviewed": false}
+{"id": "E087", "text": "Terrassebrædder 28x120 NTR/AB 40 stk", "language": "DA", "kind": "easy", "expected_skus": ["SKU-DECK-28120-NTR-420"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E088", "text": "Terrassebræt 28x145 trykimprægneret 30 stk", "language": "DA", "kind": "easy", "expected_skus": ["SKU-DECK-28145-420", "SKU-DECK-28145-NTR-480"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E089", "text": "Terrasse 21x95 trykimp 50 stk", "language": "DA", "kind": "slang", "expected_skus": ["SKU-DECK-2195-360"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E090", "text": "Hårdttræ terrassebræt 21x145 20 stk", "language": "DA", "kind": "easy", "expected_skus": ["SKU-DECK-21145-HW-360"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E091", "text": "Komposit terrassebræt 25x125 15 stk", "language": "DA", "kind": "easy", "expected_skus": ["SKU-DECK-25125-COMP-400"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E092", "text": "Thermo terrassebræt 28x120 25 stk", "language": "DA", "kind": "easy", "expected_skus": ["SKU-DECK-28120-THERMO-420"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E093", "text": "Terrassebord 28x120 impregnert 40 stk", "language": "NO", "kind": "other_lang", "expected_skus": ["SKU-DECK-28120-420", "SKU-DECK-28120-NTR-420"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E094", "text": "Trall 28x95 tryckimpregnerad 30 st", "language": "SV", "kind": "other_lang", "expected_skus": ["SKU-DECK-2895-420"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E095", "text": "Decking board 34x145 pressure treated 20 pcs", "language": "EN", "kind": "other_lang", "expected_skus": ["SKU-DECK-34145-480"], "must_clarify": false, "note": "", "reviewed": false}
+{"id": "E096", "text": "Terrassebræt 28x120 thermo NTR 10 stk", "language": "DA", "kind": "trap", "expected_skus": [], "must_clarify": true, "note": "no thermo board with NTR class", "reviewed": false}
+{"id": "E097", "text": "Terrassebræt 28x170 trykimp 10 stk", "language": "DA", "kind": "trap", "expected_skus": [], "must_clarify": true, "note": "28x170 not stocked", "reviewed": false}
+{"id": "E098", "text": "Terrassebræt 28x120 20 stk", "language": "DA", "kind": "missing", "expected_skus": ["SKU-DECK-28120-420", "SKU-DECK-28120-NTR-420", "SKU-DECK-28120-THERMO-420"], "must_clarify": true, "note": "treatment missing → ask", "reviewed": false}
