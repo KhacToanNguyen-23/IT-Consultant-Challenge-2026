@@ -37,6 +37,10 @@ docker compose up --build
 * ⚡ **Backend API & Swagger Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
 * 🗄️ **PostgreSQL Database:** `localhost:5432` (`user: postgres`, `password: password123`, `db: sitedesk_db`)
 
+Nếu cổng `3000` đã được ứng dụng khác sử dụng, đổi `FRONTEND_PORT`
+trong file `.env`. Ví dụ, `FRONTEND_PORT=3001` sẽ mở giao diện tại
+`http://localhost:3001`.
+
 ---
 
 ## 📁 Cấu trúc thư mục (Monorepo)

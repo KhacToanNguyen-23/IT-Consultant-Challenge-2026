@@ -30,7 +30,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password123}@db:5432/${POSTGRES_DB:-sitedesk_db}
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password123}@db:5432/${POSTGRES_DB:-sitedesk_db}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     depends_on:
       db:
@@ -48,7 +48,7 @@ services:
     container_name: sitedesk_frontend
     restart: always
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT:-3000}:3000"
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
     depends_on:
