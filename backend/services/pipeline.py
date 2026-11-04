@@ -1,10 +1,12 @@
 """Analyze pipeline for one line: match → conversion → stock → alternatives → line state (SRS v2 §3.2, §5)."""
+import json
+import time
 from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from config import STOCK_LABEL
+from i18n import code, render, t
 from db.models import Product, SessionLine
 from services import conversion, matcher, parser, pos_client
 from services.matcher import MUST_MATCH, compare_must
@@ -47,31 +49,72 @@ def line_attrs(line: SessionLine) -> dict:
     return attrs
 
 
+def is_ambiguous(attrs: dict) -> bool:
+    """Rules left the line unclear: unknown category or a must-match attribute missing."""
+    cat = attrs.get("category")
+    return cat is None or any(a not in attrs for a in MUST_MATCH.get(cat, []))
+
+
+def enrich_with_llm(db: Session, lines: list[SessionLine], attrs: dict) -> dict:
+    """Optional LLM attribute extraction for ambiguous lines only (SRS v2 §5). Rules win on conflicts."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from ai import llm
+    from config import runtime
+    from db.models import AiInvocation
+
+    info = {"llm_ms": 0.0, "llm_calls": 0, "llm_status": llm.status()}
+    if llm.get() is None or runtime["ai_fail_mode"]:
+        return info
+    todo = [l for l in lines if is_ambiguous(attrs[l.line_id])]
+    if not todo:
+        return info
+    t = time.perf_counter()
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        results = list(ex.map(lambda l: llm.extract_attributes(l.parsed_name, attrs[l.line_id].get("category")), todo))
+    info["llm_ms"] = round((time.perf_counter() - t) * 1000, 1)
+    info["llm_calls"] = len(todo)
+    for l, r in zip(todo, results):
+        if not r:
+            continue
+        added = [k for k, v in r["attrs"].items() if k not in attrs[l.line_id]]
+        for k in added:
+            attrs[l.line_id][k] = r["attrs"][k]
+        if added:
+            attrs[l.line_id]["_llm"] = added  # provenance: shown in UI, never hides missing evidence
+        db.add(AiInvocation(session_id=l.session_id, line_id=l.line_id, step="llm_attribute_extraction",
+                            input_tokens=r["usage"]["input_tokens"], output_tokens=r["usage"]["output_tokens"],
+                            latency_ms=r["latency_ms"], status=r["status"] + (f";dropped={','.join(r['dropped'])}" if r["dropped"] else "")))
+    return info
+
+
 def match_lines(db: Session, lines: list[SessionLine], products: dict[str, dict]) -> dict:
-    """Batch: embed all readable lines once, vector top-k per line, then hard rules per line."""
+    """Batch: rules → optional LLM for ambiguous lines → embed once → vector top-k → hard rules per line."""
     from services import retrieval
 
     readable = [l for l in lines if l.parse_status != "UNREADABLE" and l.parsed_name]
     attrs = {l.line_id: line_attrs(l) for l in readable}
+    llm_info = enrich_with_llm(db, readable, attrs)
     sem, timings = retrieval.semantic_candidates(db, [l.parsed_name for l in readable],
                                                  [attrs[l.line_id].get("category") for l in readable])
     sem_by_line = {l.line_id: s for l, s in zip(readable, sem)}
     for l in lines:
-        match_line(l, products, sem_by_line.get(l.line_id))
-    return timings
+        match_line(l, products, sem_by_line.get(l.line_id), attrs.get(l.line_id))
+    return {**timings, **llm_info}
 
 
-def match_line(line: SessionLine, products: dict[str, dict], semantic: Optional[dict] = None) -> None:
+def match_line(line: SessionLine, products: dict[str, dict], semantic: Optional[dict] = None,
+               attrs: Optional[dict] = None) -> None:
     """(Re)compute candidates for the line from its current parsed fields."""
     line.line_status = "NEEDS_CLARIFICATION"
     if line.parse_status == "UNREADABLE" or not line.parsed_name:
         line.candidates, line.original_sku, line.final_sku = [], None, None
         line.match_score, line.score_band, line.attributes = None, None, {}
-        line.reasons = ["Dòng không đọc được — cần nhập tay"]
+        line.reasons = ["unreadable"]
         return
-    attrs = line_attrs(line)
+    attrs = attrs if attrs is not None else line_attrs(line)
     line.attributes = attrs
-    cands = matcher.match(line.parsed_name, {k: v for k, v in attrs.items() if k != "length_hint"},
+    cands = matcher.match(line.parsed_name, {k: v for k, v in attrs.items() if k != "length_hint" and not k.startswith("_")},
                           list(products.values()), semantic)
     line.candidates = cands
     if cands:
@@ -104,11 +147,11 @@ def alternatives_for(line: SessionLine, original: dict, products: dict[str, dict
                 ok = False
                 break
             if a == "strength_grade" and specs[a] != ospecs[a]:
-                reasons.append(f"grade {specs[a]} ≥ {ospecs[a]}")
+                reasons.append(code("alt_grade_up", to=specs[a], frm=ospecs[a]))
             elif a == "treatment" and set(specs[a]) != set(ospecs[a]):
-                reasons.append("treatment superset")
+                reasons.append(code("alt_treatment_superset"))
             else:
-                reasons.append(f"same {a.replace('_mm', '').replace('_', ' ')}")
+                reasons.append(code("alt_same", attr=a))
         if not ok:
             continue
         conv = conversion.convert(_f(line.requested_qty), line.requested_unit, p, (line.attributes or {}).get("length_hint"))
@@ -214,8 +257,8 @@ def evaluate(line: SessionLine, products: dict[str, dict], stock: Optional[dict[
 
 
 BLOCKER_TEXT = {
-    "NEEDS_CLARIFICATION": "cần làm rõ/chọn SKU",
-    "SUBSTITUTE_PROPOSED": "chờ khách đồng ý hoặc từ chối hàng thay thế",
+    "NEEDS_CLARIFICATION": "blk_clarify",
+    "SUBSTITUTE_PROPOSED": "blk_substitute",
 }
 
 
@@ -223,9 +266,9 @@ def blockers(lines: list[SessionLine]) -> list[dict]:
     out = []
     for l in lines:
         if l.line_status in BLOCKER_TEXT:
-            out.append({"line_no": l.line_no, "reason": BLOCKER_TEXT[l.line_status]})
+            out.append({"line_no": l.line_no, "reason": t(BLOCKER_TEXT[l.line_status])})
         elif not l.selling_qty:
-            out.append({"line_no": l.line_no, "reason": "thiếu số lượng quy đổi"})
+            out.append({"line_no": l.line_no, "reason": t("blk_no_qty")})
     return out
 
 
@@ -233,24 +276,21 @@ def serialize_line(l: SessionLine, products: dict[str, dict]) -> dict:
     p = products.get(l.final_sku or "") or {}
     op = products.get(l.original_sku or "") or {}
     chips = []
-    attrs = {k: v for k, v in (l.attributes or {}).items() if k not in ("category", "length_hint")}
+    attrs = {k: v for k, v in (l.attributes or {}).items() if k not in ("category", "length_hint") and not k.startswith("_")}
     specs = p.get("technical_specs") or {}
     must = MUST_MATCH.get(p.get("category", ""), [])
-    for a in (must + [k for k in specs if k not in must])[:4]:
-        if a not in specs:
-            continue
-        val = specs[a]
-        unit = {"thickness_mm": " mm", "length_m": " m", "bag_weight_kg": " kg"}.get(a, "")
-        val = {"moisture": "vådrum", "fire": "brand", "impact": "robust", "pressure_treated": "trykimp."}.get(val, val) \
-            if isinstance(val, str) else ([{"pressure_treated": "trykimp.", "ntr_ab": "NTR/AB"}.get(v, v) for v in val] if isinstance(val, list) else val)
-        label = ", ".join(val) if isinstance(val, list) else (("vådrum" if val else "standard") if a == "moisture_resistant" else f"{val:g}{unit}" if isinstance(val, (int, float)) and not isinstance(val, bool) else f"{val}{unit}")
+    # moisture_resistant is redundant when board_type is shown (gypsum)
+    shown = [k for k in must + [k for k in specs if k not in must] if k in specs and not (k == "moisture_resistant" and "board_type" in specs)]
+    for a in shown[:4]:
+        raw = specs[a]
+        # tone is decided on the RAW value; the label is only for display
         if a not in attrs:
             tone = "slate"
-        elif compare_must(a, attrs[a], val, for_alternative=l.line_status == "CUSTOMER_ACCEPTED"):
+        elif compare_must(a, attrs[a], raw, for_alternative=l.line_status == "CUSTOMER_ACCEPTED"):
             tone = "emerald"
         else:
             tone = "red"
-        chips.append({"attr": a, "value": label, "tone": tone})
+        chips.append({"attr": a, "value": chip_label(a, raw), "tone": tone})
     return {
         "line_id": str(l.line_id), "line_no": l.line_no,
         "source": {"text": l.raw_customer_input, "start": l.source_start, "end": l.source_end},
@@ -262,20 +302,48 @@ def serialize_line(l: SessionLine, products: dict[str, dict]) -> dict:
         "final_sku": l.final_sku, "final_name": p.get("name"),
         "unit_price": p.get("unit_price"), "currency": p.get("currency"),
         "chips": chips,
+        "llm_attributes": (l.attributes or {}).get("_llm", []),
         "conversion": {"requested": l.unit_raw if "n_x_l_review" in (l.parse_warnings or []) else f"{_fmt(l.requested_qty)} {l.unit_raw or l.requested_unit or ''}".strip(),
                        "selling_quantity": _f(l.selling_qty), "selling_unit": l.selling_unit,
-                       "formula": l.conversion_formula, "rounded": l.rounded, "blocked_reason": l.conversion_block_reason},
+                       "formula": l.conversion_formula, "rounded": l.rounded, "blocked_reason": render(l.conversion_block_reason)},
         "line_status": l.line_status,
         "stock": {"status": l.stock_status, "on_hand": _f(l.on_hand),
                   "updated_at": l.stock_updated_at.isoformat() if hasattr(l.stock_updated_at, "isoformat") else l.stock_updated_at,
-                  "label": STOCK_LABEL},
-        "alternatives": l.alternatives or [],
+                  "label": t("stock_label")},
+        "alternatives": [{**a, "reasons": [render_reason(r) for r in a["reasons"]]} for a in (l.alternatives or [])],
         "fulfillment_action": l.fulfillment_action,
         "resolved": l.resolved, "associate_edited": l.associate_edited,
         "substitution": {"accepted_at": l.customer_accepted_substitution_at.isoformat() if l.customer_accepted_substitution_at else None,
                          "rejection_reason": l.substitution_rejection_reason},
         "requires_review": l.line_status in BLOCKER_TEXT or l.score_band != "HIGH" or l.stock_status in ("PARTIAL", "OUT_OF_STOCK"),
     }
+
+
+CHIP_WORDS = {"moisture": "vådrum", "fire": "brand", "impact": "robust", "standard": "standard",
+              "pressure_treated": "trykimp.", "ntr_ab": "NTR/AB", "thermo": "thermo", "hardwood": "hårdttræ", "composite": "komposit"}
+CHIP_UNITS = {"thickness_mm": " mm", "length_m": " m", "bag_weight_kg": " kg"}
+
+
+def chip_label(attr: str, raw) -> str:
+    """Display text for a spec value (catalog vocabulary, Danish market)."""
+    if attr == "moisture_resistant":
+        return "vådrum" if raw else "standard"
+    if isinstance(raw, list):
+        return ", ".join(CHIP_WORDS.get(v, v) for v in raw)
+    if isinstance(raw, (int, float)) and not isinstance(raw, bool):
+        return f"{raw:g}{CHIP_UNITS.get(attr, '')}"
+    return f"{CHIP_WORDS.get(raw, raw)}{CHIP_UNITS.get(attr, '')}"
+
+
+def render_reason(r: str) -> str:
+    """Alternative reasons are stored as language-neutral codes."""
+    try:
+        d = json.loads(r)
+    except (ValueError, TypeError):
+        return r
+    if isinstance(d, dict) and d.get("k") == "alt_same":
+        return t("alt_same", attr=t("attr_" + d.get("attr", "")))
+    return render(r)
 
 
 def _fmt(x) -> str:

@@ -53,9 +53,10 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://postgres:password123@db:5432/sitedesk_db}
       LLM_PROVIDER: ${LLM_PROVIDER:-openai_compatible}
-      LLM_BASE_URL: ${LLM_BASE_URL:-}
-      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.deepseek.com}
+      LLM_MODEL: ${LLM_MODEL:-deepseek-chat}
       LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-8}
       EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-local}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-intfloat/multilingual-e5-small}
       AI_FAIL_MODE: ${AI_FAIL_MODE:-false}

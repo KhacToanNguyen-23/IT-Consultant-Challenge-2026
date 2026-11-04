@@ -211,3 +211,12 @@ def test_csv_formula_injection_and_format():
 
 def test_thresholds_from_config():
     assert (settings.high_threshold, settings.review_threshold, settings.ambiguity_gap) == (0.90, 0.80, 0.05)
+
+
+def test_chips_compare_raw_values_not_display_labels(products):
+    l = _line("Gips vådrum 12.5mm", 10, "board", products)
+    l.original_sku = l.final_sku = "SKU-GYP-MR-125"
+    pipeline.evaluate(l, products, _stock(products))
+    chips = {c["attr"]: c for c in pipeline.serialize_line(l, products)["chips"]}
+    assert chips["board_type"]["tone"] == "emerald" and chips["board_type"]["value"] == "vådrum"
+    assert "moisture_resistant" not in chips  # not shown twice

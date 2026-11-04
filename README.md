@@ -57,6 +57,11 @@ docker compose up --build
   ```
 * **Đánh giá:** `backend/seeds/evaluation.jsonl` (98 dòng, label do AI soạn, `reviewed=false` → **cần người duyệt từng dòng** trước khi trích số). Không chỉnh luật/alias dựa trên bộ này.
 * Bảng DB tạo bằng `create_all` khi khởi động (chưa có Alembic).
+
+## 🧠 LLM (DeepSeek) & 🌐 EN/VI (branch `feat/llm-i18n`)
+* **LLM chỉ dùng cho dòng mơ hồ** (không rõ nhóm hàng / thiếu thuộc tính bắt buộc) để trích thuộc tính. Mỗi giá trị phải có *evidence* là chuỗi có thật trong dòng của khách, nếu không bị loại → LLM không thể bịa "C24". Luật luôn thắng; JSON hỏng → thử lại 1 lần → về rules-only. Không có LLM rerank.
+* Cấu hình DeepSeek: điền `LLM_API_KEY` trong `.env` (không commit), mặc định `LLM_BASE_URL=https://api.deepseek.com`, `LLM_MODEL=deepseek-chat`, rồi `docker compose up -d backend`. Không có key → LLM `disabled`, hệ thống chạy như cũ. ⚠️ DeepSeek không phải nhà cung cấp EU/sovereign — chỉ dùng cho demo; chỉ gửi văn bản đã che email/SĐT.
+* **Song ngữ:** nút **EN / VI** trên header (lưu trong trình duyệt). Frontend gửi `X-Lang`; backend trả thông báo, lý do chặn, nhãn tồn và trang in theo ngôn ngữ (`?lang=` cho trang in).
 >
 > Nếu đã chạy bản cũ (image `postgres:15-alpine`), chạy `docker compose down -v` một lần để tạo lại volume với image pgvector.
 

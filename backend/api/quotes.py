@@ -16,7 +16,8 @@ from sqlalchemy.orm import Session
 
 from api.common import ApiError
 from api.sessions import LOCKED, do_confirm, get_session, lines_of, refresh_status
-from config import PICK_SLIP_NOT_RESERVED, QUOTE_DISCLAIMER, settings
+from config import settings
+from i18n import lang, t
 from db.database import get_db
 from db.models import Customer, DiscountTier, OrderSession, Quote, QuoteLineSnapshot, SessionLine
 from services import pipeline, pos_client, telemetry
@@ -44,7 +45,7 @@ def get_quote(db: Session, quote_id: str, for_update: bool = False) -> Quote:
         q = q.with_for_update()
     quote = q.first()
     if not quote:
-        raise ApiError(404, "NOT_FOUND", f"Không tìm thấy báo giá {quote_id}")
+        raise ApiError(404, "NOT_FOUND", t("quote_not_found", id=quote_id))
     return quote
 
 
@@ -78,7 +79,7 @@ def quote_view(db: Session, quote: Quote, with_live: bool = True) -> dict:
             live_prices = pos_client.prices(skus)
             live_stock = pos_client.stock(skus, s.store_id)
         except pos_client.PosUnavailable:
-            live_error = "mock-pos không phản hồi — không so sánh được giá/tồn hiện tại"
+            live_error = t("pos_live_error")
     checked_at = now().isoformat() if live_prices is not None else None
     out_lines, total = [], Decimal("0")
     for sn in snaps:
@@ -120,7 +121,7 @@ def quote_view(db: Session, quote: Quote, with_live: bool = True) -> dict:
         "created_at": quote.created_at.isoformat() if quote.created_at else None, "created_by": quote.created_by,
         "status_changed_at": quote.status_changed_at.isoformat() if quote.status_changed_at else None,
         "status_changed_by": quote.status_changed_by,
-        "disclaimer": QUOTE_DISCLAIMER, "snapshot_total": float(total), "lines": out_lines,
+        "disclaimer": t("quote_disclaimer"), "snapshot_total": float(total), "lines": out_lines,
         "live_checked_at": checked_at, "live_error": live_error,
         "session_status": s.status, "session_locked": s.status in LOCKED,
         "order": {"fulfillment_reference": s.fulfillment_reference, "pos_order_ref": s.pos_order_ref,
@@ -155,20 +156,20 @@ class QuoteCreate(BaseModel):
 def create_quote(body: QuoteCreate, db: Session = Depends(get_db)):
     s = get_session(db, body.session_id, for_update=True)
     if s.status in LOCKED:
-        raise ApiError(409, "SESSION_LOCKED", "Đơn đã Confirm, không tạo báo giá được")
+        raise ApiError(409, "SESSION_LOCKED", t("quote_session_locked"))
     if s.status in ("DRAFT", "PARSED"):
-        raise ApiError(400, "NOT_ANALYZED", "Cần Analyze trước khi lưu báo giá")
+        raise ApiError(400, "NOT_ANALYZED", t("quote_not_analyzed"))
     if db.query(Quote).filter(Quote.session_id == s.session_id).first():
-        raise ApiError(409, "QUOTE_EXISTS", "Session này đã có báo giá")
+        raise ApiError(409, "QUOTE_EXISTS", t("quote_exists"))
     if body.valid_until < datetime.now(timezone.utc).date():
-        raise ApiError(422, "VALIDATION", "Hiệu lực phải từ hôm nay trở đi")
+        raise ApiError(422, "VALIDATION", t("valid_from_today"))
     cust = db.get(Customer, body.client_id)
     if not cust:
-        raise ApiError(422, "INVALID_CLIENT", "Client ID không tồn tại")
+        raise ApiError(422, "INVALID_CLIENT", t("client_not_found"))
     lines = lines_of(db, s)
     unresolved = [l.line_no for l in lines if l.line_status == "NEEDS_CLARIFICATION"]
     if unresolved:
-        raise ApiError(409, "UNRESOLVED_LINES", f"Còn {len(unresolved)} dòng cần làm rõ trước khi lưu báo giá", {"line_nos": unresolved})
+        raise ApiError(409, "UNRESOLVED_LINES", t("quote_unresolved", n=len(unresolved)), {"line_nos": unresolved})
     seq = (db.query(func.count(Quote.quote_id)).scalar() or 0) + 457
     while db.get(Quote, f"BG-{s.market}-{seq:04d}"):
         seq += 1
@@ -233,7 +234,7 @@ def transition(quote_id: str, body: Transition, db: Session = Depends(get_db)):
     frm, to = quote.status, body.to_status
     allowed = {("SAVED", "SENT"), ("SAVED", "CANCELLED"), ("SENT", "CANCELLED"), ("PREPARING", "CANCELLED")}
     if (frm, to) not in allowed:
-        raise ApiError(409, "INVALID_TRANSITION", f"Không chuyển được {frm} → {to}")
+        raise ApiError(409, "INVALID_TRANSITION", t("invalid_transition", frm=frm, to=to))
     quote.status = to
     quote.status_changed_by, quote.status_changed_at = settings.default_user, now()
     telemetry.event(db, f"QUOTE_{to}", quote.session_id, actor_id=settings.default_user)
@@ -251,9 +252,9 @@ def customer_confirmation(quote_id: str, body: CustomerConfirmation, db: Session
     quote = get_quote(db, quote_id, for_update=True)
     touch_expiry(db, quote)
     if quote.status not in ("SAVED", "SENT"):
-        raise ApiError(409, "INVALID_STATE", f"Báo giá đang {quote.status}")
+        raise ApiError(409, "INVALID_STATE", t("quote_state", status=quote.status))
     if body.channel not in CONFIRM_CHANNELS:
-        raise ApiError(422, "VALIDATION", "Kênh xác nhận: email | phone | in_store")
+        raise ApiError(422, "VALIDATION", t("channel_invalid"))
     quote.customer_confirmed_at = now()
     quote.customer_confirmed_by = f"{quote.client_id} via {body.channel} (recorded by {settings.default_user})"[:64]
     telemetry.event(db, "QUOTE_CUSTOMER_CONFIRMED", quote.session_id, actor_id=settings.default_user, channel=body.channel)
@@ -267,14 +268,14 @@ def prepare(quote_id: str, db: Session = Depends(get_db)):
     quote = get_quote(db, quote_id, for_update=True)
     touch_expiry(db, quote)
     if quote.status not in ("SAVED", "SENT"):
-        raise ApiError(409, "INVALID_STATE", f"Báo giá đang {quote.status} — không Prepare được")
+        raise ApiError(409, "INVALID_STATE", t("quote_cannot_prepare", status=quote.status))
     if not (quote.customer_confirmed_at and quote.customer_confirmed_by):
-        raise ApiError(409, "CUSTOMER_NOT_CONFIRMED", "Cần ghi nhận khách đã xác nhận báo giá trước khi Prepare")
+        raise ApiError(409, "CUSTOMER_NOT_CONFIRMED", t("customer_not_confirmed"))
     s = get_session(db, str(quote.session_id), for_update=True)
     products = pipeline.load_products(db)
     stock = pipeline.load_stock(list(products), s.store_id)
     if stock is None:
-        raise ApiError(503, "POS_UNAVAILABLE", "mock-pos không phản hồi — không recheck được tồn kho")
+        raise ApiError(503, "POS_UNAVAILABLE", t("pos_unavailable_recheck"))
     lines = lines_of(db, s)
     snap_by_line = {sn.line_id: sn for sn in _snapshots(db, quote)}
     for l in lines:
@@ -336,17 +337,17 @@ def print_quote(quote_id: str, kind: str = Query("quote", pattern="^(quote|pick-
             f"<td class=n>{l['snapshot']['unit_price']:.2f}</td><td class=n>{l['snapshot']['line_total']:.2f}</td></tr>"
             for l in v["lines"])
         body = f"""
-<h1>Báo giá / Quote {_e(v['quote_id'])}</h1>
-<div class=meta><div><b>Client ID:</b> {_e(v['client_id'])}</div><div><b>Trạng thái:</b> {_e(v['status'])}</div>
-<div><b>Nguồn giá:</b> {_e(v['price_source'])}</div><div><b>Giờ lấy giá (UTC):</b> {_e(v['price_captured_at'][:16].replace('T', ' '))}</div>
-<div><b>Hiệu lực đến:</b> {_e(v['valid_until'])}</div><div><b>Bậc chiết khấu:</b> {_e(v['applied_discount_tier'])} ({v['discount_rate'] * 100:g}%)</div>
-<div><b>Tiền tệ:</b> {_e(cur)}</div><div><b>Order session:</b> {_e(v['order_session_id'])}</div></div>
-{"<div class=warn>ĐÃ HỦY — báo giá này không còn hiệu lực</div>" if v['status'] == 'CANCELLED' else ""}
-{"<div class=warn>HẾT HẠN</div>" if v['status'] == 'EXPIRED' else ""}
-<table><thead><tr><th>SKU</th><th>Sản phẩm</th><th>SL</th><th>Đơn vị</th><th>Đơn giá ({_e(cur)})</th><th>Thành tiền</th></tr></thead>
-<tbody>{rows}</tbody><tfoot><tr><th colspan=5>Tổng (snapshot)</th><th class=n>{v['snapshot_total']:.2f}</th></tr></tfoot></table>
-<div class=warn>{_e(QUOTE_DISCLAIMER)}</div>"""
-        title = f"Quote {v['quote_id']}"
+<h1>{t('p_quote_title')} {_e(v['quote_id'])}</h1>
+<div class=meta><div><b>Client ID:</b> {_e(v['client_id'])}</div><div><b>{t('p_status')}:</b> {_e(v['status'])}</div>
+<div><b>{t('p_price_source')}:</b> {_e(v['price_source'])}</div><div><b>{t('p_price_time')}:</b> {_e(v['price_captured_at'][:16].replace('T', ' '))}</div>
+<div><b>{t('p_valid_until')}:</b> {_e(v['valid_until'])}</div><div><b>{t('p_tier')}:</b> {_e(v['applied_discount_tier'])} ({v['discount_rate'] * 100:g}%)</div>
+<div><b>{t('p_currency')}:</b> {_e(cur)}</div><div><b>Order session:</b> {_e(v['order_session_id'])}</div></div>
+{f"<div class=warn>{t('p_cancelled')}</div>" if v['status'] == 'CANCELLED' else ""}
+{f"<div class=warn>{t('p_expired')}</div>" if v['status'] == 'EXPIRED' else ""}
+<table><thead><tr><th>SKU</th><th>{t('p_product')}</th><th>{t('p_qty')}</th><th>{t('p_unit')}</th><th>{t('p_unit_price')} ({_e(cur)})</th><th>{t('p_line_total')}</th></tr></thead>
+<tbody>{rows}</tbody><tfoot><tr><th colspan=5>{t('p_total')}</th><th class=n>{v['snapshot_total']:.2f}</th></tr></tfoot></table>
+<div class=warn>{_e(t('quote_disclaimer'))}</div>"""
+        title = f"{t('p_quote_title')} {v['quote_id']}"
     else:
         s = db.get(OrderSession, quote.session_id)
         products = pipeline.load_products(db)
@@ -360,13 +361,14 @@ def print_quote(quote_id: str, kind: str = Query("quote", pattern="^(quote|pick-
                 f"<tr><td>{l.line_no}</td><td>{_e(l.final_sku)}</td><td>{_e(products[l.final_sku]['name'])}</td>"
                 f"<td class=n>{float(l.selling_qty):g}</td><td>{_e(l.selling_unit)}</td><td>{_e(l.fulfillment_action or '')}</td></tr>"
                 for l in groups[cat])
-            sections += f"<h2>{_e(cat)}</h2><table><thead><tr><th>#</th><th>SKU</th><th>Sản phẩm</th><th>SL</th><th>Đơn vị</th><th>Ghi chú</th></tr></thead><tbody>{rows}</tbody></table>"
+            sections += (f"<h2>{_e(cat)}</h2><table><thead><tr><th>#</th><th>SKU</th><th>{t('p_product')}</th><th>{t('p_qty')}</th>"
+                         f"<th>{t('p_unit')}</th><th>{t('p_note')}</th></tr></thead><tbody>{rows}</tbody></table>")
         body = f"""
-<h1>Phiếu soạn hàng / Pick slip — {_e(v['quote_id'])}</h1>
-<div class=meta><div><b>Ngày in (UTC):</b> {now().strftime('%Y-%m-%d %H:%M')}</div><div><b>Client ID:</b> {_e(v['client_id'])}</div>
-<div><b>Trạng thái báo giá:</b> {_e(v['status'])}</div><div><b>Order session:</b> {_e(v['order_session_id'])}</div></div>
-<div class=warn>{_e(PICK_SLIP_NOT_RESERVED)}. {_e(QUOTE_DISCLAIMER)}</div>{sections}"""
-        title = f"Pick slip {v['quote_id']}"
-    return f"""<!doctype html><html lang=vi><head><meta charset=utf-8><title>{_e(title)}</title><style>{PRINT_CSS}</style></head>
-<body><button onclick="window.print()">In / Print</button>{body}
-<p class=sim>SiteDesk MVP — POS/ERP/giá/tồn kho là dữ liệu mô phỏng (simulated).</p></body></html>"""
+<h1>{t('p_pick_title')} — {_e(v['quote_id'])}</h1>
+<div class=meta><div><b>{t('p_printed')}:</b> {now().strftime('%Y-%m-%d %H:%M')}</div><div><b>Client ID:</b> {_e(v['client_id'])}</div>
+<div><b>{t('p_quote_status')}:</b> {_e(v['status'])}</div><div><b>Order session:</b> {_e(v['order_session_id'])}</div></div>
+<div class=warn>{_e(t('pick_not_reserved'))}. {_e(t('quote_disclaimer'))}</div>{sections}"""
+        title = f"{t('p_pick_title')} {v['quote_id']}"
+    return f"""<!doctype html><html lang={lang()}><head><meta charset=utf-8><title>{_e(title)}</title><style>{PRINT_CSS}</style></head>
+<body><button onclick="window.print()">{t('p_print')}</button>{body}
+<p class=sim>{t('p_simulated')}</p></body></html>"""

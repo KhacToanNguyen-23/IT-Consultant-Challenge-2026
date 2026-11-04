@@ -5,9 +5,11 @@ import { useRef, useState } from "react";
 import clsx from "clsx";
 import { FileUp, Mail, ClipboardList, Loader2 } from "lucide-react";
 import { api, ApiError } from "@/client/api";
+import { useI18n } from "@/client/i18n";
 
 type Mode = "counter" | "email";
 
+// Customer content stays in the customer's language (Danish) in both UI languages
 const SAMPLE_COUNTER = `Timber 45x95 C24 - 120 m
 45x95 C18 - 30 stk
 Regel 45x95 - 20 stk
@@ -33,6 +35,7 @@ Jens`;
 
 export default function IntakePage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [mode, setMode] = useState<Mode>("counter");
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -43,7 +46,7 @@ export default function IntakePage() {
   const submit = async () => {
     setError(null);
     if (!file && !text.trim()) {
-      setError("Dán danh sách hoặc chọn file trước.");
+      setError(t("need_input"));
       return;
     }
     setBusy(true);
@@ -67,19 +70,17 @@ export default function IntakePage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="text-2xl font-bold">Nhận danh sách vật tư</h1>
-      <p className="mt-1 text-sm text-slate-600">
-        Bước 1/4 · Upload hoặc dán danh sách. Hệ thống che email & số điện thoại trước khi xử lý, sau đó bạn kiểm tra từng dòng.
-      </p>
+      <h1 className="text-2xl font-bold">{t("intake_title")}</h1>
+      <p className="mt-1 text-sm text-slate-600">{t("intake_sub")}</p>
 
-      <div role="tablist" aria-label="Luồng" className="mt-5 grid grid-cols-2 gap-2">
-        <ModeTab active={mode === "counter"} onClick={() => setMode("counter")} icon={<ClipboardList size={18} />} title="Tại quầy" sub="Luồng 1 · khách đứng chờ → đơn ngay" />
-        <ModeTab active={mode === "email"} onClick={() => setMode("email")} icon={<Mail size={18} />} title="Email báo giá" sub="Luồng 2 · dán email khách → lưu báo giá" />
+      <div role="tablist" aria-label={t("flow_label")} className="mt-5 grid grid-cols-2 gap-2">
+        <ModeTab active={mode === "counter"} onClick={() => setMode("counter")} icon={<ClipboardList size={18} />} title={t("mode_counter")} sub={t("mode_counter_sub")} />
+        <ModeTab active={mode === "email"} onClick={() => setMode("email")} icon={<Mail size={18} />} title={t("mode_email")} sub={t("mode_email_sub")} />
       </div>
 
       <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <label htmlFor="intake" className="flex items-center justify-between text-sm font-semibold">
-          {mode === "email" ? "Dán nội dung email của khách" : "Dán danh sách (mỗi dòng một vật tư)"}
+          {mode === "email" ? t("paste_email") : t("paste_list")}
           <button
             type="button"
             className="text-xs font-medium text-blue-700 hover:underline"
@@ -88,7 +89,7 @@ export default function IntakePage() {
               setText(mode === "email" ? SAMPLE_EMAIL : SAMPLE_COUNTER);
             }}
           >
-            Dùng dữ liệu mẫu
+            {t("use_sample")}
           </button>
         </label>
         <textarea
@@ -105,13 +106,13 @@ export default function IntakePage() {
 
         {mode === "counter" && (
           <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-            <span className="text-slate-500">hoặc</span>
+            <span className="text-slate-500">{t("or")}</span>
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
               className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 font-medium hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
             >
-              <FileUp size={16} /> Chọn file PDF / XLSX / CSV
+              <FileUp size={16} /> {t("choose_file")}
             </button>
             <input
               ref={fileRef}
@@ -129,11 +130,15 @@ export default function IntakePage() {
         )}
 
         <ul className="mt-3 list-disc space-y-0.5 pl-5 text-xs text-slate-500">
-          <li>PDF phải có text (PDF scan ảnh không được hỗ trợ — hãy dán hoặc gõ lại). Tối đa 5 MB, 1 file.</li>
-          <li>Email & số điện thoại được che bằng regex. Tên, địa chỉ trong văn bản tự do <b>chưa được đảm bảo</b> che.</li>
+          <li>{t("intake_hint_pdf")}</li>
+          <li>{t("intake_hint_pii")}</li>
         </ul>
 
-        {error && <p role="alert" className="mt-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900">{error}</p>}
+        {error && (
+          <p role="alert" className="mt-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900">
+            {error}
+          </p>
+        )}
 
         <div className="mt-4 flex justify-end">
           <button
@@ -142,7 +147,7 @@ export default function IntakePage() {
             disabled={busy}
             className="inline-flex items-center gap-2 rounded-md bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:opacity-60"
           >
-            {busy && <Loader2 size={16} className="animate-spin" />} Đọc danh sách →
+            {busy && <Loader2 size={16} className="animate-spin" />} {t("read_list")}
           </button>
         </div>
       </div>

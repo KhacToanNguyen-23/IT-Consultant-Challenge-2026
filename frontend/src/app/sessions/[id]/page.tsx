@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import clsx from "clsx";
 import { AlertTriangle, CheckCircle2, Download, FileText, Loader2, Lock, Sparkles } from "lucide-react";
 import { api, ApiError, fileUrl, type Customer, type SessionView } from "@/client/api";
+import { useI18n } from "@/client/i18n";
 import ReviewTable from "@/components/ReviewTable";
 import { StatePill } from "@/components/StatusBadge";
 
@@ -17,6 +18,7 @@ function plusDays(n: number) {
 
 export default function SessionPage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const { t, lang } = useI18n();
   const [s, setS] = useState<SessionView | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -35,13 +37,14 @@ export default function SessionPage({ params }: { params: { id: string } }) {
     }
   }, [params.id]);
 
+  // reload on language change: blockers, stock labels and reasons come translated from the API
   useEffect(() => {
     load();
     api<{ items: Customer[] }>("/customers").then((r) => setCustomers(r.items)).catch(() => {});
     const h = () => load();
     window.addEventListener("sitedesk:health", h);
     return () => window.removeEventListener("sitedesk:health", h);
-  }, [load]);
+  }, [load, lang]);
 
   const act = async (key: string, fn: () => Promise<void>) => {
     setBusy(key);
@@ -51,7 +54,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
     } catch (e) {
       if (e instanceof ApiError) {
         const lines = (e.details?.line_nos as number[] | undefined)?.join(", ");
-        setError(e.message + (lines ? ` (dòng ${lines})` : ""));
+        setError(e.message + (lines ? ` (${t("line_n", { n: lines })})` : ""));
       } else setError(String(e));
     } finally {
       setBusy(null);
@@ -64,29 +67,29 @@ export default function SessionPage({ params }: { params: { id: string } }) {
   const walkIn = customers.find((c) => c.customer_type === "B2C_WalkIn")?.client_id;
   const effectiveClient = clientId || walkIn || "";
   const canConfirmQuote = !s.quote || s.quote.status === "PREPARING";
-  const t = s.stage_timings_ms;
+  const tm = s.stage_timings_ms;
 
   return (
     <div className="space-y-4">
-      {/* header */}
       <div className="flex flex-wrap items-end gap-3">
         <div>
           <div className="text-xs text-slate-500">
             <Link href="/" className="hover:underline">
-              ← Danh sách mới
+              {t("new_list")}
             </Link>{" "}
-            · {isEmail ? "Luồng 2 · Email báo giá" : "Luồng 1 · Tại quầy"}
+            · {isEmail ? t("flow2") : t("flow1")}
           </div>
           <h1 className="text-xl font-bold">
             {s.order_session_id} <StatePill status={s.status} />
           </h1>
         </div>
         <Stepper analyzed={s.analyzed} locked={s.locked} blockers={s.blockers.length} />
-        {s.analyzed && typeof t.total_ms === "number" && (
-          <div className="ml-auto text-right text-xs text-slate-500 tabular" title="Thời gian đo thật từ backend (FR-030)">
-            Phân tích {t.lines as number} dòng: <b className="text-slate-800">{((t.total_ms as number) / 1000).toFixed(2)} s</b>
+        {s.analyzed && typeof tm.total_ms === "number" && (
+          <div className="ml-auto text-right text-xs text-slate-500 tabular" title={t("measured_title")}>
+            {t("analyzed_n", { n: tm.lines as number })}: <b className="text-slate-800">{((tm.total_ms as number) / 1000).toFixed(2)} s</b>
             <div>
-              match {t.match_ms}ms · tồn {t.stock_ms}ms · quy tắc {t.rules_convert_alternatives_ms}ms
+              {t("t_match")} {String(tm.match_ms)}ms · {t("t_stock")} {String(tm.stock_ms)}ms · {t("t_rules")} {String(tm.rules_convert_alternatives_ms)}ms
+              {Number(tm.llm_calls) > 0 && ` · ${t("t_llm")} ${tm.llm_ms}ms (${tm.llm_calls})`}
             </div>
           </div>
         )}
@@ -94,12 +97,12 @@ export default function SessionPage({ params }: { params: { id: string } }) {
 
       {s.ai_degraded && (
         <div role="status" className="flex items-center gap-2 rounded-md border border-amber-600 bg-amber-100 px-3 py-2 text-sm text-amber-950">
-          <AlertTriangle size={16} /> AI lỗi — đang chạy chế độ quy tắc + tìm thủ công. Quầy vẫn Confirm được.
+          <AlertTriangle size={16} /> {t("ai_degraded_banner")}
         </div>
       )}
       {s.lines.some((l) => l.stock.status === "UNKNOWN") && (
         <div role="status" className="flex items-center gap-2 rounded-md border border-amber-600 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-          <AlertTriangle size={16} /> Không đọc được tồn kho từ POS (simulated) — không hiển thị/đoán tồn.
+          <AlertTriangle size={16} /> {t("stock_unknown_banner")}
         </div>
       )}
       {error && (
@@ -108,19 +111,16 @@ export default function SessionPage({ params }: { params: { id: string } }) {
         </p>
       )}
 
-      {/* source panel */}
       {s.masked_source && (
         <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <button onClick={() => setShowSource(!showSource)} className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm font-semibold">
-            <FileText size={16} /> Nguồn đã che email/điện thoại · Đã đọc {s.read_line_count} dòng
-            <span className="ml-auto text-xs font-normal text-slate-500">{showSource ? "ẩn" : "hiện"}</span>
+            <FileText size={16} /> {t("source_title", { n: s.read_line_count })}
+            <span className="ml-auto text-xs font-normal text-slate-500">{showSource ? t("hide") : t("show")}</span>
           </button>
           {showSource && (
             <div className="border-t border-slate-200 px-4 py-3">
               <pre className="max-h-48 overflow-auto whitespace-pre-wrap font-mono text-xs text-slate-700">{s.masked_source}</pre>
-              <p className="mt-2 text-[11px] text-slate-500">
-                Chỉ email & số điện thoại được che bằng regex; tên/địa chỉ trong văn bản tự do chưa được đảm bảo che. Nguồn bị xoá sau khi Confirm.
-              </p>
+              <p className="mt-2 text-[11px] text-slate-500">{t("source_note")}</p>
             </div>
           )}
         </div>
@@ -128,31 +128,30 @@ export default function SessionPage({ params }: { params: { id: string } }) {
 
       {!s.analyzed && (
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm">
-          <span>
-            Bước 2/4 · Kiểm tra {s.read_line_count} dòng đã đọc (bấm vào dòng để sửa tên/SL/đơn vị), rồi phân tích. Dòng không đọc được vẫn được giữ lại.
-          </span>
+          <span>{t("step2_hint", { n: s.read_line_count })}</span>
           <button
             onClick={() => act("analyze", async () => setS(await api(`/sessions/${s.session_id}/analyze`, { method: "POST", json: { language_hint: "DA" } })))}
             disabled={!!busy}
             className="ml-auto inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 font-semibold text-white hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:opacity-60"
           >
-            {busy === "analyze" ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />} Phân tích (Analyze)
+            {busy === "analyze" ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />} {t("analyze")}
           </button>
         </div>
       )}
 
       <ReviewTable session={s} onChange={setS} />
 
-      {/* footer: confirm / quote */}
       {s.locked ? (
         <ConfirmResult s={s} />
       ) : (
         s.analyzed && (
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-              <h2 className="font-semibold">Bước 4/4 · Xác nhận đơn {s.quote && `(báo giá ${s.quote.quote_id})`}</h2>
+              <h2 className="font-semibold">
+                {t("step4_title")} {s.quote && t("quote_ref", { id: s.quote.quote_id })}
+              </h2>
               <label className="mt-3 block text-sm">
-                Khách hàng (Client ID)
+                {t("client_id")}
                 <select
                   value={effectiveClient}
                   onChange={(e) => setClientId(e.target.value)}
@@ -161,18 +160,18 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                 >
                   {customers.map((c) => (
                     <option key={c.client_id} value={c.client_id}>
-                      {c.client_id} · {c.customer_type === "B2B" ? `B2B · ${c.discount_tier}` : "Khách lẻ (walk-in)"}
+                      {c.client_id} · {c.customer_type === "B2B" ? `B2B · ${c.discount_tier}` : t("walk_in")}
                     </option>
                   ))}
                 </select>
               </label>
               {s.blockers.length > 0 && (
                 <div className="mt-3 rounded-md border border-amber-400 bg-amber-50 p-2 text-sm text-amber-950">
-                  <b>Chưa Confirm được — còn {s.blockers.length} dòng:</b>
+                  <b>{t("cannot_confirm", { n: s.blockers.length })}</b>
                   <ul className="mt-1 list-disc pl-5">
                     {s.blockers.map((b) => (
                       <li key={b.line_no}>
-                        Dòng {b.line_no}: {b.reason}
+                        {t("line_n", { n: b.line_no })}: {b.reason}
                       </li>
                     ))}
                   </ul>
@@ -180,9 +179,9 @@ export default function SessionPage({ params }: { params: { id: string } }) {
               )}
               {!canConfirmQuote && (
                 <p className="mt-3 rounded-md border border-violet-300 bg-violet-50 p-2 text-sm text-violet-900">
-                  Đơn này thuộc báo giá {s.quote!.quote_id} ({s.quote!.status}). Cần ghi nhận khách xác nhận và <b>Prepare</b> trước khi Confirm.{" "}
+                  {t("quote_needs_prepare", { id: s.quote!.quote_id, status: s.quote!.status })}{" "}
                   <Link className="font-semibold underline" href={`/quotes/${s.quote!.quote_id}`}>
-                    Mở báo giá →
+                    {t("open_quote")}
                   </Link>
                 </p>
               )}
@@ -200,20 +199,18 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                 }
                 className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-md bg-emerald-700 px-4 py-2.5 font-semibold text-white hover:bg-emerald-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
-                {busy === "confirm" ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} Confirm & gửi POS
+                {busy === "confirm" ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} {t("confirm_send")}
               </button>
-              <p className="mt-2 text-xs text-slate-500">POS lỗi → tự xuất CSV cùng mã tham chiếu. Sau Confirm đơn chỉ đọc.</p>
+              <p className="mt-2 text-xs text-slate-500">{t("confirm_note")}</p>
             </div>
 
             {!s.quote ? (
               <div className={clsx("rounded-lg border bg-white p-4 shadow-sm", isEmail ? "border-violet-300 ring-1 ring-violet-200" : "border-slate-200")}>
-                <h2 className="font-semibold">Lưu thành báo giá (Pre-order)</h2>
-                <p className="mt-1 text-xs text-slate-500">
-                  Chụp giá & tồn tại thời điểm lưu. Báo giá <b>không giữ chỗ</b> hàng. Cần làm rõ hết dòng vàng trước khi lưu.
-                </p>
+                <h2 className="font-semibold">{t("save_quote_title")}</h2>
+                <p className="mt-1 text-xs text-slate-500">{t("save_quote_note")}</p>
                 <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
                   <label>
-                    Khách hàng
+                    {t("customer")}
                     <select value={effectiveClient} onChange={(e) => setClientId(e.target.value)} className="mt-1 block w-full rounded border border-slate-300 px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-600">
                       {customers.map((c) => (
                         <option key={c.client_id} value={c.client_id}>
@@ -223,7 +220,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                     </select>
                   </label>
                   <label>
-                    Hiệu lực đến
+                    {t("valid_until")}
                     <input type="date" value={validUntil} min={plusDays(0)} onChange={(e) => setValidUntil(e.target.value)} className="mt-1 block w-full rounded border border-slate-300 px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-600" />
                   </label>
                 </div>
@@ -237,17 +234,17 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                   }
                   className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-md bg-violet-700 px-4 py-2.5 font-semibold text-white hover:bg-violet-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:bg-slate-300"
                 >
-                  {busy === "quote" && <Loader2 size={16} className="animate-spin" />} Lưu báo giá
+                  {busy === "quote" && <Loader2 size={16} className="animate-spin" />} {t("save_quote")}
                 </button>
               </div>
             ) : (
               <div className="rounded-lg border border-violet-300 bg-white p-4 shadow-sm">
-                <h2 className="font-semibold">Báo giá {s.quote.quote_id}</h2>
+                <h2 className="font-semibold">{t("quote_n", { id: s.quote.quote_id })}</h2>
                 <p className="mt-1 text-sm">
-                  Trạng thái: <StatePill status={s.quote.status} />
+                  {t("status")}: <StatePill status={s.quote.status} />
                 </p>
                 <Link href={`/quotes/${s.quote.quote_id}`} className="mt-3 inline-block rounded-md border border-violet-400 px-3 py-1.5 text-sm font-semibold text-violet-900 hover:bg-violet-50">
-                  Mở báo giá →
+                  {t("open_quote")}
                 </Link>
               </div>
             )}
@@ -259,16 +256,17 @@ export default function SessionPage({ params }: { params: { id: string } }) {
 }
 
 function Stepper({ analyzed, locked, blockers }: { analyzed: boolean; locked: boolean; blockers: number }) {
+  const { t } = useI18n();
   const steps = [
-    { label: "Nhận list", done: true },
-    { label: "Đọc & sửa", done: analyzed },
-    { label: blockers ? `Rà soát (${blockers})` : "Rà soát", done: analyzed && blockers === 0 },
-    { label: "Confirm", done: locked },
+    { label: t("step_received"), done: true },
+    { label: t("step_read"), done: analyzed },
+    { label: blockers ? `${t("step_review")} (${blockers})` : t("step_review"), done: analyzed && blockers === 0 },
+    { label: t("step_confirm"), done: locked },
   ];
   return (
     <ol className="flex items-center gap-1 text-xs">
       {steps.map((st, i) => (
-        <li key={st.label} className="flex items-center gap-1">
+        <li key={i} className="flex items-center gap-1">
           <span className={clsx("rounded-full px-2 py-0.5 font-semibold", st.done ? "bg-emerald-100 text-emerald-900" : "bg-slate-200 text-slate-600")}>
             {i + 1}. {st.label}
           </span>
@@ -280,19 +278,20 @@ function Stepper({ analyzed, locked, blockers }: { analyzed: boolean; locked: bo
 }
 
 function ConfirmResult({ s }: { s: SessionView }) {
+  const { t } = useI18n();
   const c = s.confirmation;
   const ok = c.order_status === "POS_ACCEPTED";
   return (
     <div className={clsx("rounded-lg border p-4 shadow-sm", ok ? "border-emerald-400 bg-emerald-50" : "border-amber-500 bg-amber-50")}>
       <div className="flex items-center gap-2 text-lg font-bold">
-        <Lock size={18} /> {ok ? "Đã gửi POS thành công" : "POS không phản hồi — đã xuất CSV, cần nhập tay"}
+        <Lock size={18} /> {ok ? t("pos_ok") : t("pos_csv")}
       </div>
       <dl className="mt-2 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
         <div>
-          Trạng thái đơn: <StatePill status={c.order_status || s.status} /> {!ok && <StatePill status="SENT_OR_EXPORTED" />}
+          {t("order_status")}: <StatePill status={c.order_status || s.status} /> {!ok && <StatePill status="SENT_OR_EXPORTED" />}
         </div>
         <div>
-          Mã tham chiếu (chống nhập trùng): <b className="font-mono">{c.fulfillment_reference}</b>
+          {t("reference")}: <b className="font-mono">{c.fulfillment_reference}</b>
         </div>
         {c.pos_order_ref && (
           <div>
@@ -300,20 +299,20 @@ function ConfirmResult({ s }: { s: SessionView }) {
           </div>
         )}
         <div>
-          Client: <b>{s.client_id}</b>
+          {t("client")}: <b>{s.client_id}</b>
         </div>
         {c.processing_time_seconds != null && (
           <div>
-            Thời gian từ upload → Confirm: <b className="tabular">{c.processing_time_seconds} s</b>
+            {t("time_to_confirm")}: <b className="tabular">{c.processing_time_seconds} s</b>
           </div>
         )}
       </dl>
       {c.csv_download_url && (
         <a href={fileUrl(c.csv_download_url)} className="mt-3 inline-flex items-center gap-2 rounded-md bg-amber-700 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-800">
-          <Download size={16} /> Tải CSV để nhập POS
+          <Download size={16} /> {t("download_csv")}
         </a>
       )}
-      <p className="mt-2 text-xs text-slate-600">Đơn đã khoá, chỉ đọc. POS/ERP là hệ thống mô phỏng (simulated).</p>
+      <p className="mt-2 text-xs text-slate-600">{t("locked_note")}</p>
     </div>
   );
 }

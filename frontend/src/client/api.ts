@@ -1,3 +1,5 @@
+import { getLang, translate } from "./i18n";
+
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export class ApiError extends Error {
@@ -14,7 +16,7 @@ export class ApiError extends Error {
 
 export async function api<T = any>(path: string, init: RequestInit & { json?: unknown } = {}): Promise<T> {
   const { json, ...rest } = init;
-  const headers: Record<string, string> = { ...(rest.headers as Record<string, string>) };
+  const headers: Record<string, string> = { "X-Lang": getLang(), ...(rest.headers as Record<string, string>) };
   let body = rest.body;
   if (json !== undefined) {
     headers["Content-Type"] = "application/json";
@@ -24,7 +26,7 @@ export async function api<T = any>(path: string, init: RequestInit & { json?: un
   try {
     res = await fetch(`${API_URL}/api/v1${path}`, { ...rest, headers, body, cache: "no-store" });
   } catch {
-    throw new ApiError(0, "NETWORK", "Không kết nối được Core API (backend :8000)");
+    throw new ApiError(0, "NETWORK", translate(getLang(), "network_error"));
   }
   const data = res.status === 204 ? null : await res.json().catch(() => null);
   if (!res.ok) {
@@ -34,7 +36,7 @@ export async function api<T = any>(path: string, init: RequestInit & { json?: un
   return data as T;
 }
 
-export const fileUrl = (path: string) => `${API_URL}${path}`;
+export const fileUrl = (path: string) => `${API_URL}${path}${path.includes("?") ? "&" : "?"}lang=${getLang()}`;
 
 // ---------- types (subset of SRS v2 §7 contracts) ----------
 export type Band = "HIGH" | "REVIEW" | "LOW" | null;
@@ -74,6 +76,7 @@ export interface Line {
   unit_price: number | null;
   currency: string | null;
   chips: { attr: string; value: string; tone: "emerald" | "slate" | "red" }[];
+  llm_attributes: string[];
   conversion: { requested: string; selling_quantity: number | null; selling_unit: string | null; formula: string | null; rounded: boolean; blocked_reason: string | null };
   line_status: LineStatus;
   stock: { status: "IN_STOCK" | "PARTIAL" | "OUT_OF_STOCK" | "UNKNOWN" | null; on_hand: number | null; updated_at: string | null; label: string };
@@ -174,16 +177,9 @@ export interface Health {
 }
 
 export const fmtTime = (iso?: string | null) =>
-  iso ? new Date(iso).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }) : "—";
+  iso ? new Date(iso).toLocaleString(getLang() === "vi" ? "vi-VN" : "en-GB", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }) : "—";
 
 export const fmtMoney = (n?: number | null, cur = "DKK") =>
   n === null || n === undefined ? "—" : `${n.toLocaleString("da-DK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${cur}`;
 
-export const UNIT_LABEL: Record<string, string> = {
-  piece: "cái/cây",
-  linear_metre: "m dài",
-  square_metre: "m²",
-  pack: "gói",
-  bag: "bao",
-  board: "tấm",
-};
+export const UNITS = ["piece", "linear_metre", "square_metre", "pack", "bag", "board"] as const;

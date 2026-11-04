@@ -1,7 +1,9 @@
 import logging
 import time
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+
+import i18n
 from fastapi.middleware.cors import CORSMiddleware
 
 from ai import embedding
@@ -27,6 +29,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_exception_handler(ApiError, api_error_handler)
+
+
+@app.middleware("http")
+async def language(request: Request, call_next):
+    """UI language per request: header X-Lang, or ?lang= (print pages opened in a new tab)."""
+    i18n.set_lang(request.query_params.get("lang") or request.headers.get("x-lang"))
+    return await call_next(request)
 app.include_router(sessions.router)
 app.include_router(quotes.router)
 app.include_router(catalog.router)

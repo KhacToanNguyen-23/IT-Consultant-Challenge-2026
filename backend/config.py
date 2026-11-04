@@ -24,6 +24,4 @@ settings = Settings()
 # Runtime toggle (FR-033). Starts from env, can be flipped from the demo UI.
 runtime = {"ai_fail_mode": os.getenv("AI_FAIL_MODE", "false").lower() == "true"}
 
-STOCK_LABEL = "Tồn tham khảo (on-hand), cần xác nhận trước khi hứa hàng"
-QUOTE_DISCLAIMER = "Giá và tồn kho chỉ mang tính tham khảo, chưa được bảo đảm hoặc giữ chỗ."
-PICK_SLIP_NOT_RESERVED = "Chưa giữ chỗ trên hệ thống"
+# UI texts live in i18n.py

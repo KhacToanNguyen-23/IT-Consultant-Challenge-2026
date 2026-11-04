@@ -8,9 +8,11 @@ from sqlalchemy.orm import Session
 
 from api.common import ApiError
 from config import runtime
+from i18n import t
 from db.database import get_db
 from db.models import Customer
 from ai.embedding import status as embedding_status
+from ai.llm import status as llm_status
 from services import pipeline, pos_client, seed
 from services.matcher import MUST_MATCH, _tokens
 
@@ -55,7 +57,7 @@ def health(db: Session = Depends(get_db)):
     mock = "down" if pos.get("status") != "ok" else ("fail_mode" if pos.get("fail_mode") else "up")
     degraded = dbs != "up" or mock != "up" or runtime["ai_fail_mode"] or embedding_status()["status"] != "up"
     return {"status": "degraded" if degraded else "healthy", "database": dbs, "embedding": embedding_status(),
-            "llm": "disabled", "mock_pos": mock, "ai_fail_mode": runtime["ai_fail_mode"],
+            "llm": llm_status(), "mock_pos": mock, "ai_fail_mode": runtime["ai_fail_mode"],
             "pos_fail_mode": bool(pos.get("fail_mode"))}
 
 
@@ -73,7 +75,7 @@ def fail_modes(body: FailModes):
         try:
             pos_client.admin("fail-mode", {"enabled": body.pos})
         except Exception:
-            raise ApiError(503, "POS_UNAVAILABLE", "Không gọi được mock-pos")
+            raise ApiError(503, "POS_UNAVAILABLE", t("pos_unreachable"))
     return {"ai_fail_mode": runtime["ai_fail_mode"], "pos_fail_mode": pos_client.health().get("fail_mode")}
 
 
@@ -89,7 +91,7 @@ def pos_mutate(body: Mutate):
     try:
         return pos_client.admin("mutate", body.model_dump(exclude_none=True))
     except Exception:
-        raise ApiError(503, "POS_UNAVAILABLE", "Không gọi được mock-pos hoặc SKU sai")
+        raise ApiError(503, "POS_UNAVAILABLE", t("pos_unreachable_or_sku"))
 
 
 @router.post("/admin/pos-reset")

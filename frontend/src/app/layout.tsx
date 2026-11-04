@@ -1,5 +1,6 @@
 import "./globals.css";
 import AppHeader from "@/components/AppHeader";
+import { I18nProvider } from "@/client/i18n";
 
 export const metadata = {
   title: "SiteDesk · Counter Assistant",
@@ -8,10 +9,12 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="vi">
+    <html lang="en">
       <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
-        <AppHeader />
-        <main className="mx-auto max-w-[1400px] px-4 py-6">{children}</main>
+        <I18nProvider>
+          <AppHeader />
+          <main className="mx-auto max-w-[1400px] px-4 py-6">{children}</main>
+        </I18nProvider>
       </body>
     </html>
   );
