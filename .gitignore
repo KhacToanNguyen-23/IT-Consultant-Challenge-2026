@@ -54,4 +54,4 @@ pgdata/
 Thumbs.db
 
 # Nested agent worktrees
-codex-backend/
+codex-*/
