@@ -1,7 +1,7 @@
 services:
   # 1. DATABASE: PostgreSQL
   db:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15
     container_name: sitedesk_db
     restart: always
     environment:

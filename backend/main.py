@@ -1,5 +1,6 @@
 import csv
 import io
+import logging
 import time
 from contextlib import asynccontextmanager
 from uuid import uuid4
@@ -17,15 +18,33 @@ from db.seed import seed_products
 from schemas import QuoteConfirmRequest, QuoteConfirmResponse, QuoteItem, QuoteParseResponse, SubstituteItem
 from services.matcher import match_items
 from services.parser import extract_lines
+from scripts.reindex_catalog import reindex_catalog_if_configured
 
 pending_quotes: dict[str, QuoteParseResponse] = {}
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    # create_all does not migrate an existing products table, so keep these
+    # idempotent DDL statements alongside it until the project adopts Alembic.
+    with engine.begin() as connection:
+        connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
     Base.metadata.create_all(bind=engine)
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS embedding vector(384)"))
+        connection.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_products_embedding_hnsw "
+            "ON products USING hnsw (embedding vector_cosine_ops)"
+        ))
     with SessionLocal() as db:
         seed_products(db)
+        try:
+            indexed = reindex_catalog_if_configured(db)
+            logger.info("Catalog embedding startup pass indexed %s products", indexed)
+        except Exception as exc:
+            db.rollback()
+            logger.warning("Catalog embedding startup pass failed; lexical fallback remains available: %s", exc, exc_info=True)
     yield
 
 
