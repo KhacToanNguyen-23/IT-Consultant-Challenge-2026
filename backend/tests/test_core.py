@@ -220,3 +220,16 @@ def test_chips_compare_raw_values_not_display_labels(products):
     chips = {c["attr"]: c for c in pipeline.serialize_line(l, products)["chips"]}
     assert chips["board_type"]["tone"] == "emerald" and chips["board_type"]["value"] == "vådrum"
     assert "moisture_resistant" not in chips  # not shown twice
+
+
+# --- Flow 1 safety cases ported from backup/flow1-local ---
+def test_pii_masks_bracketed_phone_with_extension_but_keeps_dates_and_dimensions():
+    out = pii.mask("45x95 C24 timber from 04-11-2026, call +1 (415) 555-0123 ext. 42 or buyer@example.com")
+    assert "45x95 C24 timber" in out and "04-11-2026" in out
+    assert "[PHONE]" in out and "[EMAIL]" in out
+    assert "415" not in out and "buyer@example.com" not in out
+
+
+def test_parser_recognises_danish_bag_unit_poser():
+    row = parser.parse_line("5 poser cement 25 kg")
+    assert row.quantity == 5 and row.unit == "bag"

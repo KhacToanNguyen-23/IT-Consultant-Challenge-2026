@@ -16,7 +16,7 @@ UNIT_MAP = {
     "m": "linear_metre", "lbm": "linear_metre", "lm": "linear_metre", "meter": "linear_metre", "metre": "linear_metre",
     "m2": "square_metre", "m²": "square_metre", "kvm": "square_metre", "sqm": "square_metre",
     "pk": "pack", "pk.": "pack", "pakke": "pack", "pakker": "pack", "pack": "pack", "packs": "pack", "paket": "pack",
-    "sæk": "bag", "sække": "bag", "sekk": "bag", "sekker": "bag", "säck": "bag", "säckar": "bag", "bag": "bag", "bags": "bag",
+    "sæk": "bag", "pose": "bag", "poser": "bag", "sække": "bag", "sekk": "bag", "sekker": "bag", "säck": "bag", "säckar": "bag", "bag": "bag", "bags": "bag",
     "plade": "board", "plader": "board", "plate": "board", "plater": "board", "skiva": "board", "skivor": "board",
     "board": "board", "boards": "board",
 }
