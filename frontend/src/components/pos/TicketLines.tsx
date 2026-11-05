@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import clsx from "clsx";
-import { Sparkles } from "lucide-react";
 import { fmtMoney, fmtTime, type Line, type SessionView } from "@/client/api";
 import { useI18n, type Key } from "@/client/i18n";
 import { AttributeChips, BandBadge, LineStatusBadge, RoundedBadge, StockBadge } from "@/components/StatusBadge";
@@ -61,6 +60,7 @@ export default function TicketLines({ session, selected, onSelect }: Props) {
 
   const row = (l: Line, idx: number) => {
     const amount = lineAmount(l);
+    const isSelected = selected === l.line_no;
     return (
       <div
         key={l.line_id}
@@ -77,11 +77,13 @@ export default function TicketLines({ session, selected, onSelect }: Props) {
         <div className="tline-no tabular">{l.line_no}</div>
         <div className="min-w-0">
           {l.line_status === "CUSTOMER_ACCEPTED" && <div className="font-mono text-xs soft line-through">{l.match.sku}</div>}
+          <div className="line-source-label">{t("customer_wrote")}</div>
+          <div className="line-source-text" title={l.source.text}>{l.source.text}</div>
+          <div className="line-match-label">{t("matched_product")}</div>
           <div className="text-[15px] font-semibold leading-snug">{l.final_name || l.parsed.name || <i className="text-red-800">{t("unreadable")}</i>}</div>
-          {l.final_sku ? <div className="font-mono text-xs soft">{l.final_sku}</div> : session.analyzed && <div className="text-xs font-semibold text-amber-800">{t("no_sku")}</div>}
-          <div className="font-mono mt-0.5 text-xs soft">“{l.source.text}”</div>
-          {l.parsed.warnings.includes("n_x_l_review") && <div className="text-xs text-amber-800">N × L: {l.conversion.requested}</div>}
-          <AttributeChips chips={l.chips} />
+          {l.final_sku ? <div className="font-mono text-xs soft">SKU {l.final_sku}</div> : session.analyzed && <div className="text-xs font-semibold text-amber-800">{t("no_sku")}</div>}
+          {isSelected && l.parsed.warnings.includes("n_x_l_review") && <div className="text-xs text-amber-800">N × L: {l.conversion.requested}</div>}
+          {isSelected && <AttributeChips chips={l.chips} />}
         </div>
         <div className="tline-qty tabular">
           <div>
@@ -94,20 +96,14 @@ export default function TicketLines({ session, selected, onSelect }: Props) {
           ) : (
             session.analyzed && <div className="text-xs text-amber-800">{l.conversion.blocked_reason}</div>
           )}
-          {l.conversion.formula && <div className="text-xs soft">{l.conversion.formula}</div>}
+          {isSelected && l.conversion.formula && <div className="text-xs soft">{l.conversion.formula}</div>}
           {l.conversion.rounded && <RoundedBadge />}
         </div>
         <div className="tline-check flex flex-wrap content-start items-center gap-1">
           {session.analyzed && (l.match.sku ? <BandBadge band={l.match.band} score={l.match.match_score} /> : <BandBadge band="LOW" score={null} />)}
           {session.analyzed && <LineStatusBadge status={l.line_status} />}
-          {l.llm_attributes?.length > 0 && (
-            <span className="inline-flex items-center gap-1 text-[11px] text-violet-800">
-              <Sparkles size={11} aria-hidden /> LLM
-            </span>
-          )}
           {session.analyzed && <StockBadge stock={l.stock} />}
           {l.stock.updated_at && <span className="text-[11px] soft">{t("updated", { time: fmtTime(l.stock.updated_at) })}</span>}
-          {session.analyzed && <ActionHint l={l} />}
         </div>
         <div className="tline-amount">{amount != null ? fmtMoney(amount, "").trim() : "—"}</div>
       </div>
@@ -138,21 +134,4 @@ export default function TicketLines({ session, selected, onSelect }: Props) {
       )}
     </>
   );
-}
-
-function ActionHint({ l }: { l: Line }) {
-  const { t } = useI18n();
-  const hint = (cls: string, text: string) => <span className={clsx("w-full text-xs font-semibold", cls)}>{text}</span>;
-  if (l.line_status === "NEEDS_CLARIFICATION") {
-    const missing = (l.match.reasons as Line["match"]["reasons"] & { missing?: string[] })?.missing || [];
-    if (!l.parsed.name) return hint("text-amber-900", t("act_manual"));
-    if (l.conversion.blocked_reason) return hint("text-amber-900", t("act_qty_unit"));
-    if (missing.length) return hint("text-amber-900", t("act_ask", { what: missing.map((m) => attrLabel(t, m)).join(", ") }));
-    return hint("text-amber-900", t("act_choose"));
-  }
-  if (l.line_status === "SUBSTITUTE_PROPOSED") return hint("text-red-900", t("act_ask_subs", { n: l.alternatives.length }));
-  if (l.line_status === "CUSTOMER_ACCEPTED") return hint("text-emerald-800", t("act_substituted"));
-  if (l.fulfillment_action === "backorder")
-    return hint("text-red-900", l.substitution.rejection_reason ? t("act_rejected", { reason: l.substitution.rejection_reason }) : t("act_backorder"));
-  return null;
 }

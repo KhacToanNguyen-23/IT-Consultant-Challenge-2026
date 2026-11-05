@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Delete, Loader2, Search, X } from "lucide-react";
+import { Check, Loader2, Search, X } from "lucide-react";
 import { api, ApiError, fmtMoney, fmtTime, UNITS, type Line, type SessionView } from "@/client/api";
 import { useI18n } from "@/client/i18n";
 import { BandBadge } from "@/components/StatusBadge";
 import { Notice, PosKey } from "./Terminal";
 import { attrLabel, unitLabel } from "./TicketLines";
 
-type Tab = "resolve" | "edit" | "search";
 type Run = (fn: () => Promise<SessionView>) => Promise<void>;
 
 interface Props {
@@ -18,11 +17,10 @@ interface Props {
   onClose: () => void;
 }
 
-/** The touchscreen for one ticket line. Parent keys it by line, so the tab resets when the line changes. */
+/** Inspector for one ticket line. Manual catalog search stays visible when AI is degraded. */
 export default function LinePanel({ session, line, onChange, onClose }: Props) {
   const { t } = useI18n();
   const locked = session.locked;
-  const [tab, setTab] = useState<Tab>(session.analyzed ? "resolve" : "edit");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -40,15 +38,7 @@ export default function LinePanel({ session, line, onChange, onClose }: Props) {
   const select = (sku: string, decision: string, reason?: string) =>
     run(() => api(`/sessions/${session.session_id}/lines/${line.line_no}/selection`, { method: "PUT", json: { sku, decision, reason: reason ?? null } }));
 
-  const tabs: { id: Tab; label: string }[] = session.analyzed
-    ? locked
-      ? [{ id: "resolve", label: t("tab_resolve") }]
-      : [
-          { id: "resolve", label: t("tab_resolve") },
-          { id: "edit", label: t("tab_edit") },
-          { id: "search", label: t("tab_search") },
-        ]
-    : [{ id: "edit", label: t("tab_edit") }];
+  const searchOpen = session.ai_degraded || (line.line_status === "NEEDS_CLARIFICATION" && line.match.candidates.length === 0);
 
   return (
     <div className="space-y-3">
@@ -58,21 +48,17 @@ export default function LinePanel({ session, line, onChange, onClose }: Props) {
           <div className="font-mono text-xs soft">
             {t("source")}: {line.source.text}
           </div>
+          {session.analyzed && (
+            <div className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${session.ai_degraded ? "bg-amber-100 text-amber-950" : "bg-blue-50 text-blue-900"}`}>
+              <span className={`lamp ${session.ai_degraded ? "lamp--warn" : "lamp--ok"}`} aria-hidden />
+              {session.ai_degraded ? t("rules_fallback_mode") : t("ai_match_mode")}
+            </div>
+          )}
         </div>
         <PosKey size="sm" hotkey="Escape" onClick={onClose} className="w-20 flex-none">
           {t("key_close")}
         </PosKey>
       </div>
-
-      {tabs.length > 1 && (
-        <div role="tablist" className="grid grid-cols-3 gap-1.5">
-          {tabs.map((x) => (
-            <button key={x.id} type="button" role="tab" aria-selected={tab === x.id} aria-pressed={tab === x.id} onClick={() => setTab(x.id)} className="tile !min-h-[40px] text-center font-semibold">
-              {x.label}
-            </button>
-          ))}
-        </div>
-      )}
 
       {err && (
         <Notice tone="bad" alert>
@@ -80,9 +66,29 @@ export default function LinePanel({ session, line, onChange, onClose }: Props) {
         </Notice>
       )}
 
-      {tab === "resolve" && <Resolve session={session} line={line} busy={busy} select={select} />}
-      {tab === "edit" && <ParseEditor session={session} line={line} locked={locked} run={run} />}
-      {tab === "search" && <CatalogSearch initial={line.parsed.name || ""} busy={busy} degraded={session.ai_degraded} onPick={(sku) => select(sku, sku === line.match.sku ? "SKU_KEPT" : "SKU_EDITED")} />}
+      {!session.analyzed ? (
+        <ParseEditor session={session} line={line} locked={locked} run={run} />
+      ) : (
+        <>
+          <Resolve session={session} line={line} busy={busy} select={select} />
+          {!locked && (
+            <>
+              <details className="inspector-details" open={searchOpen}>
+                <summary className="tile font-semibold">{t("manual_search_title")}</summary>
+                <div className="pt-3">
+                  <CatalogSearch initial={line.parsed.name || line.source.text || ""} busy={busy} onPick={(sku) => select(sku, sku === line.match.sku ? "SKU_KEPT" : "SKU_EDITED")} />
+                </div>
+              </details>
+              <details className="inspector-details">
+                <summary className="tile font-semibold">{t("tab_edit")}</summary>
+                <div className="pt-3">
+                  <ParseEditor session={session} line={line} locked={locked} run={run} />
+                </div>
+              </details>
+            </>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -131,16 +137,17 @@ function Resolve({ session, line, busy, select }: { session: SessionView; line: 
       {clarify && line.match.candidates.length === 0 && <Notice tone="warn">{t("line_no_candidates")}</Notice>}
       {!substitute && !accepted && !clarify && <p className="font-semibold">{t("line_ok_hint")}</p>}
 
-      {line.match.sku && (
-        <div className="space-y-0.5 text-xs leading-relaxed">
-          <div className="font-semibold">{t("why_title")}</div>
-          {reasons?.matched?.length ? <div>{t("why_matched", { list: list(reasons.matched) })}</div> : null}
-          {reasons?.mismatched?.length ? <div className="text-red-800">{t("why_mismatched", { list: list(reasons.mismatched) })}</div> : null}
-          {reasons?.missing?.length ? <div className="text-amber-900">{t("why_missing", { list: list(reasons.missing) })}</div> : null}
-          {reasons?.ambiguous && <div className="text-amber-900">{t("why_ambiguous")}</div>}
-          {line.llm_attributes?.length ? <div className="text-violet-800">{t("why_llm", { list: list(line.llm_attributes) })}</div> : null}
-          <div className="soft">{t("why_rule")}</div>
-        </div>
+      {line.match.sku && (reasons?.matched?.length || reasons?.mismatched?.length || reasons?.missing?.length || reasons?.ambiguous || line.llm_attributes?.length) && (
+        <details className="inspector-details">
+          <summary className="cursor-pointer text-xs font-semibold text-slate-600">{t("why_title")}</summary>
+          <div className="mt-2 space-y-1 text-xs leading-relaxed">
+            {reasons?.matched?.length ? <div>{t("why_matched", { list: list(reasons.matched) })}</div> : null}
+            {reasons?.mismatched?.length ? <div className="text-red-800">{t("why_mismatched", { list: list(reasons.mismatched) })}</div> : null}
+            {reasons?.missing?.length ? <div className="text-amber-900">{t("why_missing", { list: list(reasons.missing) })}</div> : null}
+            {reasons?.ambiguous && <div className="text-amber-900">{t("why_ambiguous")}</div>}
+            {line.llm_attributes?.length ? <div className="text-violet-800">{t("why_llm", { list: list(line.llm_attributes) })}</div> : null}
+          </div>
+        </details>
       )}
     </div>
   );
@@ -155,7 +162,6 @@ function ParseEditor({ session, line, locked, run }: { session: SessionView; lin
   const qtyChanged = !!qty && parsedQty !== line.parsed.quantity;
   const dirty = name !== (line.parsed.name || "") || qtyChanged || unit !== (line.parsed.unit || "");
 
-  const press = (d: string) => setQty((q) => (d === "," && q.includes(",") ? q : q + d));
   const save = () =>
     run(() =>
       api(`/sessions/${session.session_id}/lines/${line.line_no}`, {
@@ -187,29 +193,14 @@ function ParseEditor({ session, line, locked, run }: { session: SessionView; lin
             {t("quantity")}
             <input disabled={locked} inputMode="decimal" value={qty} onChange={(e) => setQty(e.target.value)} className="field font-mono mt-1 text-right text-lg font-semibold tabular" />
           </label>
-          {!locked && (
-            <div className="mt-2 grid grid-cols-3 gap-1.5">
-              {["7", "8", "9", "4", "5", "6", "1", "2", "3", ",", "0"].map((d) => (
-                <PosKey key={d} size="digit" onClick={() => press(d)}>
-                  {d}
-                </PosKey>
-              ))}
-              <PosKey size="digit" tone="hold" ariaLabel={t("backspace")} onClick={() => setQty((q) => q.slice(0, -1))}>
-                <Delete size={18} aria-hidden />
-              </PosKey>
-            </div>
-          )}
         </div>
-        <div role="group" aria-label={t("unit")}>
-          <div className="font-semibold">{t("unit")}</div>
-          <div className="mt-1 grid gap-1.5">
-            {UNITS.map((u) => (
-              <button key={u} type="button" disabled={locked} aria-pressed={unit === u} onClick={() => setUnit(u)} className="tile !min-h-[38px] !py-1.5 font-semibold">
-                {unitLabel(t, u)}
-              </button>
-            ))}
-          </div>
-        </div>
+        <label className="block font-semibold">
+          {t("unit")}
+          <select disabled={locked} value={unit} onChange={(e) => setUnit(e.target.value)} className="field mt-1 font-normal">
+            <option value="">{t("unit_q")}</option>
+            {UNITS.map((u) => <option key={u} value={u}>{unitLabel(t, u)}</option>)}
+          </select>
+        </label>
       </div>
 
       {line.parsed.unit_raw && !line.parsed.unit && <Notice tone="warn">{t("unknown_unit_hint", { u: line.parsed.unit_raw })}</Notice>}
@@ -255,12 +246,11 @@ function Alternatives({ line, busy, onAccept, onReject }: { line: Line; busy: bo
       <PosKey size="sm" tone="void" icon={<X size={16} />} disabled={busy || !reason.trim()} onClick={() => onReject(reason)} className="w-full">
         {t("customer_rejects")}
       </PosKey>
-      <p className="screen-note">{t("subs_note")}</p>
     </div>
   );
 }
 
-function CatalogSearch({ initial, busy, degraded, onPick }: { initial: string; busy: boolean; degraded: boolean; onPick: (sku: string) => void }) {
+function CatalogSearch({ initial, busy, onPick }: { initial: string; busy: boolean; onPick: (sku: string) => void }) {
   const { t } = useI18n();
   const [q, setQ] = useState(initial);
   const [items, setItems] = useState<{ sku: string; name: string; unit_price: number; currency: string; selling_unit: string }[] | null>(null);
@@ -281,7 +271,6 @@ function CatalogSearch({ initial, busy, degraded, onPick }: { initial: string; b
 
   return (
     <div className="space-y-2">
-      <div className="font-semibold">{degraded ? t("search_ai_down") : t("search_other")}</div>
       <form
         className="flex gap-2"
         onSubmit={(e) => {
@@ -289,7 +278,7 @@ function CatalogSearch({ initial, busy, degraded, onPick }: { initial: string; b
           search();
         }}
       >
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search_ph")} aria-label={t("search_other")} className="field min-w-0 flex-1" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search_ph")} aria-label={t("manual_search_title")} className="field min-w-0 flex-1" />
         <button type="submit" className="key key--nav key--sm flex-none !flex-row !items-center gap-1.5">
           {loading ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Search size={16} aria-hidden />} {t("search")}
         </button>

@@ -16,7 +16,7 @@ class Settings:
     review_threshold = _f("MATCH_REVIEW_THRESHOLD", "0.80")
     ambiguity_gap = _f("AMBIGUITY_GAP", "0.05")
     pos_timeout = _f("MOCK_POS_TIMEOUT_SECONDS", "2")
-    cors_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",") if o.strip()]
+    cors_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:3001,http://127.0.0.1:3001").split(",") if o.strip()]
 
 
 settings = Settings()

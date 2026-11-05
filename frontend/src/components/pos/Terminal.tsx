@@ -45,7 +45,7 @@ interface PosKeyProps {
   children: React.ReactNode;
 }
 
-/** One keycap. A hotkey presses the real element, so its disabled state and current props always apply. */
+/** Touch-friendly action control. Hotkeys press the same element and honor its disabled state. */
 export function PosKey({ tone = "std", size = "md", hotkey, icon, busy, disabled, href, external, current, ariaLabel, onClick, className, children }: PosKeyProps) {
   const ref = useRef<HTMLButtonElement & HTMLAnchorElement>(null);
   useHotkey(hotkey, () => ref.current?.click(), !disabled);
@@ -53,7 +53,6 @@ export function PosKey({ tone = "std", size = "md", hotkey, icon, busy, disabled
   const cls = clsx("key", tone !== "std" && `key--${tone}`, size !== "md" && `key--${size}`, className);
   const body = (
     <>
-      {hotkey && <span className="key-fn">{hotkey === "Escape" ? "Esc" : hotkey}</span>}
       <span className="key-label">
         {busy ? <Loader2 size={17} className="animate-spin" aria-hidden /> : icon}
         <span className="min-w-0">{children}</span>
@@ -81,13 +80,15 @@ export function PosKey({ tone = "std", size = "md", hotkey, icon, busy, disabled
   );
 }
 
-/** The hardware key row: six fixed slots, empty ones stay as blank caps so keys never move. */
+/** Action bar renders only actions available in the current workflow state. */
 export function SoftKeys({ slots }: { slots: React.ReactNode[] }) {
+  const actions = slots.filter(Boolean);
+  if (!actions.length) return null;
   return (
     <div className="pos-softkeys print:hidden">
-      {slots.map((slot, i) => (
-        <div key={i} className={clsx("min-w-0 [&>.key]:h-[calc(100%-3px)] [&>.key]:w-full", !slot && "hidden sm:block")}>
-          {slot || <div className="key key--blank" aria-hidden />}
+      {actions.map((action, i) => (
+        <div key={i} className="min-w-0 [&>.key]:h-full [&>.key]:w-full">
+          {action}
         </div>
       ))}
     </div>
@@ -100,7 +101,6 @@ export function Terminal({ ticket, rail, keys }: { ticket: React.ReactNode; rail
       <section className="pos-ticket">
         <div className="pos-feed">
           {ticket}
-          <div className="paper-tear" aria-hidden />
         </div>
       </section>
       <aside className="pos-rail">{rail}</aside>

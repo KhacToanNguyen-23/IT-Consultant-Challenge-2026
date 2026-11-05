@@ -1,3 +1,5 @@
+name: it-consultant-challenge-2026
+
 services:
   # 1. DATABASE: PostgreSQL 15 + pgvector (SRS v2 §12.1)
   db:
@@ -66,7 +68,7 @@ services:
       CONNECTOR_MODE: ${CONNECTOR_MODE:-api}
       MOCK_POS_URL: ${MOCK_POS_URL:-http://mock-pos:8001}
       DEFAULT_MARKET: ${DEFAULT_MARKET:-DK}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3001,http://127.0.0.1:3001}
     depends_on:
       db:
         condition: service_healthy
@@ -87,7 +89,7 @@ services:
     container_name: sitedesk_frontend
     restart: always
     ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+      - "3001:3001"
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
       WATCHPACK_POLLING: "true" # hot reload through Windows/WSL bind mounts

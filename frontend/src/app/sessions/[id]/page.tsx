@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
-import { AlertTriangle, CheckCircle2, Download, FileText, FilePlus2, FileSignature, ListChecks, ScanLine, UserRound } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, FileText, FilePlus2, FileSignature, ListChecks, ScanLine, Search, UserRound } from "lucide-react";
 import { api, ApiError, fileUrl, fmtMoney, type Customer, type SessionView } from "@/client/api";
 import { useI18n } from "@/client/i18n";
 import LinePanel from "@/components/pos/LinePanel";
@@ -37,7 +37,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
       setClientId((c) => c || v.client_id || "");
       if (!opened.current) {
         opened.current = true;
-        if (v.analyzed && !v.locked) setSelected(v.blockers[0]?.line_no ?? null);
+        if (v.analyzed && !v.locked) setSelected(v.blockers[0]?.line_no ?? v.lines.find((l) => !l.final_sku || l.match.band !== "HIGH")?.line_no ?? v.lines[0]?.line_no ?? null);
       }
     } catch (e) {
       setError(e instanceof ApiError ? e.message : String(e));
@@ -74,7 +74,6 @@ export default function SessionPage({ params }: { params: { id: string } }) {
   const walkIn = customers.find((c) => c.customer_type === "B2C_WalkIn")?.client_id;
   const effectiveClient = clientId || walkIn || "";
   const canConfirmQuote = !s.quote || s.quote.status === "PREPARING";
-  const tm = s.stage_timings_ms;
   const line = s.lines.find((l) => l.line_no === selected) || null;
   const blockerNos = s.blockers.map((b) => b.line_no);
   const showSource = sourceOpen ?? !s.analyzed;
@@ -83,6 +82,9 @@ export default function SessionPage({ params }: { params: { id: string } }) {
   const total = amounts.reduce<number>((sum, a) => sum + (a ?? 0), 0);
   const unpriced = amounts.filter((a) => a == null).length;
   const currency = s.lines.find((l) => l.currency)?.currency || "DKK";
+  const matchedCount = s.lines.filter((l) => !!l.final_sku).length;
+  const stockAlertCount = s.lines.filter((l) => l.stock.status === "PARTIAL" || l.stock.status === "OUT_OF_STOCK").length;
+  const manualLine = s.blockers[0]?.line_no ?? s.lines.find((l) => !l.final_sku)?.line_no ?? s.lines[0]?.line_no ?? null;
 
   // A resolved line hands over to the next one, so the associate never hunts for what is left.
   const onLineChange = (v: SessionView) => {
@@ -101,7 +103,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
     act("analyze", async () => {
       const v = await api<SessionView>(`/sessions/${s.session_id}/analyze`, { method: "POST", json: { language_hint: "DA" } });
       setS(v);
-      setSelected(v.blockers[0]?.line_no ?? null);
+      setSelected(v.blockers[0]?.line_no ?? v.lines.find((l) => !l.final_sku || l.match.band !== "HIGH")?.line_no ?? v.lines[0]?.line_no ?? null);
     });
 
   const confirm = () =>
@@ -131,17 +133,15 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                   {s.order_session_id} <StatePill status={s.status} />
                 </h1>
               </div>
-              {s.analyzed && typeof tm.total_ms === "number" && (
-                <div className="ml-auto text-right text-xs soft tabular" title={t("measured_title")}>
-                  {t("analyzed_n", { n: tm.lines as number })}: <b className="text-[var(--ink)]">{((tm.total_ms as number) / 1000).toFixed(2)} s</b>
-                  <div>
-                    {t("t_match")} {String(tm.match_ms)}ms, {t("t_stock")} {String(tm.stock_ms)}ms, {t("t_rules")} {String(tm.rules_convert_alternatives_ms)}ms
-                    {Number(tm.llm_calls) > 0 && `, ${t("t_llm")} ${tm.llm_ms}ms (${tm.llm_calls})`}
-                  </div>
-                </div>
-              )}
             </div>
             <Stepper analyzed={s.analyzed} locked={s.locked} blockers={s.blockers.length} />
+            {s.analyzed && (
+              <div className="flow-summary" aria-label={t("review_summary")}>
+                <FlowMetric label={t("metric_skus")} value={`${matchedCount}/${s.lines.length}`} />
+                <FlowMetric label={t("metric_attention")} value={s.blockers.length} tone={s.blockers.length ? "warn" : "good"} />
+                <FlowMetric label={t("metric_stock_alerts")} value={stockAlertCount} tone={stockAlertCount ? "warn" : "good"} />
+              </div>
+            )}
           </div>
 
           {(s.ai_degraded || s.lines.some((l) => l.stock.status === "UNKNOWN") || error) && (
@@ -174,7 +174,6 @@ export default function SessionPage({ params }: { params: { id: string } }) {
 
           <TicketLines session={s} selected={selected} onSelect={setSelected} />
           <p className="paper-foot">{t("table_foot")}</p>
-          <p className="px-[18px] pb-3 text-xs soft">{t("kbd_hint")}</p>
         </div>
       }
       rail={
@@ -186,6 +185,11 @@ export default function SessionPage({ params }: { params: { id: string } }) {
             sub={s.analyzed ? (unpriced ? `${t("vfd_list_total")}, ${t("vfd_unpriced", { n: unpriced })}` : t("vfd_list_total")) : undefined}
           />
           <div className="pos-screen">
+            {s.analyzed && s.ai_degraded && !line && manualLine != null && (
+              <PosKey tone="nav" icon={<Search size={17} />} onClick={() => setSelected(manualLine)} className="mb-3 w-full">
+                {t("manual_fallback_action")}
+              </PosKey>
+            )}
             {line ? (
               <LinePanel key={line.line_id} session={s} line={line} onChange={onLineChange} onClose={() => setSelected(null)} />
             ) : s.locked ? (
@@ -300,6 +304,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
 
 function Stepper({ analyzed, locked, blockers }: { analyzed: boolean; locked: boolean; blockers: number }) {
   const { t } = useI18n();
+  const current = locked ? 3 : !analyzed ? 1 : blockers > 0 ? 2 : 3;
   const steps = [
     { label: t("step_received"), done: true },
     { label: t("step_read"), done: analyzed },
@@ -309,12 +314,21 @@ function Stepper({ analyzed, locked, blockers }: { analyzed: boolean; locked: bo
   return (
     <ol className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
       {steps.map((st, i) => (
-        <li key={i} className={clsx("flex items-center gap-1.5", st.done ? "font-semibold" : "soft")}>
+        <li key={i} aria-current={i === current ? "step" : undefined} className={clsx("flex items-center gap-1.5 rounded-full px-2 py-1", st.done ? "font-semibold" : "soft", i === current && "bg-blue-50 text-blue-950 ring-1 ring-blue-200")}>
           <span className={clsx("lamp", st.done && "lamp--ok")} aria-hidden />
           {i + 1}. {st.label}
         </li>
       ))}
     </ol>
+  );
+}
+
+function FlowMetric({ label, value, tone = "default" }: { label: string; value: React.ReactNode; tone?: "default" | "warn" | "good" }) {
+  return (
+    <div className={clsx("flow-metric", tone === "warn" && "flow-metric--warn", tone === "good" && "flow-metric--good")}>
+      <span className="flow-metric-value tabular">{value}</span>
+      <span className="flow-metric-label">{label}</span>
+    </div>
   );
 }
 

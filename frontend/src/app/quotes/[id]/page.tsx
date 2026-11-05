@@ -64,6 +64,15 @@ export default function QuoteDetailPage({ params }: { params: { id: string } }) 
   const changedCount = q.lines.filter((l) => l.changed_fields.length).length;
   const shortCount = q.lines.filter((l) => l.alternative_required).length;
   const blockers = q.lines.filter((l) => l.current_line?.line_status === "SUBSTITUTE_PROPOSED" || l.current_line?.line_status === "NEEDS_CLARIFICATION").length;
+  const activeStep = ["EXPIRED", "CANCELLED"].includes(q.status)
+    ? null
+    : q.status === "CONFIRMED" || q.status === "PREPARING"
+      ? "CONFIRMED"
+      : q.customer_confirmed_at
+        ? "PREPARING"
+        : q.status === "SENT"
+          ? "CUST"
+          : "SENT";
 
   const cancel = () => {
     if (!cancelKey.armed) return cancelKey.arm();
@@ -212,7 +221,7 @@ export default function QuoteDetailPage({ params }: { params: { id: string } }) 
           <div className="pos-screen space-y-3">
             <ol className="grid gap-1" aria-label={t("flow_steps")}>
               {FLOW.map((k) => (
-                <li key={k} className={clsx("flex items-center gap-2", reached(k) ? "font-semibold" : "soft")}>
+                <li key={k} aria-current={k === activeStep ? "step" : undefined} className={clsx("flex items-center gap-2 rounded px-1.5 py-0.5", reached(k) ? "font-semibold" : "soft", k === activeStep && "bg-blue-50 text-blue-950 ring-1 ring-blue-200")}>
                   <span className={clsx("lamp", reached(k) && "lamp--ok")} aria-hidden />
                   {t(`qf_${k}` as Key)}
                 </li>
@@ -225,6 +234,14 @@ export default function QuoteDetailPage({ params }: { params: { id: string } }) 
               </Notice>
             )}
             {notice && <Notice tone="good">{notice}</Notice>}
+
+            {(secondary || primary) && (
+              <section className="space-y-2 border-y border-[var(--rule)] py-3" aria-labelledby="next-step-heading">
+                <h2 id="next-step-heading" className="text-sm font-semibold">{t("next_step")}</h2>
+                {primary && <div className="[&>.key]:w-full">{primary}</div>}
+                {secondary && <div className="[&>.key]:w-full">{secondary}</div>}
+              </section>
+            )}
 
             {can("RECORD_CUSTOMER_CONFIRMATION") && (
               <div role="group" aria-label={t("cust_conf_via")}>
@@ -273,8 +290,6 @@ export default function QuoteDetailPage({ params }: { params: { id: string } }) 
                 {cancelKey.armed ? t("key_again") : t("cancel_quote")}
               </PosKey>
             ) : null,
-            secondary,
-            primary,
           ]}
         />
       }

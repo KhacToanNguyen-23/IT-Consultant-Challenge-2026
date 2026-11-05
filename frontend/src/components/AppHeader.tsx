@@ -4,13 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import clsx from "clsx";
+import { Activity, ChevronDown, ClipboardList, FileText, FlaskConical, UserRound } from "lucide-react";
 import { api, type Health } from "@/client/api";
-import { useI18n, type Lang } from "@/client/i18n";
+import { useI18n } from "@/client/i18n";
 import { PosKey } from "@/components/pos/Terminal";
 
 export default function AppHeader() {
   const path = usePathname();
-  const { t, lang, setLang } = useI18n();
+  const { t } = useI18n();
   const [health, setHealth] = useState<Health | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -41,42 +42,55 @@ export default function AppHeader() {
     }
   };
 
-  const onCounter = path === "/" || path.startsWith("/sessions");
+  const onCounter = path === "/" || path.startsWith("/sessions/");
+  const onQuotes = path === "/quotes" || path.startsWith("/quotes/");
 
   return (
-    <header className="pos-status print:hidden">
-      <Link href="/" className="pos-brand">
-        SiteDesk
-      </Link>
-      <nav className="flex gap-2" aria-label={t("flow_label")}>
-        <PosKey size="sm" hotkey="F1" href="/" tone={onCounter ? "on" : "std"} current={onCounter} className="w-28">
-          {t("nav_counter")}
-        </PosKey>
-        <PosKey size="sm" hotkey="F2" href="/quotes" tone={onCounter ? "std" : "on"} current={!onCounter} className="w-28">
-          {t("nav_quotes")}
-        </PosKey>
-      </nav>
+    <>
+      <aside className="pos-sidebar print:hidden">
+        <Link href="/" className="sidebar-brand" aria-label="SiteDesk home">
+          <span className="sidebar-mark">SD</span>
+          <span className="sidebar-brand-name">SiteDesk</span>
+        </Link>
+        <span className="sidebar-section-label">WORKSPACE</span>
+        <nav className="sidebar-nav" aria-label={t("flow_label")}>
+          <PosKey size="sm" hotkey="F1" href="/" tone={onCounter ? "on" : "std"} current={onCounter} ariaLabel={t("nav_counter")} icon={<ClipboardList size={18} />} className="side-nav-link">
+            <span className="sidebar-link-text">{t("nav_counter")}</span>
+          </PosKey>
+          <PosKey size="sm" hotkey="F2" href="/quotes" tone={onQuotes ? "on" : "std"} current={onQuotes} ariaLabel={t("nav_quotes")} icon={<FileText size={18} />} className="side-nav-link">
+            <span className="sidebar-link-text">{t("nav_quotes")}</span>
+          </PosKey>
+        </nav>
 
-      <div className="pos-status-tools ml-auto flex min-w-0 flex-wrap items-center gap-2">
-        <span className="pos-operator text-[var(--case-ink-soft)]" title={t("mock_login_title")}>
-          EMP-1042, {t("store_terminal")} DK-CPH-04, <i>{t("mock_login")}</i>
-        </span>
-        <FailToggle label={t("ai_fail")} title={t("demo_toggle")} on={!!health?.ai_fail_mode} disabled={busy || !health} onClick={() => toggle("ai")} />
-        <FailToggle label={t("pos_fail")} title={t("demo_toggle")} on={!!health?.pos_fail_mode} disabled={busy || !health} onClick={() => toggle("pos")} />
-        <span className="inline-flex items-center gap-1.5 font-semibold">
-          <span className={clsx("lamp", !health ? "lamp--bad" : health.status === "healthy" ? "lamp--ok" : "lamp--warn")} aria-hidden />
-          <span className="pos-health-text">{!health ? t("api_offline") : health.status === "healthy" ? t("system_ok") : t("degraded")}</span>
-        </span>
-        <Clock />
-        <div role="group" aria-label={t("lang_switch")} className="flex gap-1">
-          {(["en", "vi"] as Lang[]).map((l) => (
-            <button key={l} type="button" aria-pressed={lang === l} onClick={() => setLang(l)} className={clsx("pos-switch uppercase", lang === l && "!bg-[var(--vfd)] !text-[var(--vfd-bg)]")}>
-              {l}
-            </button>
-          ))}
+        <div className="sidebar-spacer" />
+        <div className="sidebar-store"><span className="lamp lamp--ok" aria-hidden /> DK-CPH-04</div>
+        <div className="sidebar-footer">
+          <details className="demo-menu sidebar-demo">
+            <summary className="sidebar-tool cursor-pointer list-none" aria-label={t("demo_menu")}>
+              <FlaskConical size={17} aria-hidden /> <span className="sidebar-link-text">{t("demo_menu")}</span> <ChevronDown className="sidebar-chevron" size={14} aria-hidden />
+            </summary>
+            <div className="demo-menu-panel">
+              <FailToggle label={t("ai_fail")} title={t("demo_toggle")} on={!!health?.ai_fail_mode} disabled={busy || !health} onClick={() => toggle("ai")} />
+              <FailToggle label={t("pos_fail")} title={t("demo_toggle")} on={!!health?.pos_fail_mode} disabled={busy || !health} onClick={() => toggle("pos")} />
+            </div>
+          </details>
+          <Link href="/login" className="sidebar-operator" title={t("mock_login_title")} aria-label={`${t("mock_login_title")}: EMP-1042`}>
+            <UserRound size={17} aria-hidden /> <span className="sidebar-link-text">EMP-1042</span>
+          </Link>
         </div>
-      </div>
-    </header>
+      </aside>
+
+      <header className="pos-topbar print:hidden">
+        <div className="topbar-location"><span className="topbar-location-dot" /> {t("store_terminal")} <span className="topbar-divider">/</span> DK-CPH-04</div>
+        <div className="topbar-status">
+          <span className="inline-flex items-center gap-2 font-semibold">
+            <span className={clsx("lamp", !health ? "lamp--bad" : health.status === "healthy" ? "lamp--ok" : "lamp--warn")} aria-hidden />
+            <span>{!health ? t("api_offline") : health.status === "healthy" ? t("system_ok") : t("degraded")}</span>
+          </span>
+          <Clock />
+        </div>
+      </header>
+    </>
   );
 }
 

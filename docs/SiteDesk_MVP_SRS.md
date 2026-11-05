@@ -136,7 +136,7 @@ Hai luồng: **At-Counter** (UC1 → UC4 → UC2 → UC3) và **Pre-order / Adva
 
 | Container | Công nghệ/cổng | Trách nhiệm |
 |---|---|---|
-| Web | Next.js 14/TypeScript/Tailwind, `:3000` | Login mock, intake, review, quote/print |
+| Web | Next.js 14/TypeScript/Tailwind, `:3001` | Login mock, intake, review, quote/print |
 | Core API | FastAPI, `:8000` | Parser, PII, AI Gateway, matching, conversion, alternatives, connector, telemetry |
 | DB | PostgreSQL 15 + pgvector, `:5432` | Catalog/vector/session/quote/dictionary/audit |
 | mock-pos | FastAPI, giả định `:8001` | **Simulated** POS/ERP/PIM/WMS, price/order, `FAIL_MODE` |
@@ -694,7 +694,7 @@ Chip emerald=khớp điều khách viết; slate=khách không nêu; red=lệch.
 
 | ID | Yêu cầu | Ưu tiên | Trace | Tiêu chí chấp nhận |
 |---|---|---:|---|---|
-| MVP-NFR-001 | Zero-install browser, Compose, stack chốt. | P0 | NFR-01 | Máy chỉ có Docker chạy command; Chrome/Edge mở :3000. |
+| MVP-NFR-001 | Zero-install browser, Compose, stack chốt. | P0 | NFR-01 | Máy chỉ có Docker chạy command; Chrome/Edge mở :3001. |
 | MVP-NFR-002 | Email và điện thoại được regex-mask trước AI; tên/địa chỉ/PII khác chưa được đảm bảo loại bỏ. EU/EEA là production target, chưa phải thuộc tính demo. | P0 | NFR-02 | Spy xác nhận email/phone fixture không tới provider; demo không claim đã che toàn bộ PII hoặc claim region; mock login không được trình bày như SSO thật. |
 | MVP-NFR-003 | 20-line analyze ≤3.0s sau warm-up. | P0 | NFR-03 | p95 ≥20 runs: extract/mask .35s, parse .45s, embed/retrieve .80s, rules/convert .45s, stock .35s, serialize/network .30s, contingency buffer .30s. Đây là target giả định; external LLM ngoài guarantee. |
 | MVP-NFR-004 | Keyboard UI; onboarding target 5 phút. | P1 | NFR-04 | Scripted task không chuột + accessibility no-critical; 5-minute chỉ claim sau user test. |
@@ -702,7 +702,7 @@ Chip emerald=khớp điều khách viết; slate=khách không nêu; red=lệch.
 | MVP-NFR-006 | AI manual fallback, POS CSV, stock timestamp. | P0 | NFR-06 | Fault E2E: Confirm under AI fail; CSV under POS fail; timestamp mọi stock. |
 | MVP-NFR-007 | Provider/country modularity. | P0 | NFR-07 | Fake provider tests; LLM env-only; market Connector/config; language phải re-evaluate. |
 
-Reliability/security: Confirm transaction + unique key; mock timeout giả định 2s/one retry (OI-07); magic bytes/content type; CORS allow `localhost:3000` thay `*`; HttpOnly/SameSite=Lax; structured logs redact secrets.
+Reliability/security: Confirm transaction + unique key; mock timeout giả định 2s/one retry (OI-07); magic bytes/content type; CORS allow `localhost:3001` thay `*`; HttpOnly/SameSite=Lax; structured logs redact secrets.
 
 ---
 

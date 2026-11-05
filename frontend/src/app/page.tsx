@@ -2,36 +2,12 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { ClipboardList, Eraser, FileUp, Mail, ScanLine, Sparkles } from "lucide-react";
+import { BadgeCheck, ClipboardList, Eraser, FileUp, Mail, PackageCheck, ScanLine, Sparkles, X } from "lucide-react";
 import { api, ApiError } from "@/client/api";
 import { useI18n } from "@/client/i18n";
 import { Notice, PosKey, SoftKeys, Terminal, Vfd } from "@/components/pos/Terminal";
 
 type Mode = "counter" | "email";
-
-// Customer content stays in the customer's language (Danish) in both UI languages
-const SAMPLE_COUNTER = `Timber 45x95 C24 - 120 m
-45x95 C18 - 30 stk
-Regel 45x95 - 20 stk
-Rockwool FlexiBatts 95mm - 15 pk
-Gips vådrum 12.5mm - 10 plader
-Isolering 95mm 60 m2
-Murmørtel 25kg - 5 sække
-Terrassebræt 28x120 trykimp 10 x 4.2m`;
-
-const SAMPLE_EMAIL = `Fra: kunde@byg-firma.dk
-Emne: Tilbud til projekt Valby
-
-Hej, kan I give et tilbud på følgende til levering næste uge?
-Ring gerne på +45 22 33 44 55.
-
-Timber 45x95 C24 - 120 m
-Rockwool FlexiBatts 95mm - 15 pk
-Gips vådrum 12.5mm - 10 plader
-Terrassebræt 28x120 trykimp 10 x 4.2m
-
-Mvh
-Jens`;
 
 // useSearchParams needs a Suspense boundary for the production build
 export default function IntakeRoute() {
@@ -97,52 +73,77 @@ function IntakePage() {
         <div className="paper flex min-h-full flex-col">
           <div className="paper-head">
             <h1 className="paper-title">{t("intake_title")}</h1>
-            <p className="mt-1 text-sm soft">{t("intake_sub")}</p>
           </div>
-          <label htmlFor="intake" className="px-[18px] pt-3 text-base font-semibold">
-            {isEmail ? t("paste_email") : t("paste_list")}
-          </label>
-          <textarea
-            id="intake"
-            value={text}
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".pdf,.xlsx,.csv,.txt"
+            className="hidden"
             onChange={(e) => {
-              setText(e.target.value);
-              if (e.target.value) setFile(null);
+              const f = e.target.files?.[0] || null;
+              setFile(f);
+              if (f) setText("");
             }}
-            rows={14}
-            placeholder={isEmail ? "Fra: ...\nHej, ...\nTimber 45x95 C24 - 120 m\n..." : "Timber 45x95 C24 - 120 m\nRockwool FlexiBatts 95mm - 15 pk\n..."}
-            className="font-mono mt-1 w-full flex-1 resize-none bg-transparent px-[18px] py-2 text-[15px] leading-7 placeholder:text-slate-400"
           />
+          <div className="flex flex-wrap items-center justify-between gap-2 px-[18px] pt-3">
+            {file ? (
+              <span className="text-base font-semibold">{t("selected_file")}</span>
+            ) : (
+              <div className="min-w-0">
+                <label htmlFor="intake" className="block text-base font-semibold">
+                  {isEmail ? t("paste_email") : t("paste_list")}
+                </label>
+                {!isEmail && <p className="mt-0.5 text-xs soft">{t("unstructured_input_hint")}</p>}
+              </div>
+            )}
+            {!isEmail && (
+              <PosKey hotkey="F6" size="sm" tone="nav" icon={<FileUp size={16} />} onClick={() => fileRef.current?.click()} className="intake-upload-button !min-h-10">
+                {t("key_file")}
+              </PosKey>
+            )}
+          </div>
+          {file ? (
+            <div className="m-[18px] flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4" role="status">
+              <FileUp size={20} className="flex-none text-blue-800" aria-hidden />
+              <span className="min-w-0 flex-1 break-all font-medium">{file.name}</span>
+              <button type="button" className="key key--sm flex-none" onClick={() => { setFile(null); if (fileRef.current) fileRef.current.value = ""; }}>
+                <X size={15} aria-hidden /> {t("key_remove")}
+              </button>
+            </div>
+          ) : (
+            <textarea
+              id="intake"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              rows={14}
+              placeholder={isEmail ? "Paste the customer's e-mail here…" : "Paste or type a material list here…"}
+              className="font-mono mt-1 w-full flex-1 resize-none bg-transparent px-[18px] py-2 text-[15px] leading-7 placeholder:text-slate-400"
+            />
+          )}
         </div>
       }
       rail={
         <>
           <Vfd top={file ? t("vfd_file") : lineCount ? t("vfd_reading") : t("vfd_ready")} main={file ? "1" : lineCount} sub={file?.name} />
           <div className="pos-screen space-y-3">
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".pdf,.xlsx,.csv,.txt"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0] || null;
-                setFile(f);
-                if (f) setText("");
-              }}
-            />
             <div role="tablist" aria-label={t("flow_label")} className="grid gap-2">
-              <FlowTile active={!isEmail} onClick={() => setMode("counter")} icon={<ClipboardList size={20} />} title={t("mode_counter")} sub={t("mode_counter_sub")} />
-              <FlowTile active={isEmail} onClick={() => setMode("email")} icon={<Mail size={20} />} title={t("mode_email")} sub={t("mode_email_sub")} />
+              <FlowTile active={!isEmail} onClick={() => setMode("counter")} icon={<ClipboardList size={20} />} title={t("mode_counter")} />
+              <FlowTile active={isEmail} onClick={() => setMode("email")} icon={<Mail size={20} />} title={t("mode_email")} />
             </div>
+            {!isEmail && (
+              <div className="intake-journey">
+                <h2 className="intake-journey-title">{t("journey_title")}</h2>
+                <JourneyStep icon={<Sparkles size={17} />} title={t("journey_match")} detail={t("journey_match_detail")} />
+                <JourneyStep icon={<PackageCheck size={17} />} title={t("journey_stock")} detail={t("journey_stock_detail")} />
+                <JourneyStep icon={<BadgeCheck size={17} />} title={t("journey_confirm")} detail={t("journey_confirm_detail")} last />
+              </div>
+            )}
             {error && (
               <Notice tone="bad" alert>
                 {error}
               </Notice>
             )}
-            <ul className="screen-note list-disc space-y-1.5 pl-4">
-              <li>{t("intake_hint_pdf")}</li>
-              <li>{t("intake_hint_pii")}</li>
-            </ul>
+            <p className="screen-note">PDF text only · Max 5 MB · E-mail/phone masked. Names and addresses may remain.</p>
           </div>
         </>
       }
@@ -152,22 +153,6 @@ function IntakePage() {
             <PosKey key="clear" hotkey="F3" tone="void" icon={<Eraser size={17} />} onClick={clear} disabled={!text && !file}>
               {t("key_clear")}
             </PosKey>,
-            <PosKey
-              key="sample"
-              hotkey="F4"
-              icon={<Sparkles size={17} />}
-              onClick={() => {
-                setFile(null);
-                setText(isEmail ? SAMPLE_EMAIL : SAMPLE_COUNTER);
-              }}
-            >
-              {t("key_sample")}
-            </PosKey>,
-            <PosKey key="file" hotkey="F6" icon={<FileUp size={17} />} onClick={() => fileRef.current?.click()} disabled={isEmail}>
-              {t("key_file")}
-            </PosKey>,
-            null,
-            null,
             <PosKey key="read" hotkey="F9" tone="go" icon={<ScanLine size={18} />} onClick={submit} busy={busy} disabled={busy}>
               {t("read_list")}
             </PosKey>,
@@ -178,14 +163,25 @@ function IntakePage() {
   );
 }
 
-function FlowTile({ active, onClick, icon, title, sub }: { active: boolean; onClick: () => void; icon: React.ReactNode; title: string; sub: string }) {
+function FlowTile({ active, onClick, icon, title }: { active: boolean; onClick: () => void; icon: React.ReactNode; title: string }) {
   return (
     <button type="button" role="tab" aria-selected={active} aria-pressed={active} onClick={onClick} className="tile flex items-start gap-3">
       <span className="mt-0.5 flex-none">{icon}</span>
       <span>
-        <span className="block font-[family-name:var(--font-key)] text-xl font-bold leading-tight">{title}</span>
-        <span className="block text-sm soft">{sub}</span>
+        <span className="block font-[family-name:var(--font-key)] text-lg font-semibold leading-tight">{title}</span>
       </span>
     </button>
+  );
+}
+
+function JourneyStep({ icon, title, detail, last }: { icon: React.ReactNode; title: string; detail: string; last?: boolean }) {
+  return (
+    <div className={`intake-journey-step${last ? " intake-journey-step--last" : ""}`}>
+      <span className="intake-journey-icon" aria-hidden>{icon}</span>
+      <span className="min-w-0">
+        <span className="block font-semibold">{title}</span>
+        <span className="block text-xs soft">{detail}</span>
+      </span>
+    </div>
   );
 }

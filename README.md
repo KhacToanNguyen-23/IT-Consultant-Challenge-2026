@@ -33,7 +33,7 @@ docker compose up --build
 ```
 
 ### 3. Địa chỉ truy cập
-* 🌐 **Frontend (Web Counter UI):** [http://localhost:3000](http://localhost:3000)
+* 🌐 **Frontend (Web Counter UI):** [http://localhost:3001/login](http://localhost:3001/login)
 * ⚡ **Backend API & Swagger Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
 * 🧪 **mock-pos [simulated] POS/ERP:** [http://localhost:8001/docs](http://localhost:8001/docs)
 * 🗄️ **PostgreSQL Database:** `localhost:5432` (`user: postgres`, `password: password123`, `db: sitedesk_db`)

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect } from "react";
 
 export type Lang = "en" | "vi";
 
@@ -14,12 +14,19 @@ const D = {
   nav_quotes: { en: "Quotes", vi: "Báo giá" },
   mock_login: { en: "mock login (simulated)", vi: "mock login (simulated)" },
   mock_login_title: { en: "Mock login — not a real SSO", vi: "Mock login — không phải SSO thật" },
+  login_title: { en: "Counter sign-in", vi: "Đăng nhập tại quầy" },
+  login_sub: { en: "SiteDesk is a web second screen for the counter associate. POS, ERP and SSO connections are simulated in this demo.", vi: "SiteDesk là màn hình web hỗ trợ nhân viên tại quầy. Kết nối POS, ERP và SSO được mô phỏng trong bản demo." },
+  login_mock_sso: { en: "Mock SSO · no password", vi: "Mock SSO · không cần mật khẩu" },
+  login_operator: { en: "Counter associate", vi: "Nhân viên tại quầy" },
+  login_continue: { en: "Continue to counter", vi: "Tiếp tục vào quầy" },
+  login_idle: { en: "Demo session only. Do not enter real customer credentials.", vi: "Chỉ dùng phiên demo. Không nhập thông tin đăng nhập thật của khách hàng." },
   api_offline: { en: "API offline", vi: "API offline" },
   system_ok: { en: "System OK", vi: "Hệ thống OK" },
   degraded: { en: "Degraded", vi: "Degraded" },
   ai_fail: { en: "AI fail", vi: "AI fail" },
   pos_fail: { en: "POS fail", vi: "POS fail" },
   demo_toggle: { en: "Demo toggle (MVP-FR-033)", vi: "Công tắc demo (MVP-FR-033)" },
+  demo_menu: { en: "Demo", vi: "Demo" },
   lang_switch: { en: "Language", vi: "Ngôn ngữ" },
   // intake
   intake_title: { en: "Receive material list", vi: "Nhận danh sách vật tư" },
@@ -33,7 +40,8 @@ const D = {
   mode_email: { en: "E-mail quote", vi: "Email báo giá" },
   mode_email_sub: { en: "Flow 2 · paste customer e-mail → save quote", vi: "Luồng 2 · dán email khách → lưu báo giá" },
   paste_email: { en: "Paste the customer's e-mail", vi: "Dán nội dung email của khách" },
-  paste_list: { en: "Paste the list (one material per line)", vi: "Dán danh sách (mỗi dòng một vật tư)" },
+  paste_list: { en: "Paste a customer list or notes", vi: "Dán danh sách hoặc ghi chú của khách" },
+  unstructured_input_hint: { en: "No fixed template. Unreadable items stay flagged for review.", vi: "Không cần mẫu cố định. Dòng không đọc được vẫn được giữ để rà soát." },
   intake_hint_pdf: {
     en: "PDF must contain text (scanned image PDFs are not supported — paste or type instead). Max 5 MB, 1 file.",
     vi: "PDF phải có text (PDF scan ảnh không được hỗ trợ — hãy dán hoặc gõ lại). Tối đa 5 MB, 1 file.",
@@ -54,6 +62,17 @@ const D = {
   step_confirm: { en: "Confirm", vi: "Confirm" },
   measured_title: { en: "Real timing measured by the backend (FR-030)", vi: "Thời gian đo thật từ backend (FR-030)" },
   analyzed_n: { en: "Analyzed {n} lines", vi: "Phân tích {n} dòng" },
+  analysis_time: { en: "Analysis {time}s", vi: "Phân tích {time}s" },
+  analysis_time_title: { en: "System processing time, not total staff handling time", vi: "Thời gian xử lý của hệ thống, không phải tổng thời gian thao tác" },
+  review_summary: { en: "List review summary", vi: "Tóm tắt rà soát danh sách" },
+  metric_skus: { en: "SKU matched", vi: "SKU đã khớp" },
+  metric_attention: { en: "Need a decision", vi: "Cần xử lý" },
+  metric_stock_alerts: { en: "Stock alerts", vi: "Cảnh báo tồn" },
+  manual_fallback_action: { en: "Search SKU manually", vi: "Tìm SKU thủ công" },
+  customer_wrote: { en: "Customer wrote", vi: "Khách yêu cầu" },
+  matched_product: { en: "SiteDesk matched", vi: "SiteDesk đã khớp" },
+  ai_match_mode: { en: "AI-assisted SKU match · specs checked", vi: "AI khớp SKU · đã kiểm tra thông số" },
+  rules_fallback_mode: { en: "Rules-only · manual SKU search", vi: "Chế độ quy tắc · tìm SKU thủ công" },
   t_match: { en: "match", vi: "match" },
   t_stock: { en: "stock", vi: "tồn" },
   t_rules: { en: "rules", vi: "quy tắc" },
@@ -116,7 +135,7 @@ const D = {
   no_sku: { en: "No SKU yet", vi: "Chưa có SKU" },
   updated: { en: "updated {time}", vi: "cập nhật {time}" },
   table_foot: {
-    en: "On-hand reference stock — confirm before promising delivery. Match score is a ranking score [0–1], not a probability.",
+    en: "Stock is a reference. Confirm availability before promising delivery.",
     vi: "Tồn tham khảo (on-hand), cần xác nhận trước khi hứa hàng. Match score là điểm xếp hạng [0–1], không phải xác suất.",
   },
   act_manual: { en: "Enter manually / search SKU", vi: "Nhập tay / tìm SKU" },
@@ -199,11 +218,8 @@ const D = {
   u_bag: { en: "bags", vi: "bao" },
   u_board: { en: "boards", vi: "tấm" },
   // quotes list
-  quotes_title: { en: "Quotes (Pre-order / Advance Quote)", vi: "Báo giá (Pre-order / Advance Quote)" },
-  quotes_sub: {
-    en: "Flow 2 · exact quote ID lookup. Expired quotes are updated when opened (no background job).",
-    vi: "Luồng 2 · tra cứu đúng mã báo giá. Báo giá hết hạn được cập nhật khi mở (không chạy nền).",
-  },
+  quotes_title: { en: "Quotes", vi: "Báo giá" },
+  quotes_sub: { en: "", vi: "" },
   quote_id_ph: { en: "Quote ID, e.g. BG-DK-0457", vi: "Mã báo giá, vd. BG-DK-0457" },
   all_statuses: { en: "All statuses", vi: "Tất cả trạng thái" },
   col_id: { en: "ID", vi: "Mã" },
@@ -211,12 +227,12 @@ const D = {
   col_created: { en: "Created", vi: "Tạo lúc" },
   yes: { en: "✓ yes", vi: "✓ có" },
   no_quotes: {
-    en: "No quotes yet. Paste a customer e-mail in “E-mail quote”, analyze, then click “Save quote”.",
-    vi: "Chưa có báo giá. Dán email khách ở màn hình “Email báo giá”, phân tích rồi bấm “Lưu báo giá”.",
+    en: "No quotes found.",
+    vi: "Không có báo giá.",
   },
   // quote detail
   back_quotes: { en: "Quote list", vi: "Danh sách báo giá" },
-  flow2_short: { en: "Flow 2 · Pre-order / Advance Quote", vi: "Luồng 2 · Pre-order / Advance Quote" },
+  flow2_short: { en: "Flow 2", vi: "Luồng 2" },
   qf_SAVED: { en: "Saved", vi: "Đã lưu" },
   qf_SENT: { en: "Sent to customer", vi: "Đã gửi khách" },
   qf_CUST: { en: "Customer confirmed", vi: "Khách xác nhận" },
@@ -285,7 +301,16 @@ const D = {
   loading: { en: "Loading", vi: "Đang tải" },
   key_clear: { en: "Clear", vi: "Xoá" },
   key_sample: { en: "Sample", vi: "Dữ liệu mẫu" },
-  key_file: { en: "Open file", vi: "Mở file" },
+  key_file: { en: "Upload file", vi: "Tải file lên" },
+  key_remove: { en: "Remove", vi: "Xóa" },
+  selected_file: { en: "Selected file", vi: "Tệp đã chọn" },
+  journey_title: { en: "From customer list to POS order", vi: "Từ danh sách khách đến đơn POS" },
+  journey_match: { en: "Find the right products", vi: "Tìm đúng sản phẩm" },
+  journey_match_detail: { en: "AI matches SKUs; product rules check specs.", vi: "AI tìm SKU; quy tắc kiểm tra thông số." },
+  journey_stock: { en: "Convert units and check stock", vi: "Quy đổi đơn vị và kiểm tra tồn" },
+  journey_stock_detail: { en: "Flag shortages; offer safe alternatives.", vi: "Báo thiếu hàng; đề xuất thay thế phù hợp." },
+  journey_confirm: { en: "Customer approves; staff confirms", vi: "Khách chấp thuận; nhân viên Confirm" },
+  journey_confirm_detail: { en: "Send the approved order to POS; CSV if offline.", vi: "Gửi đơn đã duyệt vào POS; dùng CSV nếu mất kết nối." },
   key_next_issue: { en: "Next issue", vi: "Dòng tiếp theo" },
   key_order: { en: "Customer", vi: "Khách hàng" },
   key_close: { en: "Close", vi: "Đóng" },
@@ -300,16 +325,18 @@ const D = {
   tab_resolve: { en: "Resolve", vi: "Xử lý" },
   tab_edit: { en: "Edit line", vi: "Sửa dòng" },
   tab_search: { en: "Find SKU", vi: "Tìm SKU" },
+  manual_search_title: { en: "Find SKU in catalog", vi: "Tìm SKU trong catalog" },
   group_attention: { en: "Needs a look ({n})", vi: "Cần xem ({n})" },
   group_ok: { en: "Matched ({n})", vi: "Đã khớp ({n})" },
   col_amount: { en: "List amount", vi: "Thành tiền" },
-  col_product: { en: "Product / customer wrote", vi: "Sản phẩm / khách ghi" },
+  col_product: { en: "Product / SKU", vi: "Sản phẩm / SKU" },
   col_qty_sell: { en: "Qty → selling unit", vi: "SL → đơn vị bán" },
   col_check: { en: "Match & stock", vi: "Khớp & tồn" },
   line_ok_hint: { en: "Nothing to resolve on this line.", vi: "Dòng này không cần xử lý." },
   line_no_candidates: { en: "No SKU suggestion for this line. Edit the line or find a SKU.", vi: "Dòng này chưa có SKU gợi ý. Hãy sửa dòng hoặc tìm SKU." },
   backspace: { en: "Delete last digit", vi: "Xoá số cuối" },
   flow_steps: { en: "Quote progress", vi: "Tiến độ báo giá" },
+  next_step: { en: "Next step", vi: "Bước tiếp theo" },
   filter_status: { en: "Filter by status", vi: "Lọc theo trạng thái" },
   store_terminal: { en: "Terminal", vi: "Quầy" },
   network_error: { en: "Cannot reach the Core API (backend :8000)", vi: "Không kết nối được Core API (backend :8000)" },
@@ -327,46 +354,21 @@ export function translate(lang: Lang, key: Key, vars?: Record<string, string | n
 }
 
 interface Ctx {
-  lang: Lang;
-  setLang: (l: Lang) => void;
+  lang: "en";
   t: (key: Key, vars?: Record<string, string | number>) => string;
 }
 
-const I18nCtx = createContext<Ctx>({ lang: "en", setLang: () => {}, t: (k, v) => translate("en", k, v) });
+const I18nCtx = createContext<Ctx>({ lang: "en", t: (k, v) => translate("en", k, v) });
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Lang>("en");
-
   useEffect(() => {
-    let initial: Lang = navigator.language?.toLowerCase().startsWith("vi") ? "vi" : "en";
-    try {
-      const saved = localStorage.getItem("sitedesk.lang");
-      if (saved === "en" || saved === "vi") initial = saved;
-    } catch {
-      /* storage blocked — keep browser default */
-    }
-    currentLang = initial;
-    setLangState(initial);
+    currentLang = "en";
+    document.documentElement.lang = "en";
   }, []);
 
-  useEffect(() => {
-    currentLang = lang;
-    document.documentElement.lang = lang;
-  }, [lang]);
+  const t = useCallback((key: Key, vars?: Record<string, string | number>) => translate("en", key, vars), []);
 
-  const setLang = useCallback((l: Lang) => {
-    currentLang = l;
-    setLangState(l);
-    try {
-      localStorage.setItem("sitedesk.lang", l);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  const t = useCallback((key: Key, vars?: Record<string, string | number>) => translate(lang, key, vars), [lang]);
-
-  return <I18nCtx.Provider value={{ lang, setLang, t }}>{children}</I18nCtx.Provider>;
+  return <I18nCtx.Provider value={{ lang: "en", t }}>{children}</I18nCtx.Provider>;
 }
 
 export const useI18n = () => useContext(I18nCtx);
