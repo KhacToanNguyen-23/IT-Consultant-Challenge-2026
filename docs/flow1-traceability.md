@@ -1,7 +1,7 @@
 # Flow 1: bảng truy vết yêu cầu → bằng chứng
 
-Cập nhật 2026-11-06 trên nhánh `fix/flow1-backend`. "Acceptance" là `backend/scripts/acceptance_flow1.py` (28 kiểm tra trên stack thật, 28/28 đạt).
-Test chạy bằng `docker compose exec backend pytest` (unit không cần DB; integration cần `TEST_DATABASE_URL`, xem `backend/tests/conftest.py`): 171 test pass.
+Cập nhật 2026-11-06 trên nhánh `fix/flow1-backend`. "Acceptance" là `backend/scripts/acceptance_flow1.py` (31 kiểm tra trên stack thật, 31/31 đạt).
+Test chạy bằng `docker compose exec backend pytest` (unit không cần DB; integration cần `TEST_DATABASE_URL`, xem `backend/tests/conftest.py`): 199 test pass.
 
 Ký hiệu: ✔ có test và chạy thật · ◐ chỉ một phần · ✘ chưa có (ghi rõ lý do).
 
@@ -29,11 +29,11 @@ Ký hiệu: ✔ có test và chạy thật · ◐ chỉ một phần · ✘ chư
 | FR-018 idempotency, khóa chỉ đọc | ✔ | `test_flow1_resilience` (hai lần Confirm, đồng thời, khóa) | "Confirm lặp, khóa chỉ đọc" | |
 | FR-019 API/CSV connector | ✔ | `test_flow1_resilience` (503, timeout, cả hai lỗi), `test_flow1_contract::csv_fallback` | "POS off → NEEDS_MANUAL + CSV" | |
 | FR-020 payload slide 9 | ✔ | `test_flow1_contract::payload_matches_the_slide_9_contract`, `substitution...` | "payload: original_sku, score null" | |
-| FR-021 store dictionary | ✘ | — | — | Có bảng, chưa có code ghi/gỡ. Bậc 3, SRS cho phép cắt |
+| FR-021 store dictionary | ✔ | `test_store_dictionary` (ghi sau Confirm, không ghi thay thế, gỡ, không học lại, áp dụng boost ≤0,20 không vượt luật cứng) | endpoint `/store-dictionary` và 404 | Chưa có nút gỡ trên UI (API `DELETE` đã có) |
 | FR-029 events | ✔ | `test_flow1_contract::decision_events_cover_the_flow...` | — | Không PII |
 | FR-030 thời gian từng bước | ✔ | — | `NFR-003 p50` | `stage_timings` được lưu mỗi lần phân tích |
-| FR-031 KPI SQL | ◐ | — | — | Truy vấn của SRS chạy được trên schema thật, chưa đóng gói thành `kpi.sql` |
-| FR-032 mock login | ✘ | — | — | Chỉ có nhân viên cố định `EMP-1042`. Bậc 3, SRS cho phép cắt |
+| FR-031 KPI SQL | ✔ | `test_kpi` (DB rỗng không chia 0, có dữ liệu thật) | — | `backend/sql/kpi.sql`, chạy bằng `python -m scripts.kpi` |
+| FR-032 mock login | ✔ (backend) | `test_auth` (băm mật khẩu, token giả mạo/hết hạn, đăng nhập/xuất, không lộ tài khoản, ép đăng nhập khi bật cờ, nhân viên đăng nhập được ghi vào đơn) | `login` trả 401/503 đúng cấu trúc | Mật khẩu chỉ lấy từ `DEMO_PASSWORD`; `AUTH_REQUIRED` mặc định tắt. UI đăng nhập thuộc UI Flow 1 |
 | FR-033 hai fail toggle | ✔ | `test_flow1_resilience` | AI off / POS off / cả hai | |
 | FR-034 AI Gateway | ✔ | `test_ai_gateway` | — | |
 | FR-035 seed 60–80 SKU | ✔ | — | healthy + catalog | 62 SKU, 5 nhóm; validator trong `generate.py` |
@@ -45,7 +45,7 @@ Ký hiệu: ✔ có test và chạy thật · ◐ chỉ một phần · ✘ chư
 | ID | Trạng thái | Bằng chứng |
 |---|---|---|
 | NFR-001 chạy bằng Docker | ✔ | `docker compose up`; acceptance "stack healthy" |
-| NFR-002 che PII, không claim quá mức | ◐ | Test PII đạt; UI ghi chú giới hạn (PR 1 Codex). Mock login: không có (nhân viên cố định, không gọi là SSO) |
+| NFR-002 che PII, không claim quá mức | ◐ | Test PII đạt; UI ghi chú giới hạn. Đăng nhập là giả lập, ghi `simulated: true`, không gọi là SSO. Việc UI ghi rõ giới hạn che PII chưa kiểm chứng |
 | NFR-003 ≤3 s cho 20 dòng | ✔ | `evaluation_2026-11-05.md`: p50 201 ms, p95 298 ms, max 305 ms (20 lần, embedding thật, CPU, WSL2) |
 | NFR-004 chỉ bằng bàn phím | ✘ | Thuộc UI Flow 1 (Codex PR 4); chưa kiểm chứng |
 | NFR-005 ≤2% khớp sai band cao | ✘ không thể claim | 98 dòng (<150) và **0/98 nhãn được người duyệt**. 0/63 sai ở band cao, cận trên 95% = 5,75%. Chỉ được ghi "kết quả ban đầu" |
@@ -58,4 +58,5 @@ Ký hiệu: ✔ có test và chạy thật · ◐ chỉ một phần · ✘ chư
 - `connector_attempts.idempotency_key` không có ràng buộc UNIQUE như DDL SRS, vì logic thử lại POS ghi hai lần cùng khóa.
 - Sơn, phụ kiện (vít, đinh) ngoài phạm vi; riêng "maling hvid" vẫn nhận một gợi ý điểm thấp do trùng chữ "hvid", không bao giờ tự chọn.
 - Các nhãn D22 do AI soạn và chưa được người duyệt. Dòng E046 (`Moisture board`) từng sai và đã được sửa bằng cách thêm các cụm tiếng Anh lấy từ alias của catalog, nên con số 98/98 của embedding không còn độc lập với bộ đánh giá.
-- Đăng nhập: một nhân viên cố định; "ai chịu trách nhiệm" được ghi qua `actor_id` và `confirmed_by_associate`, không phải danh tính thật.
+- Đăng nhập là giả lập (hai nhân viên demo, mật khẩu qua biến môi trường), không phải SSO; "ai chịu trách nhiệm" được ghi qua `actor_id` và `confirmed_by_associate` của nhân viên đã đăng nhập, nhưng không phải danh tính thật.
+- Store dictionary chỉ cộng điểm cho ứng viên đã được truy xuất (top-10 vector); không tự thêm SKU vào danh sách ứng viên.

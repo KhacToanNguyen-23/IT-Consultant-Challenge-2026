@@ -168,6 +168,13 @@ def main() -> int:
         check("FR-018 confirmed order is read-only", err_code(call("PATCH", f"/sessions/{sid}/lines/1", {"requested_qty": 999})) == "SESSION_LOCKED")
         check("SRS 7 confirm response has order_session_id/locked/delivery_status", all(k in c1 for k in ("order_session_id", "locked", "delivery_status")))
 
+        # ---- store dictionary and simulated sign-in (FR-021/032)
+        st, d = call("GET", "/store-dictionary")
+        check("FR-021 store dictionary endpoint is available", st == 200 and "items" in d, st)
+        check("FR-021 removing an unknown mapping is a clean 404", err_code(call("DELETE", "/store-dictionary/999999")) == "NOT_FOUND")
+        lg = call("POST", "/auth/login", {"username": "EMP-1042", "password": "definitely-wrong"})
+        check("FR-032 login answers 401/503 with the standard envelope (never a 500)", lg[0] in (401, 503) and err_code(lg) in ("INVALID_CREDENTIALS", "LOGIN_DISABLED"), lg[0])
+
         # ---- fail modes: the counter never stops (FR-003/033, NFR-006)
         for label, ai, pos, expect in (("AI off", True, False, "POS_ACCEPTED"), ("POS off", False, True, "NEEDS_MANUAL"), ("AI+POS off", True, True, "NEEDS_MANUAL")):
             call("POST", "/admin/fail-modes", {"ai": ai, "pos": pos})
