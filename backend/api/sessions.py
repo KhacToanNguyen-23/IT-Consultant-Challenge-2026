@@ -142,6 +142,8 @@ async def ingest(session_id: str, request: Request, db: Session = Depends(get_db
                 raise ApiError(422, "UNSUPPORTED_FILE", t("unsupported_file"))
         except ApiError:
             raise
+        except parser.InputTooLarge as e:
+            raise ApiError(413, "TOO_LARGE", t(e.code, **e.params), e.params) from e
         except Exception as e:  # noqa: BLE001 — damaged PDF/XLSX/CSV must be a 422, never a 500
             raise ApiError(422, "UNREADABLE_FILE", t("unreadable_file")) from e
     else:
@@ -158,6 +160,10 @@ async def ingest(session_id: str, request: Request, db: Session = Depends(get_db
 
     masked = pii.mask(text)
     rows = parser.split_text(masked)
+    try:
+        parser.check_row_limit(len(rows))
+    except parser.InputTooLarge as e:
+        raise ApiError(413, "TOO_LARGE", t(e.code, **e.params), e.params) from e
     db.query(SessionLine).filter(SessionLine.session_id == s.session_id).delete()
     for r in rows:
         db.add(SessionLine(session_id=s.session_id, line_no=r.line_no, source_start=r.source_start, source_end=r.source_end,

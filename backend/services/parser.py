@@ -5,6 +5,7 @@ rules leave a line ambiguous; rules must keep working when AI_FAIL_MODE=true.
 """
 import csv
 import io
+import os
 import re
 from dataclasses import dataclass, field
 from typing import Optional
@@ -177,39 +178,72 @@ def _is_contact(line: str) -> bool:
     return "[PHONE]" in line or "[EMAIL]" in line
 
 
+HEADER_RE = re.compile(r"\b(vare|item|produkt|product|beskrivelse|description|antal|qty|quantity)\b", re.I)
+
+
+def _drop_header(lines: list[str]) -> list[str]:
+    if lines and HEADER_RE.search(lines[0]) and not re.search(r"\d", lines[0]):
+        return lines[1:]
+    return lines
+
+
 def rows_from_table(content: bytes, filename: str) -> str:
-    """XLSX/CSV → one text line per row (cells joined). Keeps the pipeline single-path."""
+    """XLSX/CSV → one text line per row (cells joined). Keeps the pipeline single-path.
+    XLSX: every sheet is read in order (nothing is silently ignored); each sheet drops its own header row."""
     name = filename.lower()
-    lines = []
+    blocks: list[list[str]] = []
     if name.endswith(".xlsx"):
         from openpyxl import load_workbook
         wb = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
-        for r in wb.active.iter_rows(values_only=True):
-            cells = [str(c).strip() for c in r if c is not None and str(c).strip()]
-            if cells:
-                lines.append(" ".join(cells))
+        for ws in wb.worksheets:
+            lines = []
+            for r in ws.iter_rows(values_only=True):
+                cells = [str(c).strip() for c in r if c is not None and str(c).strip()]
+                if cells:
+                    lines.append(" ".join(cells))
+            blocks.append(lines)
     else:
         txt = content.decode("utf-8-sig", errors="replace")
         dialect = csv.Sniffer().sniff(txt[:2048], delimiters=",;\t") if txt.strip() else csv.excel
+        lines = []
         for r in csv.reader(io.StringIO(txt), dialect):
             cells = [c.strip() for c in r if c.strip()]
             if cells:
                 lines.append(" ".join(cells))
-    # drop an obvious header row
-    if lines and re.search(r"\b(vare|item|produkt|product|beskrivelse|description|antal|qty|quantity)\b", lines[0], re.I) and not re.search(r"\d", lines[0]):
-        lines = lines[1:]
-    return "\n".join(lines)
+        blocks.append(lines)
+    return "\n".join(line for lines in blocks for line in _drop_header(lines))
 
 
 class UnreadableFile(ValueError):
     """The upload looks like a supported type but is damaged (an input problem, not a server error)."""
 
 
+class InputTooLarge(ValueError):
+    """Over a documented input limit (OI-04). `code` is an i18n key, `params` its arguments."""
+
+    def __init__(self, code: str, **params) -> None:
+        super().__init__(code)
+        self.code, self.params = code, params
+
+
+MAX_PDF_PAGES = int(os.getenv("MAX_PDF_PAGES", "20"))
+MAX_ROWS = int(os.getenv("MAX_ROWS", "300"))
+
+
+def check_row_limit(n: int, limit: int = MAX_ROWS) -> None:
+    if n > limit:
+        raise InputTooLarge("too_many_rows", n=n, max=limit)
+
+
 def pdf_text(content: bytes) -> str:
     from pypdf import PdfReader
     try:
         reader = PdfReader(io.BytesIO(content))
+        if len(reader.pages) > MAX_PDF_PAGES:
+            raise InputTooLarge("pdf_too_long", pages=len(reader.pages), max=MAX_PDF_PAGES)
         return "\n".join((p.extract_text() or "") for p in reader.pages)
+    except InputTooLarge:
+        raise
     except Exception as e:  # noqa: BLE001 — pypdf raises many exception types for damaged files
         raise UnreadableFile(str(e)) from e
 
@@ -217,7 +251,7 @@ def pdf_text(content: bytes) -> str:
 # ---------- attribute extraction (rules) ----------
 # Accessories (screws, nails, fixings) are outside the 5 seeded categories (SRS v2 drops accessories/vít). A word like
 # "gipsskruer" must not be read as gypsum just because it contains "gips".
-ACCESSORY_RE = re.compile(r"skru|screw|spik|bolt|beslag|dübel|dubel|(?:søm|sømmer|nail|nails|plugg)")
+ACCESSORY_RE = re.compile(r"skru|screw|spik|bolt|beslag|dübel|dubel|\b(?:søm|sømmer|nail|nails|plugg)\b")
 
 
 def detect_category(text: str) -> Optional[str]:
