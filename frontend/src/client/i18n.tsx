@@ -1,0 +1,372 @@
+"use client";
+
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
+
+export type Lang = "en" | "vi";
+
+// API calls read this to send X-Lang (backend messages, blockers, disclaimers follow the UI language)
+let currentLang: Lang = "en";
+export const getLang = () => currentLang;
+
+const D = {
+  // header / nav
+  nav_counter: { en: "Counter", vi: "Tại quầy" },
+  nav_quotes: { en: "Quotes", vi: "Báo giá" },
+  mock_login: { en: "mock login (simulated)", vi: "mock login (simulated)" },
+  mock_login_title: { en: "Mock login — not a real SSO", vi: "Mock login — không phải SSO thật" },
+  api_offline: { en: "API offline", vi: "API offline" },
+  system_ok: { en: "System OK", vi: "Hệ thống OK" },
+  degraded: { en: "Degraded", vi: "Degraded" },
+  ai_fail: { en: "AI fail", vi: "AI fail" },
+  pos_fail: { en: "POS fail", vi: "POS fail" },
+  demo_toggle: { en: "Demo toggle (MVP-FR-033)", vi: "Công tắc demo (MVP-FR-033)" },
+  lang_switch: { en: "Language", vi: "Ngôn ngữ" },
+  // intake
+  intake_title: { en: "Receive material list", vi: "Nhận danh sách vật tư" },
+  intake_sub: {
+    en: "Step 1/4 · Upload or paste the list. E-mail addresses and phone numbers are masked before processing; then you check each line.",
+    vi: "Bước 1/4 · Upload hoặc dán danh sách. Hệ thống che email & số điện thoại trước khi xử lý, sau đó bạn kiểm tra từng dòng.",
+  },
+  flow_label: { en: "Flow", vi: "Luồng" },
+  mode_counter: { en: "At the counter", vi: "Tại quầy" },
+  mode_counter_sub: { en: "Flow 1 · customer waiting → order now", vi: "Luồng 1 · khách đứng chờ → đơn ngay" },
+  mode_email: { en: "E-mail quote", vi: "Email báo giá" },
+  mode_email_sub: { en: "Flow 2 · paste customer e-mail → save quote", vi: "Luồng 2 · dán email khách → lưu báo giá" },
+  paste_email: { en: "Paste the customer's e-mail", vi: "Dán nội dung email của khách" },
+  paste_list: { en: "Paste the list (one material per line)", vi: "Dán danh sách (mỗi dòng một vật tư)" },
+  intake_hint_pdf: {
+    en: "PDF must contain text (scanned image PDFs are not supported — paste or type instead). Max 5 MB, 1 file.",
+    vi: "PDF phải có text (PDF scan ảnh không được hỗ trợ — hãy dán hoặc gõ lại). Tối đa 5 MB, 1 file.",
+  },
+  intake_hint_pii: {
+    en: "E-mail and phone numbers are regex-masked. Names and addresses in free text are NOT guaranteed to be masked.",
+    vi: "Email & số điện thoại được che bằng regex. Tên, địa chỉ trong văn bản tự do chưa được đảm bảo che.",
+  },
+  need_input: { en: "Paste a list or choose a file first.", vi: "Dán danh sách hoặc chọn file trước." },
+  read_list: { en: "Read list", vi: "Đọc danh sách" },
+  // session page
+  new_list: { en: "New list", vi: "Danh sách mới" },
+  flow1: { en: "Flow 1 · At the counter", vi: "Luồng 1 · Tại quầy" },
+  flow2: { en: "Flow 2 · E-mail quote", vi: "Luồng 2 · Email báo giá" },
+  step_received: { en: "Received", vi: "Nhận list" },
+  step_read: { en: "Read & edit", vi: "Đọc & sửa" },
+  step_review: { en: "Review", vi: "Rà soát" },
+  step_confirm: { en: "Confirm", vi: "Confirm" },
+  measured_title: { en: "Real timing measured by the backend (FR-030)", vi: "Thời gian đo thật từ backend (FR-030)" },
+  analyzed_n: { en: "Analyzed {n} lines", vi: "Phân tích {n} dòng" },
+  t_match: { en: "match", vi: "match" },
+  t_stock: { en: "stock", vi: "tồn" },
+  t_rules: { en: "rules", vi: "quy tắc" },
+  t_llm: { en: "LLM", vi: "LLM" },
+  ai_degraded_banner: {
+    en: "AI unavailable — running on rules + manual search. The counter can still confirm orders.",
+    vi: "AI lỗi — đang chạy chế độ quy tắc + tìm thủ công. Quầy vẫn Confirm được.",
+  },
+  stock_unknown_banner: {
+    en: "Could not read stock from the POS (simulated) — stock is not shown or guessed.",
+    vi: "Không đọc được tồn kho từ POS (simulated) — không hiển thị/đoán tồn.",
+  },
+  source_title: { en: "Source with e-mail/phone masked · {n} lines read", vi: "Nguồn đã che email/điện thoại · Đã đọc {n} dòng" },
+  source_note: {
+    en: "Only e-mail and phone numbers are regex-masked; names/addresses in free text are not guaranteed. The source is deleted after Confirm.",
+    vi: "Chỉ email & số điện thoại được che bằng regex; tên/địa chỉ trong văn bản tự do chưa được đảm bảo che. Nguồn bị xoá sau khi Confirm.",
+  },
+  step2_hint: {
+    en: "Step 2/4 · Check the {n} lines that were read (click a line to edit name/qty/unit), then analyze. Unreadable lines are kept.",
+    vi: "Bước 2/4 · Kiểm tra {n} dòng đã đọc (bấm vào dòng để sửa tên/SL/đơn vị), rồi phân tích. Dòng không đọc được vẫn được giữ lại.",
+  },
+  analyze: { en: "Analyze", vi: "Phân tích (Analyze)" },
+  step4_title: { en: "Step 4/4 · Confirm order", vi: "Bước 4/4 · Xác nhận đơn" },
+  quote_ref: { en: "(quote {id})", vi: "(báo giá {id})" },
+  client_id: { en: "Customer (Client ID)", vi: "Khách hàng (Client ID)" },
+  walk_in: { en: "Walk-in customer", vi: "Khách lẻ (walk-in)" },
+  cannot_confirm: { en: "Cannot confirm yet — {n} line(s) left:", vi: "Chưa Confirm được — còn {n} dòng:" },
+  line_n: { en: "Line {n}", vi: "Dòng {n}" },
+  quote_needs_prepare: {
+    en: "This order belongs to quote {id} ({status}). Record the customer's confirmation and Prepare before confirming.",
+    vi: "Đơn này thuộc báo giá {id} ({status}). Cần ghi nhận khách xác nhận và Prepare trước khi Confirm.",
+  },
+  open_quote: { en: "Open quote", vi: "Mở báo giá" },
+  confirm_send: { en: "Confirm & send to POS", vi: "Confirm & gửi POS" },
+  confirm_note: {
+    en: "POS failure → CSV is exported with the same reference. After Confirm the order is read-only.",
+    vi: "POS lỗi → tự xuất CSV cùng mã tham chiếu. Sau Confirm đơn chỉ đọc.",
+  },
+  save_quote_note: {
+    en: "Captures price & stock at save time. A quote does NOT reserve stock. Clarify all yellow lines before saving.",
+    vi: "Chụp giá & tồn tại thời điểm lưu. Báo giá không giữ chỗ hàng. Cần làm rõ hết dòng vàng trước khi lưu.",
+  },
+  valid_until: { en: "Valid until", vi: "Hiệu lực đến" },
+  save_quote: { en: "Save quote", vi: "Lưu báo giá" },
+  quote_n: { en: "Quote {id}", vi: "Báo giá {id}" },
+  status: { en: "Status", vi: "Trạng thái" },
+  pos_ok: { en: "Sent to POS", vi: "Đã gửi POS thành công" },
+  pos_csv: { en: "POS not responding — CSV exported, manual entry needed", vi: "POS không phản hồi — đã xuất CSV, cần nhập tay" },
+  order_status: { en: "Order status", vi: "Trạng thái đơn" },
+  reference: { en: "Reference (prevents double entry)", vi: "Mã tham chiếu (chống nhập trùng)" },
+  client: { en: "Client", vi: "Client" },
+  time_to_confirm: { en: "Time from upload → Confirm", vi: "Thời gian từ upload → Confirm" },
+  locked_note: { en: "Order locked, read-only. POS/ERP is a simulated system.", vi: "Đơn đã khoá, chỉ đọc. POS/ERP là hệ thống mô phỏng (simulated)." },
+  // review table
+  n_lines: { en: "{n} lines", vi: "{n} dòng" },
+  kbd_hint: { en: "↑↓ select line · Enter open/close · Esc close", vi: "↑↓ chọn dòng · Enter mở/đóng · Esc đóng" },
+  col_stock: { en: "Stock (on-hand)", vi: "Tồn (on-hand)" },
+  unreadable: { en: "unreadable", vi: "không đọc được" },
+  unit_q: { en: "unit?", vi: "đơn vị?" },
+  no_sku: { en: "No SKU yet", vi: "Chưa có SKU" },
+  updated: { en: "updated {time}", vi: "cập nhật {time}" },
+  table_foot: {
+    en: "On-hand reference stock — confirm before promising delivery. Match score is a ranking score [0–1], not a probability.",
+    vi: "Tồn tham khảo (on-hand), cần xác nhận trước khi hứa hàng. Match score là điểm xếp hạng [0–1], không phải xác suất.",
+  },
+  act_manual: { en: "Enter manually / search SKU", vi: "Nhập tay / tìm SKU" },
+  act_qty_unit: { en: "Clarify qty/unit", vi: "Làm rõ SL/đơn vị" },
+  act_ask: { en: "Ask customer: {what}", vi: "Hỏi khách: {what}" },
+  act_choose: { en: "Choose SKU", vi: "Chọn SKU" },
+  act_ask_subs: { en: "Ask customer: {n} substitute SKU(s)", vi: "Hỏi khách: {n} SKU thay thế" },
+  act_substituted: { en: "Substituted (customer accepted)", vi: "Đã thay thế (khách đồng ý)" },
+  act_rejected: { en: "Customer declined substitute: {reason}", vi: "Khách từ chối thay: {reason}" },
+  act_backorder: { en: "No safe substitute → backorder", vi: "Không có thay thế an toàn → chờ hàng" },
+  why_title: { en: "Why this suggestion?", vi: "Vì sao gợi ý này?" },
+  why_matched: { en: "✓ Matches: {list}", vi: "✓ Khớp: {list}" },
+  why_mismatched: { en: "≠ Differs (optional, score reduced): {list}", vi: "≠ Khác (tùy chọn, đã trừ điểm): {list}" },
+  why_missing: { en: "? Customer did not state (required): {list} — not guessed", vi: "? Khách chưa nêu (bắt buộc): {list} — không tự đoán" },
+  why_ambiguous: { en: "Two candidates scored within 0.05 → capped at 0.89, needs a check.", vi: "Hai ứng viên gần điểm nhau (<0.05) → giới hạn 0.89, cần kiểm." },
+  why_llm: { en: "LLM added (with evidence from the line): {list}", vi: "LLM bổ sung (có bằng chứng trong dòng): {list}" },
+  why_rule: { en: "SKUs with a wrong required attribute (e.g. C18 vs C24) are removed and never auto-selected.", vi: "SKU sai thuộc tính bắt buộc (vd. C18 vs C24) bị loại, không bao giờ được tự chọn." },
+  accepted_note: { en: "Customer accepted {from} → {to} ({time}).", vi: "Khách đã đồng ý thay {from} → {to} ({time})." },
+  undo: { en: "Undo", vi: "Hoàn tác" },
+  customer_changed_mind: { en: "Customer changed their mind", vi: "Khách đổi ý" },
+  candidates_title: { en: "Candidates (≤3) — choose after asking the customer", vi: "Ứng viên (≤3) — chọn sau khi hỏi khách" },
+  source: { en: "Source", vi: "Nguồn" },
+  item_name: { en: "Item name", vi: "Tên vật tư" },
+  quantity: { en: "Quantity", vi: "Số lượng" },
+  unit: { en: "Unit", vi: "Đơn vị" },
+  unknown_unit_hint: { en: "Unit “{u}” is not in the dictionary — choose the correct unit.", vi: "Đơn vị khách ghi “{u}” chưa có trong từ điển — chọn đơn vị đúng." },
+  save: { en: "Save", vi: "Lưu" },
+  save_reanalyze: { en: "Save & re-analyze line", vi: "Lưu & phân tích lại dòng" },
+  partial_need: { en: "Only {have} left, need {need}", vi: "Chỉ còn {have}, cần {need}" },
+  out_here: { en: "Out of stock in this store", vi: "Hết hàng tại cửa hàng" },
+  safe_subs: { en: "safe substitutes (enough stock, equal or better specs):", vi: "thay thế an toàn (đủ tồn, thông số bằng/tốt hơn):" },
+  higher_grade: { en: "higher grade", vi: "cấp cao hơn" },
+  in_stock_n: { en: "{n} in stock", vi: "còn {n}" },
+  customer_accepts: { en: "Customer accepts", vi: "Khách đồng ý thay" },
+  reject_reason_ph: { en: "Reason the customer declined (required)", vi: "Lý do khách từ chối (bắt buộc)" },
+  customer_rejects: { en: "Customer declines", vi: "Khách từ chối" },
+  subs_note: {
+    en: "The final SKU changes only after the customer agrees. Declining keeps the original SKU as a backorder.",
+    vi: "SKU cuối chỉ đổi sau khi khách đồng ý. Từ chối → giữ SKU gốc, ghi chờ hàng.",
+  },
+  search_ai_down: { en: "AI unavailable — search SKU manually", vi: "AI lỗi — tìm SKU thủ công" },
+  search_other: { en: "Find another SKU in the catalog", vi: "Tìm SKU khác trong catalog" },
+  search_ph: { en: "e.g. 45x95 c24, gips 12.5", vi: "vd. 45x95 c24, gips 12.5" },
+  search: { en: "Search", vi: "Tìm" },
+  no_results: { en: "Nothing found — try other keywords.", vi: "Không tìm thấy — thử từ khoá khác." },
+  // badges
+  band_high: { en: "High match", vi: "Khớp cao" },
+  band_review: { en: "Quick check", vi: "Kiểm nhanh" },
+  band_low: { en: "Choose", vi: "Cần chọn" },
+  stock_in: { en: "In stock {n}", vi: "Còn {n}" },
+  stock_unknown: { en: "Stock unknown", vi: "Không rõ tồn" },
+  stock_partial: { en: "Partial ({n})", vi: "Thiếu một phần ({n})" },
+  stock_out: { en: "Out of stock", vi: "Hết hàng" },
+  ls_NEEDS_CLARIFICATION: { en: "Needs clarification", vi: "Cần làm rõ" },
+  ls_MATCHED: { en: "Matched", vi: "Đã khớp" },
+  ls_UNIT_CONVERTED: { en: "Converted", vi: "Đã quy đổi" },
+  ls_SUBSTITUTE_PROPOSED: { en: "Substitute proposed", vi: "Đề xuất thay thế" },
+  ls_CUSTOMER_ACCEPTED: { en: "Customer accepted", vi: "Khách đồng ý thay" },
+  rounded: { en: "Rounded up", vi: "Đã làm tròn lên" },
+  chip_match: { en: "Matches what the customer wrote", vi: "Khớp điều khách viết" },
+  chip_unstated: { en: "Not stated by customer", vi: "Khách không nêu" },
+  chip_diff: { en: "Differs from the request", vi: "Lệch với yêu cầu" },
+  // attributes
+  a_cross_section_mm: { en: "cross-section", vi: "tiết diện" },
+  a_strength_grade: { en: "strength grade (C18/C24…)", vi: "cấp cường độ (C18/C24…)" },
+  a_thickness_mm: { en: "thickness", vi: "độ dày" },
+  a_moisture_resistant: { en: "standard/wet-room", vi: "loại thường/vådrum" },
+  a_board_type: { en: "board type (standard/wet-room/fire)", vi: "loại tấm (thường/vådrum/chống cháy)" },
+  a_bag_weight_kg: { en: "bag weight", vi: "trọng lượng bao" },
+  a_product_type: { en: "type (cement/mortar…)", vi: "loại (xi măng/vữa…)" },
+  a_treatment: { en: "wood treatment", vi: "xử lý gỗ" },
+  a_length_m: { en: "length", vi: "chiều dài" },
+  a_brand: { en: "brand", vi: "thương hiệu" },
+  a_category: { en: "category", vi: "nhóm hàng" },
+  // units
+  u_piece: { en: "pcs", vi: "cái/cây" },
+  u_linear_metre: { en: "linear m", vi: "m dài" },
+  u_square_metre: { en: "m²", vi: "m²" },
+  u_pack: { en: "packs", vi: "gói" },
+  u_bag: { en: "bags", vi: "bao" },
+  u_board: { en: "boards", vi: "tấm" },
+  // quotes list
+  quotes_title: { en: "Quotes (Pre-order / Advance Quote)", vi: "Báo giá (Pre-order / Advance Quote)" },
+  quotes_sub: {
+    en: "Flow 2 · exact quote ID lookup. Expired quotes are updated when opened (no background job).",
+    vi: "Luồng 2 · tra cứu đúng mã báo giá. Báo giá hết hạn được cập nhật khi mở (không chạy nền).",
+  },
+  quote_id_ph: { en: "Quote ID, e.g. BG-DK-0457", vi: "Mã báo giá, vd. BG-DK-0457" },
+  all_statuses: { en: "All statuses", vi: "Tất cả trạng thái" },
+  col_id: { en: "ID", vi: "Mã" },
+  col_cust_conf: { en: "Customer confirmed", vi: "Khách xác nhận" },
+  col_created: { en: "Created", vi: "Tạo lúc" },
+  yes: { en: "✓ yes", vi: "✓ có" },
+  no_quotes: {
+    en: "No quotes yet. Paste a customer e-mail in “E-mail quote”, analyze, then click “Save quote”.",
+    vi: "Chưa có báo giá. Dán email khách ở màn hình “Email báo giá”, phân tích rồi bấm “Lưu báo giá”.",
+  },
+  // quote detail
+  back_quotes: { en: "Quote list", vi: "Danh sách báo giá" },
+  flow2_short: { en: "Flow 2 · Pre-order / Advance Quote", vi: "Luồng 2 · Pre-order / Advance Quote" },
+  qf_SAVED: { en: "Saved", vi: "Đã lưu" },
+  qf_SENT: { en: "Sent to customer", vi: "Đã gửi khách" },
+  qf_CUST: { en: "Customer confirmed", vi: "Khách xác nhận" },
+  qf_PREPARING: { en: "Preparing", vi: "Đang soạn (Prepare)" },
+  qf_CONFIRMED: { en: "Confirmed", vi: "Đã Confirm" },
+  expired_banner: { en: "This quote expired ({date}).", vi: "Báo giá đã hết hạn ({date})." },
+  cancelled_banner: { en: "This quote was cancelled.", vi: "Báo giá đã huỷ." },
+  cannot_confirm_short: { en: "It cannot be confirmed.", vi: "Không thể Confirm." },
+  discount: { en: "Discount", vi: "Chiết khấu" },
+  price_source: { en: "Price source", vi: "Nguồn giá" },
+  price_time: { en: "Price captured", vi: "Giờ lấy giá" },
+  snap_vs_live: { en: "Snapshot at save → now", vi: "Snapshot lúc lưu → hiện tại" },
+  checked_at: { en: "checked {time}", vi: "kiểm lúc {time}" },
+  n_changed: { en: "{n} line(s) changed", vi: "{n} dòng thay đổi" },
+  n_short: { en: "{n} line(s) short of stock", vi: "{n} dòng không đủ tồn" },
+  recheck: { en: "Re-check", vi: "Kiểm lại" },
+  rechecked: { en: "Current price/stock re-checked.", vi: "Đã kiểm lại giá/tồn hiện tại." },
+  col_sku_product: { en: "SKU / product", vi: "SKU / sản phẩm" },
+  col_qty_short: { en: "Qty", vi: "SL" },
+  col_net_price: { en: "Net unit price", vi: "Đơn giá net" },
+  col_current_line: { en: "Current line", vi: "Dòng hiện tại" },
+  short_alt: { en: "Not enough stock → substitute/backorder", vi: "Không đủ tồn → cần thay thế/chờ hàng" },
+  quote_foot: {
+    en: "On-hand reference stock — confirm before promising delivery. A quote does not reserve stock.",
+    vi: "Tồn tham khảo (on-hand), cần xác nhận trước khi hứa hàng. Báo giá không giữ chỗ hàng.",
+  },
+  marked_sent: { en: "Marked as sent to customer.", vi: "Đã đánh dấu đã gửi khách." },
+  cust_conf_via: { en: "Customer confirmed the quote (outside SiteDesk) via:", vi: "Khách đã xác nhận báo giá (ngoài SiteDesk) qua:" },
+  ch_email: { en: "E-mail", vi: "Email" },
+  ch_phone: { en: "Phone", vi: "Điện thoại" },
+  ch_in_store: { en: "In store", vi: "Tại cửa hàng" },
+  recorded: { en: "Customer confirmation recorded.", vi: "Đã ghi nhận khách xác nhận." },
+  cust_confirmed_at: { en: "✓ Customer confirmed {time} · {by}", vi: "✓ Khách xác nhận {time} · {by}" },
+  prepare: { en: "Prepare (re-check stock & price)", vi: "Prepare (kiểm lại tồn & giá)" },
+  prepared: {
+    en: "Price/stock re-checked and moved to Prepare. Resolve short lines, then confirm.",
+    vi: "Đã kiểm lại giá/tồn và chuyển sang Prepare. Xử lý các dòng thiếu hàng rồi Confirm.",
+  },
+  prepare_locked: { en: "Prepare unlocks after the customer's confirmation is recorded.", vi: "Prepare chỉ mở sau khi ghi nhận khách xác nhận." },
+  resolve_short: { en: "Resolve {n} short line(s)", vi: "Xử lý {n} dòng thiếu hàng" },
+  confirmed_via_connector: { en: "Order confirmed via the connector.", vi: "Đã Confirm đơn qua connector." },
+  pos_received: { en: "POS received:", vi: "POS đã nhận:" },
+  pos_failed_csv: { en: "POS failed → CSV, manual entry needed. Ref:", vi: "POS lỗi → CSV, cần nhập tay. Ref:" },
+  download_csv_short: { en: "Download CSV", vi: "Tải CSV" },
+  cancel_quote: { en: "Cancel quote", vi: "Huỷ báo giá" },
+  cancelled_msg: { en: "Quote cancelled.", vi: "Đã huỷ báo giá." },
+  demo_tools: { en: "Demo: change price/stock on mock-pos", vi: "Demo: đổi giá/tồn trên mock-pos" },
+  new_list_price: { en: "New list price", vi: "Giá list mới" },
+  new_stock: { en: "New stock", vi: "Tồn mới" },
+  apply: { en: "Apply", vi: "Áp dụng" },
+  reset: { en: "Reset", vi: "Reset" },
+  mutated: { en: "Changed on mock-pos.", vi: "Đã đổi trên mock-pos." },
+  reset_done: { en: "mock-pos reset to seed.", vi: "Đã reset mock-pos về seed." },
+  demo_only: { en: "Demo only — mock-pos is a simulated system.", vi: "Chỉ để quay demo — mock-pos là hệ thống mô phỏng." },
+  // POS terminal
+  vfd_ready: { en: "Ready for a material list", vi: "Sẵn sàng nhận danh sách" },
+  vfd_reading: { en: "Lines to read", vi: "Số dòng sẽ đọc" },
+  vfd_file: { en: "File loaded", vi: "Đã chọn file" },
+  vfd_review: { en: "{n} lines to check", vi: "Kiểm tra {n} dòng" },
+  vfd_blocked: { en: "{n} line(s) to resolve", vi: "Còn {n} dòng cần xử lý" },
+  vfd_clear: { en: "Ready to confirm", vi: "Sẵn sàng Confirm" },
+  vfd_list_total: { en: "List price, before customer discount", vi: "Giá niêm yết, chưa trừ chiết khấu" },
+  vfd_unpriced: { en: "{n} line(s) not priced yet", vi: "{n} dòng chưa có giá" },
+  vfd_quotes: { en: "Quotes found", vi: "Số báo giá" },
+  vfd_quote_total: { en: "Quote total (price at save)", vi: "Tổng báo giá (giá lúc lưu)" },
+  loading: { en: "Loading", vi: "Đang tải" },
+  key_clear: { en: "Clear", vi: "Xoá" },
+  key_sample: { en: "Sample", vi: "Dữ liệu mẫu" },
+  key_file: { en: "Open file", vi: "Mở file" },
+  key_next_issue: { en: "Next issue", vi: "Dòng tiếp theo" },
+  key_order: { en: "Customer", vi: "Khách hàng" },
+  key_close: { en: "Close", vi: "Đóng" },
+  key_search: { en: "Search", vi: "Tìm" },
+  key_again: { en: "Press again to cancel", vi: "Bấm lần nữa để huỷ" },
+  key_review: { en: "Review table", vi: "Bảng rà soát" },
+  key_print: { en: "Print quote", vi: "In báo giá" },
+  key_pick: { en: "Pick slip", vi: "Phiếu soạn" },
+  key_send: { en: "Mark as sent", vi: "Đã gửi khách" },
+  key_record: { en: "Record confirmation", vi: "Ghi nhận xác nhận" },
+  key_new_email: { en: "New e-mail", vi: "Email mới" },
+  tab_resolve: { en: "Resolve", vi: "Xử lý" },
+  tab_edit: { en: "Edit line", vi: "Sửa dòng" },
+  tab_search: { en: "Find SKU", vi: "Tìm SKU" },
+  group_attention: { en: "Needs a look ({n})", vi: "Cần xem ({n})" },
+  group_ok: { en: "Matched ({n})", vi: "Đã khớp ({n})" },
+  col_amount: { en: "List amount", vi: "Thành tiền" },
+  col_product: { en: "Product / customer wrote", vi: "Sản phẩm / khách ghi" },
+  col_qty_sell: { en: "Qty → selling unit", vi: "SL → đơn vị bán" },
+  col_check: { en: "Match & stock", vi: "Khớp & tồn" },
+  line_ok_hint: { en: "Nothing to resolve on this line.", vi: "Dòng này không cần xử lý." },
+  line_no_candidates: { en: "No SKU suggestion for this line. Edit the line or find a SKU.", vi: "Dòng này chưa có SKU gợi ý. Hãy sửa dòng hoặc tìm SKU." },
+  backspace: { en: "Delete last digit", vi: "Xoá số cuối" },
+  flow_steps: { en: "Quote progress", vi: "Tiến độ báo giá" },
+  filter_status: { en: "Filter by status", vi: "Lọc theo trạng thái" },
+  store_terminal: { en: "Terminal", vi: "Quầy" },
+  network_error: { en: "Cannot reach the Core API (backend :8000)", vi: "Không kết nối được Core API (backend :8000)" },
+} as const;
+
+export type Key = keyof typeof D;
+
+function fmt(s: string, vars?: Record<string, string | number>) {
+  return vars ? s.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? `{${k}}`)) : s;
+}
+
+export function translate(lang: Lang, key: Key, vars?: Record<string, string | number>) {
+  const entry = (D as Record<string, { en: string; vi: string }>)[key];
+  return entry ? fmt(entry[lang], vars) : String(key); // unknown key → show the key, never crash
+}
+
+interface Ctx {
+  lang: Lang;
+  setLang: (l: Lang) => void;
+  t: (key: Key, vars?: Record<string, string | number>) => string;
+}
+
+const I18nCtx = createContext<Ctx>({ lang: "en", setLang: () => {}, t: (k, v) => translate("en", k, v) });
+
+export function I18nProvider({ children }: { children: React.ReactNode }) {
+  const [lang, setLangState] = useState<Lang>("en");
+
+  useEffect(() => {
+    let initial: Lang = navigator.language?.toLowerCase().startsWith("vi") ? "vi" : "en";
+    try {
+      const saved = localStorage.getItem("sitedesk.lang");
+      if (saved === "en" || saved === "vi") initial = saved;
+    } catch {
+      /* storage blocked — keep browser default */
+    }
+    currentLang = initial;
+    setLangState(initial);
+  }, []);
+
+  useEffect(() => {
+    currentLang = lang;
+    document.documentElement.lang = lang;
+  }, [lang]);
+
+  const setLang = useCallback((l: Lang) => {
+    currentLang = l;
+    setLangState(l);
+    try {
+      localStorage.setItem("sitedesk.lang", l);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const t = useCallback((key: Key, vars?: Record<string, string | number>) => translate(lang, key, vars), [lang]);
+
+  return <I18nCtx.Provider value={{ lang, setLang, t }}>{children}</I18nCtx.Provider>;
+}
+
+export const useI18n = () => useContext(I18nCtx);

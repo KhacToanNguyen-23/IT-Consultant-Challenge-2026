@@ -1,12 +1,15 @@
-import os
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg2://postgres:password123@localhost:5432/sitedesk_db")
+from config import settings
 
-engine = create_engine(DATABASE_URL)
+if not settings.database_url:
+    raise RuntimeError("DATABASE_URL is not set (see .env.example)")
+
+engine = create_engine(settings.database_url, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
 
 def get_db():
     db = SessionLocal()
@@ -14,3 +17,12 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def init_db() -> None:
+    """Create extension + tables. TODO(db owner): replace with Alembic migrations (SRS §12.2)."""
+    with engine.begin() as conn:
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+    from db import models  # noqa: F401  (register models)
+
+    Base.metadata.create_all(bind=engine)
