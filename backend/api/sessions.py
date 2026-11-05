@@ -9,12 +9,12 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from api.common import ApiError
+from api.common import ApiError, StrictBody
 from config import runtime, settings
 from db.database import get_db
 from i18n import t
 from db.models import AiInvocation, Customer, OrderSession, Quote, SessionLine
-from services import connector, parser, pii, pipeline, telemetry
+from services import auth, connector, dictionary, parser, pii, pipeline, telemetry
 from services.pipeline import now
 
 router = APIRouter(prefix="/api/v1", tags=["Sessions (Flow 1)"])
@@ -75,7 +75,9 @@ def session_view(db: Session, s: OrderSession, products: Optional[dict] = None) 
         "blockers": pipeline.blockers(lines) if analyzed else [],
         "quote": {"quote_id": quote.quote_id, "status": quote.status} if quote else None,
         "confirmation": {
+            "order_session_id": s.order_session_id, "locked": s.status in LOCKED,
             "order_status": s.status if s.status in LOCKED else None,
+            "delivery_status": "SENT_OR_EXPORTED" if s.status in LOCKED else None,
             "fulfillment_reference": s.fulfillment_reference, "pos_order_ref": s.pos_order_ref,
             "csv_download_url": f"/api/v1/sessions/{s.session_id}/export.csv" if s.status == "NEEDS_MANUAL" else None,
             "confirmed_at": s.confirmed_at.isoformat() if s.confirmed_at else None,
@@ -86,20 +88,20 @@ def session_view(db: Session, s: OrderSession, products: Optional[dict] = None) 
 
 
 # ---------- endpoints ----------
-class CreateSession(BaseModel):
+class CreateSession(StrictBody):
     input_type: str = "paste_text"  # paste_text | email | file
     market: str = "DK"
 
 
 @router.post("/sessions")
-def create_session(body: CreateSession, db: Session = Depends(get_db)):
+def create_session(body: CreateSession, request: Request, db: Session = Depends(get_db)):
     if body.input_type not in ("paste_text", "email", "file"):
         raise ApiError(422, "VALIDATION", t("input_type_invalid"))
     for _ in range(5):
         osid = f"SD-{now().year}-{body.market}-{random.randint(10000, 99999)}"
         if not db.query(OrderSession).filter(OrderSession.order_session_id == osid).first():
             break
-    s = OrderSession(order_session_id=osid, store_id=settings.default_store, user_id=settings.default_user,
+    s = OrderSession(order_session_id=osid, store_id=settings.default_store, user_id=auth.user_from_request(request) or settings.default_user,
                      status="DRAFT", input_type=body.input_type, market=body.market)
     db.add(s)
     db.flush()
@@ -129,18 +131,33 @@ async def ingest(session_id: str, request: Request, db: Session = Depends(get_db
             raise ApiError(413, "TOO_LARGE", t("file_too_large"))
         language_hint = form.get("language_hint")
         name = (f.filename or "").lower()
-        if content[:4] == b"%PDF":
-            text = parser.pdf_text(content)
-            if len(text.strip()) < 5:
-                raise ApiError(422, "SCAN_ONLY_PDF", t("scan_pdf"))
-        elif name.endswith(".xlsx") and content[:2] == b"PK":
-            text = parser.rows_from_table(content, name)
-        elif name.endswith(".csv") or name.endswith(".txt"):
-            text = parser.rows_from_table(content, name) if name.endswith(".csv") else content.decode("utf-8-sig", "replace")
-        else:
-            raise ApiError(422, "UNSUPPORTED_FILE", t("unsupported_file"))
+        try:
+            if content[:4] == b"%PDF":
+                text = parser.pdf_text(content)
+                if len(text.strip()) < 5:
+                    raise ApiError(422, "SCAN_ONLY_PDF", t("scan_pdf"))
+            elif name.endswith(".xlsx") and content[:2] == b"PK":
+                text = parser.rows_from_table(content, name)
+            elif name.endswith(".csv") or name.endswith(".txt"):
+                text = parser.rows_from_table(content, name) if name.endswith(".csv") else content.decode("utf-8-sig", "replace")
+            else:
+                raise ApiError(422, "UNSUPPORTED_FILE", t("unsupported_file"))
+        except ApiError:
+            raise
+        except parser.InputTooLarge as e:
+            raise ApiError(413, "TOO_LARGE", t(e.code, **e.params), e.params) from e
+        except Exception as e:  # noqa: BLE001 — damaged PDF/XLSX/CSV must be a 422, never a 500
+            raise ApiError(422, "UNREADABLE_FILE", t("unreadable_file")) from e
     else:
-        body = await request.json()
+        try:
+            body = await request.json()
+        except Exception as e:  # noqa: BLE001
+            raise ApiError(422, "VALIDATION", t("bad_request_body")) from e
+        if body is not None and not isinstance(body, dict):
+            raise ApiError(422, "VALIDATION", t("bad_request_body"))
+        unknown = sorted(set(body or {}) - {"text", "language_hint"})
+        if unknown:
+            raise ApiError(422, "VALIDATION", t("bad_request_body"), {"fields": [{"field": k, "problem": "extra_forbidden"} for k in unknown]})
         text = (body or {}).get("text") or ""
         language_hint = (body or {}).get("language_hint")
     if not text.strip():
@@ -148,6 +165,10 @@ async def ingest(session_id: str, request: Request, db: Session = Depends(get_db
 
     masked = pii.mask(text)
     rows = parser.split_text(masked)
+    try:
+        parser.check_row_limit(len(rows))
+    except parser.InputTooLarge as e:
+        raise ApiError(413, "TOO_LARGE", t(e.code, **e.params), e.params) from e
     db.query(SessionLine).filter(SessionLine.session_id == s.session_id).delete()
     for r in rows:
         db.add(SessionLine(session_id=s.session_id, line_no=r.line_no, source_start=r.source_start, source_end=r.source_end,
@@ -163,7 +184,7 @@ async def ingest(session_id: str, request: Request, db: Session = Depends(get_db
     return session_view(db, s)
 
 
-class LinePatch(BaseModel):
+class LinePatch(StrictBody):
     item_text: Optional[str] = None
     requested_qty: Optional[float] = None
     requested_unit: Optional[str] = None
@@ -206,7 +227,7 @@ def patch_line(session_id: str, line_no: int, body: LinePatch, db: Session = Dep
     return session_view(db, s)
 
 
-class AnalyzeBody(BaseModel):
+class AnalyzeBody(StrictBody):
     language_hint: Optional[str] = None
 
 
@@ -220,22 +241,22 @@ def analyze(session_id: str, body: AnalyzeBody = AnalyzeBody(), db: Session = De
     t0 = time.perf_counter()
     timings = {}
     products = pipeline.load_products(db)
-    t = time.perf_counter()
+    tick = time.perf_counter()
     rt = pipeline.match_lines(db, lines, products)
-    timings["match_ms"] = round((time.perf_counter() - t) * 1000, 1)
+    timings["match_ms"] = round((time.perf_counter() - tick) * 1000, 1)
     timings.update(embed_ms=rt["embed_ms"], vector_ms=rt["vector_ms"], match_mode=rt["mode"],
                    llm_ms=rt["llm_ms"], llm_calls=rt["llm_calls"], llm=rt["llm_status"])
     # degraded = AI toggled off OR embedding not ready/failed → rules + manual search (banner in UI)
     s.ai_fail_mode = runtime["ai_fail_mode"] or rt["mode"] != "embedding"
     db.add(AiInvocation(session_id=s.session_id, step="embed_and_retrieve", latency_ms=int(rt["embed_ms"] + rt["vector_ms"]),
                         status=rt["mode"]))
-    t = time.perf_counter()
+    tick = time.perf_counter()
     stock = pipeline.load_stock(list(products), s.store_id)
-    timings["stock_ms"] = round((time.perf_counter() - t) * 1000, 1)
-    t = time.perf_counter()
+    timings["stock_ms"] = round((time.perf_counter() - tick) * 1000, 1)
+    tick = time.perf_counter()
     for l in lines:
         pipeline.evaluate(l, products, stock)
-    timings["rules_convert_alternatives_ms"] = round((time.perf_counter() - t) * 1000, 1)
+    timings["rules_convert_alternatives_ms"] = round((time.perf_counter() - tick) * 1000, 1)
     timings["total_ms"] = round((time.perf_counter() - t0) * 1000, 1)
     s.stage_timings = {**timings, "lines": len(lines), "pos_available": stock is not None}
     s.status = "ANALYZED"
@@ -253,7 +274,7 @@ def analyze(session_id: str, body: AnalyzeBody = AnalyzeBody(), db: Session = De
     return session_view(db, s, products)
 
 
-class Selection(BaseModel):
+class Selection(StrictBody):
     sku: str
     decision: str  # SKU_KEPT | SKU_EDITED | SUBSTITUTION_ACCEPTED | SUBSTITUTION_REJECTED
     reason: Optional[str] = None
@@ -311,7 +332,7 @@ def alternatives(session_id: str, line_no: int, db: Session = Depends(get_db)):
             "message": None if l.alternatives else t("alt_none")}
 
 
-class ClientBody(BaseModel):
+class ClientBody(StrictBody):
     client_id: str
 
 
@@ -326,7 +347,7 @@ def set_client(session_id: str, body: ClientBody, db: Session = Depends(get_db))
     return {"client_id": s.client_id}
 
 
-class ConfirmBody(BaseModel):
+class ConfirmBody(StrictBody):
     client_id: Optional[str] = None
 
 
@@ -357,6 +378,7 @@ def do_confirm(db: Session, s: OrderSession, client_id: Optional[str]) -> dict:
     telemetry.event(db, "POS_ACCEPTED" if result["order_status"] == "POS_ACCEPTED" else "CSV_EXPORTED", s.session_id, actor_id=s.user_id)
     for l in lines:
         l.resolved = True
+    dictionary.record_after_confirm(db, s, lines)  # FR-021: remember manual SKU choices, only after Confirm
     if quote:
         quote.status = "CONFIRMED"
         quote.status_changed_by, quote.status_changed_at = s.user_id, now()

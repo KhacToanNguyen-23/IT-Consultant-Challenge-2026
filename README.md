@@ -40,25 +40,25 @@ docker compose up --build
 
 ---
 
-## 🧭 Màn hình & luồng (branch `feat/ui-flow2`)
+## 🧭 Màn hình & luồng
 * `/` — nhận danh sách: **Tại quầy** (Luồng 1: paste/PDF/XLSX/CSV) hoặc **Email báo giá** (Luồng 2: dán email khách).
 * `/sessions/[id]` — xem trước dòng đã đọc → Analyze → bảng rà soát (exceptions first, chip thuộc tính, quy đổi, tồn, thay thế) → Confirm (POS hoặc CSV fallback) / Lưu báo giá.
 * `/quotes`, `/quotes/[id]` — Luồng 2: SAVED → SENT → ghi nhận khách xác nhận → Prepare (kiểm lại giá/tồn, diff trước→sau) → in báo giá / phiếu soạn → Confirm. Hết hạn tính khi mở, có Huỷ.
 * Header có 2 công tắc demo **AI fail** / **POS fail** (MVP-FR-033). Trang báo giá có mục *Demo: đổi giá/tồn trên mock-pos* để quay cảnh diff.
 
-## 🤖 Data & AI (branch `feat/data-ai`)
+## 🤖 Data & AI
 * **Seed:** `python mock-pos/seeds/generate.py` sinh 62 SKU / 5 nhóm (deterministic, có validator). Backend tự sync khi khởi động.
 * **Matching:** `multilingual-e5-small` (local, CPU) + pgvector top-10 → hard rules (must-match loại hẳn, thiếu thuộc tính → hỏi lại, gap 0.05 → cap 0.89). Model tải nền khi khởi động (~0.5 GB lần đầu, cache ở volume `hf_cache`); chưa sẵn sàng / AI fail → tự chuyển chế độ luật.
 * **Lệnh:**
   ```bash
-  docker compose exec backend pytest -q                       # 35 unit tests
+  docker compose exec backend pytest -q                       # unit tests (the integration suite needs TEST_DATABASE_URL, see backend/tests/conftest.py)
   docker compose exec backend python -m scripts.reindex_catalog
   docker compose exec backend python -m scripts.evaluate --perf 20   # → backend/reports/evaluation_<date>.md
   ```
 * **Đánh giá:** `backend/seeds/evaluation.jsonl` (98 dòng, label do AI soạn, `reviewed=false` → **cần người duyệt từng dòng** trước khi trích số). Không chỉnh luật/alias dựa trên bộ này.
 * Bảng DB tạo bằng `create_all` khi khởi động (chưa có Alembic).
 
-## 🧠 LLM (DeepSeek) & 🌐 EN/VI (branch `feat/llm-i18n`)
+## 🧠 LLM (DeepSeek) & 🌐 EN/VI
 * **LLM chỉ dùng cho dòng mơ hồ** (không rõ nhóm hàng / thiếu thuộc tính bắt buộc) để trích thuộc tính. Mỗi giá trị phải có *evidence* là chuỗi có thật trong dòng của khách, nếu không bị loại → LLM không thể bịa "C24". Luật luôn thắng; JSON hỏng → thử lại 1 lần → về rules-only. Không có LLM rerank.
 * Cấu hình DeepSeek: điền `LLM_API_KEY` trong `.env` (không commit), mặc định `LLM_BASE_URL=https://api.deepseek.com`, `LLM_MODEL=deepseek-chat`, rồi `docker compose up -d backend`. Không có key → LLM `disabled`, hệ thống chạy như cũ. ⚠️ DeepSeek không phải nhà cung cấp EU/sovereign — chỉ dùng cho demo; chỉ gửi văn bản đã che email/SĐT.
 * **Song ngữ:** nút **EN / VI** trên header (lưu trong trình duyệt). Frontend gửi `X-Lang`; backend trả thông báo, lý do chặn, nhãn tồn và trang in theo ngôn ngữ (`?lang=` cho trang in).
@@ -67,17 +67,20 @@ docker compose up --build
 
 ## 📁 Cấu trúc thư mục (Monorepo)
 ```text
-├── docker-compose.yml     # Khởi động toàn bộ FE + BE + DB
-├── .env.example           # Biến môi trường mẫu
-├── backend/               # Python FastAPI API & Core Engine
-│   ├── Dockerfile
-│   ├── requirements.txt
-│   ├── main.py            # Entry point & CORS
-│   └── db/                # SQLAlchemy database connection & models
-└── frontend/              # Next.js App
-    ├── Dockerfile
-    ├── package.json
-    └── src/app/           # Counter UI pages & components
+├── docker-compose.yml     # FE + BE + PostgreSQL/pgvector + mock-pos
+├── .env.example           # Biến môi trường mẫu (copy sang .env, không commit .env)
+├── CONTRIBUTING.md        # Phân vùng file, quy tắc đổi schema, quy trình PR
+├── docs/                  # SRS v2, đối chiếu Flow 1, kế hoạch Round 2
+├── backend/               # FastAPI Core
+│   ├── main.py            # Entry, CORS, error handlers (SRS §7 envelope)
+│   ├── api/               # sessions (Flow 1), quotes (Flow 2), catalog/admin
+│   ├── services/          # parser, pii, matcher, conversion, pipeline, connector, pos_client
+│   ├── ai/                # AI Gateway: embedding (local e5), LLM (optional)
+│   ├── db/                # SQLAlchemy models theo DDL SRS §6.1
+│   ├── seeds/ scripts/    # bộ đánh giá D22, evaluate/reindex
+│   └── tests/             # unit + integration (conftest.py)
+├── mock-pos/              # [simulated] POS/ERP + seed catalog (62 SKU)
+└── frontend/              # Next.js App Router (counter UI, quotes)
 ```
 
 ---

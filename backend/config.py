@@ -1,4 +1,5 @@
 import os
+import secrets
 
 
 def _f(name: str, default: str) -> float:
@@ -12,6 +13,11 @@ class Settings:
     default_market = os.getenv("DEFAULT_MARKET", "DK")
     default_store = os.getenv("DEFAULT_STORE_ID", "DK-CPH-04")
     default_user = os.getenv("DEFAULT_USER_ID", "EMP-1042")  # mock login cut (SRS §0.3 rule 2): one hard-coded user
+    # Simulated sign-in (FR-032). AUTH_REQUIRED=false keeps the single default associate so nothing else depends on it.
+    auth_required = os.getenv("AUTH_REQUIRED", "false").lower() == "true"
+    demo_password = os.getenv("DEMO_PASSWORD", "")  # never stored in the repo; empty = login disabled
+    session_secret = os.getenv("SESSION_SECRET", "") or secrets.token_hex(32)  # per process when unset
+    idle_timeout_seconds = int(os.getenv("IDLE_TIMEOUT_SECONDS", "300"))
     high_threshold = _f("MATCH_HIGH_THRESHOLD", "0.90")
     review_threshold = _f("MATCH_REVIEW_THRESHOLD", "0.80")
     ambiguity_gap = _f("AMBIGUITY_GAP", "0.05")

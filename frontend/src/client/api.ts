@@ -182,4 +182,4 @@ export const fmtTime = (iso?: string | null) =>
 export const fmtMoney = (n?: number | null, cur = "DKK") =>
   n === null || n === undefined ? "—" : `${n.toLocaleString("da-DK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${cur}`;
 
-export const UNITS = ["piece", "linear_metre", "square_metre", "pack", "bag", "board"] as const;
+export const UNITS = ["piece", "linear_metre", "square_metre", "pack", "bag", "sheet", "pallet"] as const;

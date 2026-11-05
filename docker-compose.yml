@@ -68,6 +68,11 @@ services:
       CONNECTOR_MODE: ${CONNECTOR_MODE:-api}
       MOCK_POS_URL: ${MOCK_POS_URL:-http://mock-pos:8001}
       DEFAULT_MARKET: ${DEFAULT_MARKET:-DK}
+      # Simulated sign-in (FR-032). Off by default; DEMO_PASSWORD is never committed.
+      AUTH_REQUIRED: ${AUTH_REQUIRED:-false}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-}
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      IDLE_TIMEOUT_SECONDS: ${IDLE_TIMEOUT_SECONDS:-300}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3001,http://127.0.0.1:3001}
     depends_on:
       db:

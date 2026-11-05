@@ -61,8 +61,9 @@ def convert(qty: Optional[float], unit: Optional[str], product: dict, length_hin
             direct()
         else:
             out["blocked_reason"] = code("conv_unconvertible", unit=unit, su="pack")
-    elif su in ("board", "bag"):
-        if unit in (su, "piece"):
+    elif su in ("sheet", "board", "bag"):
+        same_unit = unit == su or (su in ("sheet", "board") and unit in ("sheet", "board"))
+        if same_unit or unit == "piece":
             direct()
         else:
             out["blocked_reason"] = code("conv_unconvertible", unit=unit, su=su)

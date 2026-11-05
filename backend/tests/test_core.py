@@ -43,8 +43,8 @@ def test_pii_does_not_mask_material_dimensions(keep):
     ("Rockwool FlexiBatts 95mm - 15 pk", 15, "pack", "Rockwool FlexiBatts 95mm"),
     ("Isolering 95mm 60 m2", 60, "square_metre", "Isolering 95mm"),
     ("Murmørtel 25kg - 5 sække", 5, "bag", "Murmørtel 25kg"),
-    ("Gips vådrum 12,5mm: 10 plader", 10, "board", "Gips vådrum 12,5mm"),
-    ("Våtromsplate 12.5 mm 8 plater", 8, "board", "Våtromsplate 12.5 mm"),
+    ("Gips vådrum 12,5mm: 10 plader", 10, "sheet", "Gips vådrum 12,5mm"),
+    ("Våtromsplate 12.5 mm 8 plater", 8, "sheet", "Våtromsplate 12.5 mm"),
     ("Reglar 45x95 C24, 30 st", 30, "piece", "Reglar 45x95 C24"),
 ])
 def test_parse_quantity_and_unit(line, qty, unit, name):
@@ -158,7 +158,7 @@ def _stock(products, **over):
 
 
 def test_partial_stock_proposes_only_safe_alternatives(products):
-    l = _line("Gips vådrum 12.5mm", 10, "board", products)
+    l = _line("Gips vådrum 12.5mm", 10, "sheet", products)
     l.original_sku = l.final_sku = "SKU-GYP-MR-125"
     l.resolved = True
     stock = _stock(products, **{"SKU_GYP_MR_125": 4})
@@ -214,7 +214,7 @@ def test_thresholds_from_config():
 
 
 def test_chips_compare_raw_values_not_display_labels(products):
-    l = _line("Gips vådrum 12.5mm", 10, "board", products)
+    l = _line("Gips vådrum 12.5mm", 10, "sheet", products)
     l.original_sku = l.final_sku = "SKU-GYP-MR-125"
     pipeline.evaluate(l, products, _stock(products))
     chips = {c["attr"]: c for c in pipeline.serialize_line(l, products)["chips"]}
@@ -233,3 +233,12 @@ def test_pii_masks_bracketed_phone_with_extension_but_keeps_dates_and_dimensions
 def test_parser_recognises_danish_bag_unit_poser():
     row = parser.parse_line("5 poser cement 25 kg")
     assert row.quantity == 5 and row.unit == "bag"
+
+
+def test_phone_number_at_the_end_of_a_line_never_swallows_the_next_lines_quantity():
+    # regression: the separator class used to include a newline, so "55\n10" became one [PHONE] token and the
+    # two order lines were merged into one with the quantity lost (silently!)
+    masked = pii.mask("ring +45 22 33 44 55\n10 stk timber 45x95 C24")
+    assert masked == "ring [PHONE]\n10 stk timber 45x95 C24"
+    rows = parser.split_text(masked)
+    assert [(r.quantity, r.unit) for r in rows] == [(10, "piece")]

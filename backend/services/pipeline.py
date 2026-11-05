@@ -98,13 +98,19 @@ def match_lines(db: Session, lines: list[SessionLine], products: dict[str, dict]
     sem, timings = retrieval.semantic_candidates(db, [l.parsed_name for l in readable],
                                                  [attrs[l.line_id].get("category") for l in readable])
     sem_by_line = {l.line_id: s for l, s in zip(readable, sem)}
+    from db.models import OrderSession
+    from services import dictionary
+
+    owner = db.get(OrderSession, lines[0].session_id) if lines else None
+    learned = dictionary.boosts_for(db, owner.store_id) if owner else {}
     for l in lines:
-        match_line(l, products, sem_by_line.get(l.line_id), attrs.get(l.line_id))
+        match_line(l, products, sem_by_line.get(l.line_id), attrs.get(l.line_id),
+                   learned.get(dictionary.normalize_phrase(l.parsed_name)))
     return {**timings, **llm_info}
 
 
 def match_line(line: SessionLine, products: dict[str, dict], semantic: Optional[dict] = None,
-               attrs: Optional[dict] = None) -> None:
+               attrs: Optional[dict] = None, boosts: Optional[dict] = None) -> None:
     """(Re)compute candidates for the line from its current parsed fields."""
     line.line_status = "NEEDS_CLARIFICATION"
     if line.parse_status == "UNREADABLE" or not line.parsed_name:
@@ -115,7 +121,7 @@ def match_line(line: SessionLine, products: dict[str, dict], semantic: Optional[
     attrs = attrs if attrs is not None else line_attrs(line)
     line.attributes = attrs
     cands = matcher.match(line.parsed_name, {k: v for k, v in attrs.items() if k != "length_hint" and not k.startswith("_")},
-                          list(products.values()), semantic)
+                          list(products.values()), semantic, boosts)
     line.candidates = cands
     if cands:
         top = cands[0]
@@ -279,9 +285,15 @@ def serialize_line(l: SessionLine, products: dict[str, dict]) -> dict:
     attrs = {k: v for k, v in (l.attributes or {}).items() if k not in ("category", "length_hint") and not k.startswith("_")}
     specs = p.get("technical_specs") or {}
     must = MUST_MATCH.get(p.get("category", ""), [])
+    # SRS §15.3: fixed chip order per category, max 4. Attributes the catalog does not carry (thermal class, grade,
+    # application, material for decking ...) are simply absent; extras such as brand are not chips.
+    order = CHIP_ORDER.get(p.get("category", ""))
+    if order is None:
+        order = must + [k for k in specs if k not in must]
     # moisture_resistant is redundant when board_type is shown (gypsum)
-    shown = [k for k in must + [k for k in specs if k not in must] if k in specs and not (k == "moisture_resistant" and "board_type" in specs)]
-    for a in shown[:4]:
+    shown = [k for k in order if k in specs and not (k == "moisture_resistant" and "board_type" in specs)]
+    pack_chip = p.get("category") == "insulation" and p.get("pack_size")
+    for a in shown[: 3 if pack_chip else 4]:
         raw = specs[a]
         # tone is decided on the RAW value; the label is only for display
         if a not in attrs:
@@ -291,6 +303,8 @@ def serialize_line(l: SessionLine, products: dict[str, dict]) -> dict:
         else:
             tone = "red"
         chips.append({"attr": a, "value": chip_label(a, raw), "tone": tone})
+    if pack_chip:  # insulation: coverage per pack is the 4th chip in SRS §15.3
+        chips.append({"attr": "pack_coverage", "value": f"{float(p['pack_size']):g} m²/pk", "tone": "slate"})
     return {
         "line_id": str(l.line_id), "line_no": l.line_no,
         "source": {"text": l.raw_customer_input, "start": l.source_start, "end": l.source_end},
@@ -322,6 +336,15 @@ def serialize_line(l: SessionLine, products: dict[str, dict]) -> dict:
 CHIP_WORDS = {"moisture": "vådrum", "fire": "brand", "impact": "robust", "standard": "standard",
               "pressure_treated": "trykimp.", "ntr_ab": "NTR/AB", "thermo": "thermo", "hardwood": "hårdttræ", "composite": "komposit"}
 CHIP_UNITS = {"thickness_mm": " mm", "length_m": " m", "bag_weight_kg": " kg"}
+
+
+CHIP_ORDER = {
+    "timber": ["cross_section_mm", "strength_grade", "length_m", "treatment"],
+    "gypsum": ["thickness_mm", "board_type", "moisture_class", "fire_class"],
+    "insulation": ["thickness_mm", "material", "thermal_class"],  # + pack coverage (from pack_size) appended by serialize_line
+    "cement": ["bag_weight_kg", "product_type", "grade", "application"],
+    "decking": ["cross_section_mm", "treatment", "length_m", "material"],
+}
 
 
 def chip_label(attr: str, raw) -> str:

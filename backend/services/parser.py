@@ -5,6 +5,7 @@ rules leave a line ambiguous; rules must keep working when AI_FAIL_MODE=true.
 """
 import csv
 import io
+import os
 import re
 from dataclasses import dataclass, field
 from typing import Optional
@@ -13,20 +14,29 @@ from typing import Optional
 UNIT_MAP = {
     "stk": "piece", "stk.": "piece", "styk": "piece", "stykker": "piece", "st": "piece", "st.": "piece",
     "styck": "piece", "pcs": "piece", "pc": "piece", "piece": "piece", "pieces": "piece",
-    "m": "linear_metre", "lbm": "linear_metre", "lm": "linear_metre", "meter": "linear_metre", "metre": "linear_metre",
+    "m": "linear_metre", "lbm": "linear_metre", "lm": "linear_metre", "lpm": "linear_metre", "meter": "linear_metre", "metre": "linear_metre",
+    "løpemeter": "linear_metre", "lopemeter": "linear_metre", "løbemeter": "linear_metre",
     "m2": "square_metre", "m²": "square_metre", "kvm": "square_metre", "sqm": "square_metre",
     "pk": "pack", "pk.": "pack", "pakke": "pack", "pakker": "pack", "pack": "pack", "packs": "pack", "paket": "pack",
+    "förp": "pack", "förp.": "pack", "forp": "pack",
     "sæk": "bag", "pose": "bag", "poser": "bag", "sække": "bag", "sekk": "bag", "sekker": "bag", "säck": "bag", "säckar": "bag", "bag": "bag", "bags": "bag",
-    "plade": "board", "plader": "board", "plate": "board", "plater": "board", "skiva": "board", "skivor": "board",
-    "board": "board", "boards": "board",
+    # canonical name follows SRS §15.2 ("sheet"); "board"/"boards" stay accepted as input aliases
+    "plade": "sheet", "plader": "sheet", "plate": "sheet", "plater": "sheet", "skiva": "sheet", "skivor": "sheet",
+    "sheet": "sheet", "sheets": "sheet", "board": "sheet", "boards": "sheet",
+    "palle": "pallet", "paller": "pallet", "pall": "pallet", "pallar": "pallet", "pallet": "pallet", "pallets": "pallet",
 }
+# "m" alone is ambiguous outside length-sold categories (SRS §15.2: never guess, flag for review)
+LENGTH_CATEGORIES = {"timber", "decking"}
+MULTIWORD_UNITS = re.compile(r"\blinear\s+met(?:er|re)s?\b|\blø(?:p|b)ende\s+meter\b", re.I)
 UNIT_TOKEN = r"[A-Za-zæøåÆØÅäöÄÖ²2.]+"
 NUM = r"\d+(?:[.,]\d+)?"
 
 # order matters: more specific groups first ("terrassebræt" before generic "træ")
 CATEGORY_KEYWORDS = {
     "decking": ["terrasse", "terrassebræt", "deck", "trall", "terrassebord", "komposit"],
-    "gypsum": ["gips", "gypsum", "vådrum", "våtrom", "våtrum", "drywall", "plasterboard", "brandplade", "brannplate", "brandskiva"],
+    # English phrases below are the catalog's own English aliases (mock-pos/seeds/generate.py TYPE_ALIAS)
+    "gypsum": ["gips", "gypsum", "vådrum", "våtrom", "våtrum", "drywall", "plasterboard", "brandplade", "brannplate", "brandskiva",
+               "moisture board", "wet room board", "wetroom board", "fire board", "fireboard", "fire-rated board"],
     "insulation": ["isolering", "isolasjon", "insulation", "rockwool", "isover", "knauf", "batts", "mineraluld", "stenuld",
                    "glasuld", "steinull", "glassull", "stenull", "glasull"],
     "cement": ["cement", "sement", "mørtel", "mortel", "murbruk", "mortar", "beton", "fliseklæb", "flislim", "tile adhesive",
@@ -94,6 +104,9 @@ def parse_line(text: str, line_no: int = 1, start: int = 0) -> ParsedRow:
         return row
     body = src.lstrip("-•*·").strip()
     body = re.sub(r"^\d+[.)]\s+", "", body)  # "1. " / "2) " list numbering
+    body = MULTIWORD_UNITS.sub("lbm", body)  # "linear metre" / "løbende meter" → one token the unit regex can read
+    # masked contact tokens are not part of the item; "[EMAIL] ... 10 stk timber" leaves a dangling ellipsis to drop
+    body = re.sub(r"\s{2,}", " ", CONTACT_MARK_RE.sub(" ", body)).lstrip(" -–:,;.…").rstrip(" -–:,;")
 
     # N x L  (e.g. "10 x 4.8m timber 45x95" / "timber 45x95 10 x 4,8 m")
     nxl = re.search(rf"(?<![\dx×])(\d+)\s*[x×]\s*({NUM})\s*m\b", body, re.I)
@@ -122,7 +135,11 @@ def parse_line(text: str, line_no: int = 1, start: int = 0) -> ParsedRow:
             else:
                 body = (unit_candidate + " " if unit_candidate else "") + lead.group(3)
         row.unit = normalize_unit(row.unit_raw)
-        if row.unit_raw and not row.unit:
+        if row.unit == "linear_metre" and (row.unit_raw or "").strip().lower().rstrip(".") == "m" \
+                and detect_category(src) not in LENGTH_CATEGORIES:
+            row.unit = None  # bare "m" without a length-sold category: do not guess (SRS §15.2)
+            row.warnings.append("ambiguous_unit_m")
+        if row.unit_raw and not row.unit and "ambiguous_unit_m" not in row.warnings:
             row.warnings.append("unknown_unit")
     if row.quantity is None:
         row.warnings.append("missing_quantity")
@@ -155,47 +172,101 @@ def split_text(text: str) -> list[ParsedRow]:
 
 def _is_header(line: str) -> bool:
     low = line.lower()
-    return bool(re.match(r"^(subject|emne|ämne|from|fra|från|to|til|till|hej|hi|dear|kære|mvh|med venlig|best regards|vh|tak|thanks)\b", low)) \
-        or low.startswith("[email]") or low.startswith("[phone]")
+    return bool(re.match(r"^(subject|emne|ämne|from|fra|från|to|til|till|hej|hi|dear|kære|mvh|med venlig|best regards|vh|tak|thanks)\b", low))
+
+
+CONTACT_MARK_RE = re.compile(r"\[(?:PHONE|EMAIL)\]")
 
 
 def _is_contact(line: str) -> bool:
-    return "[PHONE]" in line or "[EMAIL]" in line
+    """A line that is only contact details ("Ring på [PHONE]"). A material line that merely carries a masked phone or
+    e-mail ("120 m timber 45x95 C24 ring [PHONE]") is NOT a contact line: dropping it would lose an order line silently."""
+    if not CONTACT_MARK_RE.search(line):
+        return False
+    rest = CONTACT_MARK_RE.sub(" ", line)
+    return not (re.search(r"\d", rest) or detect_category(rest))
+
+
+HEADER_RE = re.compile(r"\b(vare|item|produkt|product|beskrivelse|description|antal|qty|quantity)\b", re.I)
+
+
+def _drop_header(lines: list[str]) -> list[str]:
+    if lines and HEADER_RE.search(lines[0]) and not re.search(r"\d", lines[0]):
+        return lines[1:]
+    return lines
 
 
 def rows_from_table(content: bytes, filename: str) -> str:
-    """XLSX/CSV → one text line per row (cells joined). Keeps the pipeline single-path."""
+    """XLSX/CSV → one text line per row (cells joined). Keeps the pipeline single-path.
+    XLSX: every sheet is read in order (nothing is silently ignored); each sheet drops its own header row."""
     name = filename.lower()
-    lines = []
+    blocks: list[list[str]] = []
     if name.endswith(".xlsx"):
         from openpyxl import load_workbook
         wb = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
-        for r in wb.active.iter_rows(values_only=True):
-            cells = [str(c).strip() for c in r if c is not None and str(c).strip()]
-            if cells:
-                lines.append(" ".join(cells))
+        for ws in wb.worksheets:
+            lines = []
+            for r in ws.iter_rows(values_only=True):
+                cells = [str(c).strip() for c in r if c is not None and str(c).strip()]
+                if cells:
+                    lines.append(" ".join(cells))
+            blocks.append(lines)
     else:
         txt = content.decode("utf-8-sig", errors="replace")
         dialect = csv.Sniffer().sniff(txt[:2048], delimiters=",;\t") if txt.strip() else csv.excel
+        lines = []
         for r in csv.reader(io.StringIO(txt), dialect):
             cells = [c.strip() for c in r if c.strip()]
             if cells:
                 lines.append(" ".join(cells))
-    # drop an obvious header row
-    if lines and re.search(r"\b(vare|item|produkt|product|beskrivelse|description|antal|qty|quantity)\b", lines[0], re.I) and not re.search(r"\d", lines[0]):
-        lines = lines[1:]
-    return "\n".join(lines)
+        blocks.append(lines)
+    return "\n".join(line for lines in blocks for line in _drop_header(lines))
+
+
+class UnreadableFile(ValueError):
+    """The upload looks like a supported type but is damaged (an input problem, not a server error)."""
+
+
+class InputTooLarge(ValueError):
+    """Over a documented input limit (OI-04). `code` is an i18n key, `params` its arguments."""
+
+    def __init__(self, code: str, **params) -> None:
+        super().__init__(code)
+        self.code, self.params = code, params
+
+
+MAX_PDF_PAGES = int(os.getenv("MAX_PDF_PAGES", "20"))
+MAX_ROWS = int(os.getenv("MAX_ROWS", "300"))
+
+
+def check_row_limit(n: int, limit: int = MAX_ROWS) -> None:
+    if n > limit:
+        raise InputTooLarge("too_many_rows", n=n, max=limit)
 
 
 def pdf_text(content: bytes) -> str:
     from pypdf import PdfReader
-    reader = PdfReader(io.BytesIO(content))
-    return "\n".join((p.extract_text() or "") for p in reader.pages)
+    try:
+        reader = PdfReader(io.BytesIO(content))
+        if len(reader.pages) > MAX_PDF_PAGES:
+            raise InputTooLarge("pdf_too_long", pages=len(reader.pages), max=MAX_PDF_PAGES)
+        return "\n".join((p.extract_text() or "") for p in reader.pages)
+    except InputTooLarge:
+        raise
+    except Exception as e:  # noqa: BLE001 — pypdf raises many exception types for damaged files
+        raise UnreadableFile(str(e)) from e
 
 
 # ---------- attribute extraction (rules) ----------
+# Accessories (screws, nails, fixings) are outside the 5 seeded categories (SRS v2 drops accessories/vít). A word like
+# "gipsskruer" must not be read as gypsum just because it contains "gips".
+ACCESSORY_RE = re.compile(r"skru|screw|spik|bolt|beslag|dübel|dubel|\b(?:søm|sømmer|nail|nails|plugg)\b")
+
+
 def detect_category(text: str) -> Optional[str]:
     low = f" {text.lower()} "
+    if ACCESSORY_RE.search(low):
+        return None
     for cat, words in CATEGORY_KEYWORDS.items():
         if any(w in low for w in words):
             return cat

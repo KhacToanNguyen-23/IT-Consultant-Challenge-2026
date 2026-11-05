@@ -7,10 +7,10 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from api.common import ApiError
-from config import runtime
+from config import runtime, settings
 from i18n import t
 from db.database import get_db
-from db.models import Customer
+from db.models import Customer, StoreDictionary
 from ai.embedding import status as embedding_status
 from ai.llm import status as llm_status
 from services import pipeline, pos_client, seed
@@ -102,3 +102,31 @@ def pos_reset():
 @router.post("/admin/sync-catalog")
 def sync_catalog(db: Session = Depends(get_db)):
     return seed.sync_from_pos(db)
+
+
+# ---------- store dictionary (MVP-FR-021) ----------
+def _dictionary_row(r: StoreDictionary) -> dict:
+    return {"id": r.id, "normalized_phrase": r.normalized_phrase, "mapped_sku": r.mapped_sku, "boost": float(r.boost),
+            "active": r.active, "created_by": r.created_by, "created_at": r.created_at.isoformat() if r.created_at else None,
+            "deactivated_by": r.deactivated_by, "deactivated_at": r.deactivated_at.isoformat() if r.deactivated_at else None}
+
+
+@router.get("/store-dictionary")
+def list_dictionary(db: Session = Depends(get_db)):
+    """Mappings of the associate's store (newest first). Inactive ones stay listed so they are not re-learned silently."""
+    rows = db.query(StoreDictionary).filter(StoreDictionary.store_id == settings.default_store).order_by(StoreDictionary.id.desc()).all()
+    return {"items": [_dictionary_row(r) for r in rows]}
+
+
+@router.delete("/store-dictionary/{entry_id}")
+def deactivate_dictionary(entry_id: int, db: Session = Depends(get_db)):
+    from services.pipeline import now
+
+    r = db.get(StoreDictionary, entry_id)
+    if r is None or r.store_id != settings.default_store:  # store scope: never touch another store's mapping
+        raise ApiError(404, "NOT_FOUND", t("dictionary_not_found"))
+    if r.active:
+        r.active, r.deactivated_by, r.deactivated_at = False, settings.default_user, now()
+        db.commit()
+    return {"id": r.id, "active": False, "deactivated_by": r.deactivated_by,
+            "deactivated_at": r.deactivated_at.isoformat() if r.deactivated_at else None}

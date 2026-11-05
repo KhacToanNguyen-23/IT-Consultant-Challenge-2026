@@ -24,6 +24,8 @@ MUST_MATCH = {
 OPTIONAL = ["length_m", "brand"]
 GRADE_RANK = {"C14": 14, "C16": 16, "C18": 18, "C24": 24, "C30": 30}
 ALIAS_BOOST = 0.03
+REQUIRE_LEXICAL_ANCHOR = True  # see match(); tests switch it off to measure the baseline
+LEXICAL_ANCHOR_MIN = 0.0  # a candidate must share at least one word with the line (a higher bar drops valid synonyms)
 
 
 def _tokens(s: str) -> set[str]:
@@ -74,11 +76,16 @@ def band(score: float) -> str:
     return "LOW"
 
 
-def match(query: str, attrs: dict, products: list[dict], semantic: Optional[dict[str, float]] = None) -> list[dict]:
+def match(query: str, attrs: dict, products: list[dict], semantic: Optional[dict[str, float]] = None,
+          boosts: Optional[dict[str, float]] = None) -> list[dict]:
     """semantic: {sku: cosine} from vector top-k, or None for degraded (rules) mode."""
     req_cat = attrs.get("category")
     by_sku = {p["sku"]: p for p in products}
     pool = [by_sku[s] for s in semantic if s in by_sku] if semantic is not None else products
+    if not req_cat and REQUIRE_LEXICAL_ANCHOR:
+        # No category detected: vector scores of unrelated text are still high ((cos+1)/2), so a candidate must share
+        # at least one word with the SKU name/aliases. Otherwise the item is not in the catalog → offer nothing.
+        pool = [p for p in pool if token_overlap(query, p) > LEXICAL_ANCHOR_MIN or alias_hit(query, p)]
     ranked = []
     for p in pool:
         if req_cat and p["category"] != req_cat:
@@ -110,15 +117,18 @@ def match(query: str, attrs: dict, products: list[dict], semantic: Optional[dict
             mode = "rules"
         boosted = alias_hit(query, p)
         base = min(1.0, base + (ALIAS_BOOST if boosted else 0.0))
+        learned = (boosts or {}).get(p["sku"], 0.0)  # store dictionary (FR-021): only reorders candidates that survived the hard rules
+        base = min(1.0, base + learned)
         score = base * max(0.80, 0.95 ** len(optional_mis))
         if missing:
             score = min(score, settings.high_threshold - 0.01)  # missing attr never reaches high band
         ranked.append({"sku": p["sku"], "name": p["name"], "category": p["category"], "score": round(score, 4),
                        "mode": mode,
                        "reasons": {"matched": matched, "mismatched": optional_mis, "missing": missing,
-                                   **({"alias": True} if boosted else {})}})
+                                   **({"alias": True} if boosted else {}), **({"dictionary": True} if learned else {})}})
     ranked.sort(key=lambda c: (-c["score"], c["sku"]))
-    if len(ranked) >= 2 and ranked[0]["score"] - ranked[1]["score"] < settings.ambiguity_gap:
+    # round the difference: 0.95 - 0.90 is 0.04999999999999993 in floating point, but SRS FR-009 says only gap < 0.05 is capped
+    if len(ranked) >= 2 and round(ranked[0]["score"] - ranked[1]["score"], 6) < settings.ambiguity_gap:
         ranked[0]["score"] = min(ranked[0]["score"], 0.89)
         ranked[0]["reasons"]["ambiguous"] = True
     for c in ranked:
