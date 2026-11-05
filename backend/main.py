@@ -8,7 +8,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from ai import embedding
 from api import catalog, quotes, sessions
-from api.common import ApiError, api_error_handler
+from fastapi.exceptions import RequestValidationError
+
+from api.common import ApiError, api_error_handler, unexpected_error_handler, validation_error_handler
 from config import settings
 from db.database import SessionLocal, init_db
 from services import seed
@@ -29,6 +31,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_exception_handler(ApiError, api_error_handler)
+app.add_exception_handler(RequestValidationError, validation_error_handler)
+app.add_exception_handler(Exception, unexpected_error_handler)
 
 
 @app.middleware("http")

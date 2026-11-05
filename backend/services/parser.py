@@ -13,13 +13,20 @@ from typing import Optional
 UNIT_MAP = {
     "stk": "piece", "stk.": "piece", "styk": "piece", "stykker": "piece", "st": "piece", "st.": "piece",
     "styck": "piece", "pcs": "piece", "pc": "piece", "piece": "piece", "pieces": "piece",
-    "m": "linear_metre", "lbm": "linear_metre", "lm": "linear_metre", "meter": "linear_metre", "metre": "linear_metre",
+    "m": "linear_metre", "lbm": "linear_metre", "lm": "linear_metre", "lpm": "linear_metre", "meter": "linear_metre", "metre": "linear_metre",
+    "løpemeter": "linear_metre", "lopemeter": "linear_metre", "løbemeter": "linear_metre",
     "m2": "square_metre", "m²": "square_metre", "kvm": "square_metre", "sqm": "square_metre",
     "pk": "pack", "pk.": "pack", "pakke": "pack", "pakker": "pack", "pack": "pack", "packs": "pack", "paket": "pack",
+    "förp": "pack", "förp.": "pack", "forp": "pack",
     "sæk": "bag", "pose": "bag", "poser": "bag", "sække": "bag", "sekk": "bag", "sekker": "bag", "säck": "bag", "säckar": "bag", "bag": "bag", "bags": "bag",
-    "plade": "board", "plader": "board", "plate": "board", "plater": "board", "skiva": "board", "skivor": "board",
-    "board": "board", "boards": "board",
+    # canonical name follows SRS §15.2 ("sheet"); "board"/"boards" stay accepted as input aliases
+    "plade": "sheet", "plader": "sheet", "plate": "sheet", "plater": "sheet", "skiva": "sheet", "skivor": "sheet",
+    "sheet": "sheet", "sheets": "sheet", "board": "sheet", "boards": "sheet",
+    "palle": "pallet", "paller": "pallet", "pall": "pallet", "pallar": "pallet", "pallet": "pallet", "pallets": "pallet",
 }
+# "m" alone is ambiguous outside length-sold categories (SRS §15.2: never guess, flag for review)
+LENGTH_CATEGORIES = {"timber", "decking"}
+MULTIWORD_UNITS = re.compile(r"\blinear\s+met(?:er|re)s?\b|\blø(?:p|b)ende\s+meter\b", re.I)
 UNIT_TOKEN = r"[A-Za-zæøåÆØÅäöÄÖ²2.]+"
 NUM = r"\d+(?:[.,]\d+)?"
 
@@ -94,6 +101,7 @@ def parse_line(text: str, line_no: int = 1, start: int = 0) -> ParsedRow:
         return row
     body = src.lstrip("-•*·").strip()
     body = re.sub(r"^\d+[.)]\s+", "", body)  # "1. " / "2) " list numbering
+    body = MULTIWORD_UNITS.sub("lbm", body)  # "linear metre" / "løbende meter" → one token the unit regex can read
 
     # N x L  (e.g. "10 x 4.8m timber 45x95" / "timber 45x95 10 x 4,8 m")
     nxl = re.search(rf"(?<![\dx×])(\d+)\s*[x×]\s*({NUM})\s*m\b", body, re.I)
@@ -122,7 +130,11 @@ def parse_line(text: str, line_no: int = 1, start: int = 0) -> ParsedRow:
             else:
                 body = (unit_candidate + " " if unit_candidate else "") + lead.group(3)
         row.unit = normalize_unit(row.unit_raw)
-        if row.unit_raw and not row.unit:
+        if row.unit == "linear_metre" and (row.unit_raw or "").strip().lower().rstrip(".") == "m" \
+                and detect_category(src) not in LENGTH_CATEGORIES:
+            row.unit = None  # bare "m" without a length-sold category: do not guess (SRS §15.2)
+            row.warnings.append("ambiguous_unit_m")
+        if row.unit_raw and not row.unit and "ambiguous_unit_m" not in row.warnings:
             row.warnings.append("unknown_unit")
     if row.quantity is None:
         row.warnings.append("missing_quantity")
@@ -187,10 +199,17 @@ def rows_from_table(content: bytes, filename: str) -> str:
     return "\n".join(lines)
 
 
+class UnreadableFile(ValueError):
+    """The upload looks like a supported type but is damaged (an input problem, not a server error)."""
+
+
 def pdf_text(content: bytes) -> str:
     from pypdf import PdfReader
-    reader = PdfReader(io.BytesIO(content))
-    return "\n".join((p.extract_text() or "") for p in reader.pages)
+    try:
+        reader = PdfReader(io.BytesIO(content))
+        return "\n".join((p.extract_text() or "") for p in reader.pages)
+    except Exception as e:  # noqa: BLE001 — pypdf raises many exception types for damaged files
+        raise UnreadableFile(str(e)) from e
 
 
 # ---------- attribute extraction (rules) ----------

@@ -197,7 +197,8 @@ const D = {
   u_square_metre: { en: "m²", vi: "m²" },
   u_pack: { en: "packs", vi: "gói" },
   u_bag: { en: "bags", vi: "bao" },
-  u_board: { en: "boards", vi: "tấm" },
+  u_sheet: { en: "sheets", vi: "tấm" },
+  u_pallet: { en: "pallets", vi: "pallet" },
   // quotes list
   quotes_title: { en: "Quotes (Pre-order / Advance Quote)", vi: "Báo giá (Pre-order / Advance Quote)" },
   quotes_sub: {

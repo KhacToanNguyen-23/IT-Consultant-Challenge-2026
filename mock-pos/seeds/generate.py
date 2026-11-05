@@ -64,7 +64,7 @@ TYPE_ALIAS = {"standard": ["gips", "gipsplade", "gipsplate", "gipsskiva", "plast
               "fire": ["brandgips", "brannplate", "brandskiva", "fire board"],
               "impact": ["robust gips", "slagfast gips"]}
 for sku, name, th, t, brand, price, oh in GYP:
-    add(sku, name, "gypsum", "board", None, price,
+    add(sku, name, "gypsum", "sheet", None, price,
         {"thickness_mm": th, "board_type": t, "moisture_resistant": t == "moisture", "brand": brand},
         {"da": [f"{a} {th:g}" for a in TYPE_ALIAS[t][:2]], "en": [f"{TYPE_ALIAS[t][-1]} {th:g}mm"]}, oh)
 

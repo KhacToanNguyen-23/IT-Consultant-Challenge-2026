@@ -129,18 +129,28 @@ async def ingest(session_id: str, request: Request, db: Session = Depends(get_db
             raise ApiError(413, "TOO_LARGE", t("file_too_large"))
         language_hint = form.get("language_hint")
         name = (f.filename or "").lower()
-        if content[:4] == b"%PDF":
-            text = parser.pdf_text(content)
-            if len(text.strip()) < 5:
-                raise ApiError(422, "SCAN_ONLY_PDF", t("scan_pdf"))
-        elif name.endswith(".xlsx") and content[:2] == b"PK":
-            text = parser.rows_from_table(content, name)
-        elif name.endswith(".csv") or name.endswith(".txt"):
-            text = parser.rows_from_table(content, name) if name.endswith(".csv") else content.decode("utf-8-sig", "replace")
-        else:
-            raise ApiError(422, "UNSUPPORTED_FILE", t("unsupported_file"))
+        try:
+            if content[:4] == b"%PDF":
+                text = parser.pdf_text(content)
+                if len(text.strip()) < 5:
+                    raise ApiError(422, "SCAN_ONLY_PDF", t("scan_pdf"))
+            elif name.endswith(".xlsx") and content[:2] == b"PK":
+                text = parser.rows_from_table(content, name)
+            elif name.endswith(".csv") or name.endswith(".txt"):
+                text = parser.rows_from_table(content, name) if name.endswith(".csv") else content.decode("utf-8-sig", "replace")
+            else:
+                raise ApiError(422, "UNSUPPORTED_FILE", t("unsupported_file"))
+        except ApiError:
+            raise
+        except Exception as e:  # noqa: BLE001 — damaged PDF/XLSX/CSV must be a 422, never a 500
+            raise ApiError(422, "UNREADABLE_FILE", t("unreadable_file")) from e
     else:
-        body = await request.json()
+        try:
+            body = await request.json()
+        except Exception as e:  # noqa: BLE001
+            raise ApiError(422, "VALIDATION", t("bad_request_body")) from e
+        if body is not None and not isinstance(body, dict):
+            raise ApiError(422, "VALIDATION", t("bad_request_body"))
         text = (body or {}).get("text") or ""
         language_hint = (body or {}).get("language_hint")
     if not text.strip():
