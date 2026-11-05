@@ -74,7 +74,8 @@ export default function QuoteDetailPage({ params }: { params: { id: string } }) 
   const send = () => act("send", () => api(`/quotes/${q.quote_id}/transitions`, { method: "POST", json: { to_status: "SENT" } }).then(() => undefined), t("marked_sent"));
   const record = () => act("cust", () => api(`/quotes/${q.quote_id}/customer-confirmation`, { method: "POST", json: { channel } }), t("recorded"));
   const prepare = () => act("prepare", () => api<QuoteView>(`/quotes/${q.quote_id}/prepare`, { method: "POST" }), t("prepared"));
-  const confirm = () => act("confirm", () => api(`/quotes/${q.quote_id}/confirm`, { method: "POST" }).then(() => undefined), t("confirmed_via_connector"));
+  // The status notice below reports POS or CSV; a refused Confirm can still have changed lines (stock recheck).
+  const confirm = () => act("confirm", () => api(`/quotes/${q.quote_id}/confirm`, { method: "POST" }).then(() => undefined, (e) => load().then(() => Promise.reject(e))));
 
   // F8 is the step before the main action, F9 the main action, whatever state the quote is in.
   const secondary = can("SEND") ? (
@@ -145,6 +146,11 @@ export default function QuoteDetailPage({ params }: { params: { id: string } }) 
                 {q.live_error}
               </Notice>
             )}
+            {q.current_total_delta !== 0 && (
+              <Notice tone="quote" icon={<AlertTriangle size={16} />}>
+                {t("total_changed", { quote: fmtMoney(q.snapshot_total, q.currency), now: fmtMoney(q.current_total, q.currency), delta: `${q.current_total_delta > 0 ? "+" : ""}${fmtMoney(q.current_total_delta, q.currency)}` })}
+              </Notice>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-[18px] pb-1 pt-3">
@@ -155,7 +161,7 @@ export default function QuoteDetailPage({ params }: { params: { id: string } }) 
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
+            <table className="qtable w-full text-sm">
               <thead className="border-y border-[var(--ink)] text-left font-[family-name:var(--font-key)] text-sm soft">
                 <tr>
                   <th className="px-[18px] py-1.5 font-semibold">#</th>
@@ -171,28 +177,36 @@ export default function QuoteDetailPage({ params }: { params: { id: string } }) 
                   const priceChanged = l.changed_fields.includes("price");
                   const stockChanged = l.changed_fields.includes("stock");
                   return (
-                    <tr key={l.line_no} className={clsx("border-b border-dotted border-[var(--rule)] align-top", (priceChanged || stockChanged) && "bg-amber-50", l.alternative_required && "bg-red-50")}>
+                    <tr key={l.line_no} className={clsx("border-b border-dotted border-[var(--rule)] align-top", (priceChanged || stockChanged || l.current) && "bg-amber-50", l.alternative_required && "bg-red-50")}>
                       <td className="font-mono px-[18px] py-2 soft tabular">{l.line_no}</td>
                       <td className="px-2 py-2">
                         <div className="text-[15px] font-semibold leading-snug">{l.name}</div>
                         <div className="font-mono text-xs soft">{l.sku}</div>
                         <div className="font-mono text-xs soft">“{l.raw_customer_input}”</div>
+                        {l.current && (
+                          <div className="mt-1 font-semibold leading-snug text-amber-900">
+                            → {l.current.name} <span className="font-mono text-xs">{l.current.sku}</span>
+                          </div>
+                        )}
                       </td>
                       <td className="px-2 py-2 tabular">
-                        {l.quantity} × {l.selling_unit}
+                        {l.current?.quantity ?? l.quantity} × {l.current?.selling_unit ?? l.selling_unit}
                       </td>
-                      <td className="font-mono px-2 py-2 tabular">
-                        <Diff before={fmtMoney(l.snapshot.unit_price, q.currency)} after={l.live ? fmtMoney(l.live.unit_price, q.currency) : null} changed={priceChanged} />
+                      <td data-label={t("col_net_price")} className="font-mono px-2 py-2 tabular">
+                        <Diff
+                          before={fmtMoney(l.snapshot.unit_price, q.currency)}
+                          after={l.live && priceChanged ? fmtMoney(l.live.unit_price, q.currency) : l.current ? fmtMoney(l.current.unit_price, q.currency) : null}
+                          changed={priceChanged || !!l.current}
+                        />
                       </td>
-                      <td className="font-mono px-2 py-2 tabular">
-                        <Diff before={String(l.snapshot.on_hand)} after={l.live?.on_hand != null ? String(l.live.on_hand) : null} changed={stockChanged} />
+                      <td data-label={t("col_stock")} className="font-mono px-2 py-2 tabular">
+                        <Diff before={l.current ? String(l.live?.on_hand ?? "—") : String(l.snapshot.on_hand)} after={l.live?.on_hand != null ? String(l.live.on_hand) : null} changed={stockChanged} />
                         {l.alternative_required && <div className="mt-1 font-sans text-xs font-semibold text-red-900">{t("short_alt")}</div>}
                       </td>
                       <td className="px-2 py-2 pr-[18px] text-xs">
                         {l.current_line && (
                           <>
                             <div>{t(`ls_${l.current_line.line_status}` as Key)}</div>
-                            {l.current_line.final_sku !== l.sku && <div className="text-emerald-800">→ {l.current_line.final_sku}</div>}
                             {l.current_line.fulfillment_action && <div className="soft">{l.current_line.fulfillment_action}</div>}
                           </>
                         )}
@@ -208,7 +222,7 @@ export default function QuoteDetailPage({ params }: { params: { id: string } }) 
       }
       rail={
         <>
-          <Vfd top={q.status} main={fmtMoney(q.snapshot_total, "").trim()} unit={q.currency} sub={t("vfd_quote_total")} />
+          <Vfd top={q.status} main={fmtMoney(q.current_total, "").trim()} unit={q.currency} sub={q.current_total_delta ? t("vfd_current_total", { quote: fmtMoney(q.snapshot_total, "").trim() }) : t("vfd_quote_total")} />
           <div className="pos-screen space-y-3">
             <ol className="grid gap-1" aria-label={t("flow_steps")}>
               {FLOW.map((k) => (

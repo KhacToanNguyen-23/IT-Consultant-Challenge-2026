@@ -471,6 +471,45 @@ body {
   }
 }
 
+/* quote lines: same breakpoint as the ticket rows, because browser zoom narrows this column too */
+.qtable {
+  min-width: 640px;
+}
+
+@container (max-width: 760px) {
+  .qtable,
+  .qtable tbody {
+    display: block;
+    min-width: 0;
+  }
+
+  .qtable thead {
+    display: none;
+  }
+
+  .qtable tr {
+    display: grid;
+    grid-template-columns: 1.75rem minmax(0, 1fr) auto;
+    gap: 2px 8px;
+    padding: 8px 12px;
+  }
+
+  .qtable td {
+    display: block;
+    padding: 0;
+  }
+
+  .qtable td:nth-child(n + 2) {
+    grid-column: 2 / -1;
+  }
+
+  .qtable td[data-label]::before {
+    content: attr(data-label) ": ";
+    font-family: var(--font-key);
+    color: var(--ink-soft);
+  }
+}
+
 /* ---------- right rail: VFD + touchscreen ---------- */
 .pos-rail {
   display: flex;

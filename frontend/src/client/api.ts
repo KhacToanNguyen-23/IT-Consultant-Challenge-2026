@@ -97,6 +97,7 @@ export interface SessionView {
   store_id: string;
   user_id: string;
   client_id: string | null;
+  discount_rate: number;
   masked_source: string | null;
   read_line_count: number;
   ai_degraded: boolean;
@@ -131,6 +132,7 @@ export interface QuoteLine {
   quantity: number;
   selling_unit: string;
   snapshot: { unit_price: number; list_unit_price: number; on_hand: number; line_total: number };
+  current: { sku: string; name: string; quantity: number; selling_unit: string; unit_price: number; line_total: number } | null;
   live: { unit_price: number; on_hand: number | null; checked_at: string; stock_updated_at: string | null } | null;
   changed_fields: ("price" | "stock")[];
   alternative_required: boolean;
@@ -158,6 +160,8 @@ export interface QuoteView {
   status_changed_by: string | null;
   disclaimer: string;
   snapshot_total: number;
+  current_total: number;
+  current_total_delta: number;
   lines: QuoteLine[];
   live_checked_at: string | null;
   live_error: string | null;

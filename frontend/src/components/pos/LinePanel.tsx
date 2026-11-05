@@ -41,7 +41,7 @@ export default function LinePanel({ session, line, onChange, onClose }: Props) {
     run(() => api(`/sessions/${session.session_id}/lines/${line.line_no}/selection`, { method: "PUT", json: { sku, decision, reason: reason ?? null } }));
 
   const tabs: { id: Tab; label: string }[] = session.analyzed
-    ? locked
+    ? locked || session.quote
       ? [{ id: "resolve", label: t("tab_resolve") }]
       : [
           { id: "resolve", label: t("tab_resolve") },
@@ -98,7 +98,7 @@ function Resolve({ session, line, busy, select }: { session: SessionView; line: 
 
   return (
     <div className="space-y-3">
-      {substitute && <Alternatives line={line} busy={busy} onAccept={(sku) => select(sku, "SUBSTITUTION_ACCEPTED")} onReject={(reason) => select(line.match.sku!, "SUBSTITUTION_REJECTED", reason)} />}
+      {substitute && <Alternatives line={line} rate={session.discount_rate} busy={busy} onAccept={(sku) => select(sku, "SUBSTITUTION_ACCEPTED")} onReject={(reason) => select(line.match.sku!, "SUBSTITUTION_REJECTED", reason)} />}
 
       {accepted && (
         <Notice tone="good">
@@ -223,7 +223,7 @@ function ParseEditor({ session, line, locked, run }: { session: SessionView; lin
   );
 }
 
-function Alternatives({ line, busy, onAccept, onReject }: { line: Line; busy: boolean; onAccept: (sku: string) => void; onReject: (reason: string) => void }) {
+function Alternatives({ line, rate, busy, onAccept, onReject }: { line: Line; rate: number; busy: boolean; onAccept: (sku: string) => void; onReject: (reason: string) => void }) {
   const { t } = useI18n();
   const [reason, setReason] = useState("");
   return (
@@ -239,7 +239,7 @@ function Alternatives({ line, busy, onAccept, onReject }: { line: Line; busy: bo
             {a.different_grade && <span className="mt-1 inline-block rounded bg-blue-50 px-1.5 text-[11px] text-blue-900">{t("higher_grade")}</span>}
             <div className="mt-1 text-xs tabular">
               {t("in_stock_n", { n: a.on_hand })}, {a.needed_quantity} × {a.selling_unit}, Δ {a.total_price_delta >= 0 ? "+" : ""}
-              {fmtMoney(a.total_price_delta, a.currency)}
+              {fmtMoney(a.total_price_delta * (1 - rate), a.currency)} {t(rate > 0 ? "delta_net" : "delta_list")}
             </div>
             <div className="mt-0.5 text-xs soft">{a.reasons.join(", ")}</div>
             <PosKey size="sm" tone="go" icon={<Check size={16} />} disabled={busy} onClick={() => onAccept(a.sku)} className="mt-2 w-full">
