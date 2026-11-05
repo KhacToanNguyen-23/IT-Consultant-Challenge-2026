@@ -142,6 +142,10 @@ const D = {
   item_name: { en: "Item name", vi: "Tên vật tư" },
   quantity: { en: "Quantity", vi: "Số lượng" },
   unit: { en: "Unit", vi: "Đơn vị" },
+  ambiguous_unit_m_hint: {
+    en: "“m” alone is not guessed for this material (it may be metres or something else) — choose the unit.",
+    vi: "Chữ “m” đứng một mình không được tự đoán với vật liệu này (có thể là mét hay đơn vị khác) — hãy chọn đơn vị.",
+  },
   unknown_unit_hint: { en: "Unit “{u}” is not in the dictionary — choose the correct unit.", vi: "Đơn vị khách ghi “{u}” chưa có trong từ điển — chọn đơn vị đúng." },
   save: { en: "Save", vi: "Lưu" },
   save_reanalyze: { en: "Save & re-analyze line", vi: "Lưu & phân tích lại dòng" },

@@ -212,7 +212,11 @@ function ParseEditor({ session, line, locked, run }: { session: SessionView; lin
         </div>
       </div>
 
-      {line.parsed.unit_raw && !line.parsed.unit && <Notice tone="warn">{t("unknown_unit_hint", { u: line.parsed.unit_raw })}</Notice>}
+      {line.parsed.warnings.includes("ambiguous_unit_m") ? (
+        <Notice tone="warn">{t("ambiguous_unit_m_hint")}</Notice>
+      ) : (
+        line.parsed.unit_raw && !line.parsed.unit && <Notice tone="warn">{t("unknown_unit_hint", { u: line.parsed.unit_raw })}</Notice>
+      )}
 
       {!locked && (
         <button type="submit" disabled={!dirty} className="key key--nav w-full !items-center disabled:!bg-slate-400">
