@@ -111,12 +111,9 @@ export default function SessionPage({ params }: { params: { id: string } }) {
 
   const confirm = () =>
     act("confirm", async () => {
-      try {
-        await api(`/sessions/${s.session_id}/confirm`, { method: "POST", json: { client_id: effectiveClient }, headers: { "Idempotency-Key": s.order_session_id } });
-        setSelected(null);
-      } finally {
-        await load(); // a refused Confirm can still have changed lines (stock recheck)
-      }
+      await api(`/sessions/${s.session_id}/confirm`, { method: "POST", json: { client_id: effectiveClient }, headers: { "Idempotency-Key": s.order_session_id } });
+      setSelected(null);
+      await load();
     });
 
   const saveQuote = () =>
