@@ -5,6 +5,7 @@ from typing import Optional
 from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import InterfaceError, OperationalError
 
 from i18n import t
 
@@ -37,3 +38,10 @@ async def unexpected_error_handler(request: Request, exc: Exception):
     rid = f"req_{uuid.uuid4().hex[:12]}"
     log.error("unhandled error on %s %s (%s): %r", request.method, request.url.path, rid, exc, exc_info=exc)
     return _envelope(500, "INTERNAL", t("internal_error"), request_id=rid)
+
+
+async def db_unavailable_handler(request: Request, exc: Exception):
+    """SRS §7: 503 for a dependency that is down (database), with the same envelope; never a stack trace."""
+    rid = f"req_{uuid.uuid4().hex[:12]}"
+    log.error("database unavailable on %s %s (%s): %s", request.method, request.url.path, rid, str(exc)[:200])
+    return _envelope(503, "DB_UNAVAILABLE", t("db_unavailable"), request_id=rid)

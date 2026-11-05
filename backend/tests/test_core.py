@@ -233,3 +233,12 @@ def test_pii_masks_bracketed_phone_with_extension_but_keeps_dates_and_dimensions
 def test_parser_recognises_danish_bag_unit_poser():
     row = parser.parse_line("5 poser cement 25 kg")
     assert row.quantity == 5 and row.unit == "bag"
+
+
+def test_phone_number_at_the_end_of_a_line_never_swallows_the_next_lines_quantity():
+    # regression: the separator class used to include a newline, so "55\n10" became one [PHONE] token and the
+    # two order lines were merged into one with the quantity lost (silently!)
+    masked = pii.mask("ring +45 22 33 44 55\n10 stk timber 45x95 C24")
+    assert masked == "ring [PHONE]\n10 stk timber 45x95 C24"
+    rows = parser.split_text(masked)
+    assert [(r.quantity, r.unit) for r in rows] == [(10, "piece")]

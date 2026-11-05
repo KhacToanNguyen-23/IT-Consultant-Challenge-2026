@@ -75,7 +75,9 @@ def session_view(db: Session, s: OrderSession, products: Optional[dict] = None) 
         "blockers": pipeline.blockers(lines) if analyzed else [],
         "quote": {"quote_id": quote.quote_id, "status": quote.status} if quote else None,
         "confirmation": {
+            "order_session_id": s.order_session_id, "locked": s.status in LOCKED,
             "order_status": s.status if s.status in LOCKED else None,
+            "delivery_status": "SENT_OR_EXPORTED" if s.status in LOCKED else None,
             "fulfillment_reference": s.fulfillment_reference, "pos_order_ref": s.pos_order_ref,
             "csv_download_url": f"/api/v1/sessions/{s.session_id}/export.csv" if s.status == "NEEDS_MANUAL" else None,
             "confirmed_at": s.confirmed_at.isoformat() if s.confirmed_at else None,
@@ -236,22 +238,22 @@ def analyze(session_id: str, body: AnalyzeBody = AnalyzeBody(), db: Session = De
     t0 = time.perf_counter()
     timings = {}
     products = pipeline.load_products(db)
-    t = time.perf_counter()
+    tick = time.perf_counter()
     rt = pipeline.match_lines(db, lines, products)
-    timings["match_ms"] = round((time.perf_counter() - t) * 1000, 1)
+    timings["match_ms"] = round((time.perf_counter() - tick) * 1000, 1)
     timings.update(embed_ms=rt["embed_ms"], vector_ms=rt["vector_ms"], match_mode=rt["mode"],
                    llm_ms=rt["llm_ms"], llm_calls=rt["llm_calls"], llm=rt["llm_status"])
     # degraded = AI toggled off OR embedding not ready/failed → rules + manual search (banner in UI)
     s.ai_fail_mode = runtime["ai_fail_mode"] or rt["mode"] != "embedding"
     db.add(AiInvocation(session_id=s.session_id, step="embed_and_retrieve", latency_ms=int(rt["embed_ms"] + rt["vector_ms"]),
                         status=rt["mode"]))
-    t = time.perf_counter()
+    tick = time.perf_counter()
     stock = pipeline.load_stock(list(products), s.store_id)
-    timings["stock_ms"] = round((time.perf_counter() - t) * 1000, 1)
-    t = time.perf_counter()
+    timings["stock_ms"] = round((time.perf_counter() - tick) * 1000, 1)
+    tick = time.perf_counter()
     for l in lines:
         pipeline.evaluate(l, products, stock)
-    timings["rules_convert_alternatives_ms"] = round((time.perf_counter() - t) * 1000, 1)
+    timings["rules_convert_alternatives_ms"] = round((time.perf_counter() - tick) * 1000, 1)
     timings["total_ms"] = round((time.perf_counter() - t0) * 1000, 1)
     s.stage_timings = {**timings, "lines": len(lines), "pos_available": stock is not None}
     s.status = "ANALYZED"

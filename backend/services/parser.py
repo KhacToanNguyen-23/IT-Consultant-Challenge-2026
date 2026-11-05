@@ -105,6 +105,8 @@ def parse_line(text: str, line_no: int = 1, start: int = 0) -> ParsedRow:
     body = src.lstrip("-•*·").strip()
     body = re.sub(r"^\d+[.)]\s+", "", body)  # "1. " / "2) " list numbering
     body = MULTIWORD_UNITS.sub("lbm", body)  # "linear metre" / "løbende meter" → one token the unit regex can read
+    # masked contact tokens are not part of the item; "[EMAIL] ... 10 stk timber" leaves a dangling ellipsis to drop
+    body = re.sub(r"\s{2,}", " ", CONTACT_MARK_RE.sub(" ", body)).lstrip(" -–:,;.…").rstrip(" -–:,;")
 
     # N x L  (e.g. "10 x 4.8m timber 45x95" / "timber 45x95 10 x 4,8 m")
     nxl = re.search(rf"(?<![\dx×])(\d+)\s*[x×]\s*({NUM})\s*m\b", body, re.I)
@@ -170,12 +172,19 @@ def split_text(text: str) -> list[ParsedRow]:
 
 def _is_header(line: str) -> bool:
     low = line.lower()
-    return bool(re.match(r"^(subject|emne|ämne|from|fra|från|to|til|till|hej|hi|dear|kære|mvh|med venlig|best regards|vh|tak|thanks)\b", low)) \
-        or low.startswith("[email]") or low.startswith("[phone]")
+    return bool(re.match(r"^(subject|emne|ämne|from|fra|från|to|til|till|hej|hi|dear|kære|mvh|med venlig|best regards|vh|tak|thanks)\b", low))
+
+
+CONTACT_MARK_RE = re.compile(r"\[(?:PHONE|EMAIL)\]")
 
 
 def _is_contact(line: str) -> bool:
-    return "[PHONE]" in line or "[EMAIL]" in line
+    """A line that is only contact details ("Ring på [PHONE]"). A material line that merely carries a masked phone or
+    e-mail ("120 m timber 45x95 C24 ring [PHONE]") is NOT a contact line: dropping it would lose an order line silently."""
+    if not CONTACT_MARK_RE.search(line):
+        return False
+    rest = CONTACT_MARK_RE.sub(" ", line)
+    return not (re.search(r"\d", rest) or detect_category(rest))
 
 
 HEADER_RE = re.compile(r"\b(vare|item|produkt|product|beskrivelse|description|antal|qty|quantity)\b", re.I)

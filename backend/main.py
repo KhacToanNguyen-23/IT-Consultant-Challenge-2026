@@ -10,7 +10,10 @@ from ai import embedding
 from api import catalog, quotes, sessions
 from fastapi.exceptions import RequestValidationError
 
-from api.common import ApiError, api_error_handler, unexpected_error_handler, validation_error_handler
+from sqlalchemy.exc import InterfaceError, OperationalError
+
+from api.common import (ApiError, api_error_handler, db_unavailable_handler, unexpected_error_handler,
+                        validation_error_handler)
 from config import settings
 from db.database import SessionLocal, init_db
 from services import seed
@@ -32,6 +35,8 @@ app.add_middleware(
 )
 app.add_exception_handler(ApiError, api_error_handler)
 app.add_exception_handler(RequestValidationError, validation_error_handler)
+app.add_exception_handler(OperationalError, db_unavailable_handler)
+app.add_exception_handler(InterfaceError, db_unavailable_handler)
 app.add_exception_handler(Exception, unexpected_error_handler)
 
 

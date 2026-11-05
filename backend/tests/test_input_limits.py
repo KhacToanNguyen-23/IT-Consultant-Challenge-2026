@@ -67,3 +67,15 @@ def test_header_and_accessory_regexes_use_word_boundaries():
     assert parser.HEADER_RE.search("Vare antal") and not parser.HEADER_RE.search("hardware antalya")
     assert parser.ACCESSORY_RE.search(" 100 søm ") and parser.ACCESSORY_RE.search("nail 4x100")
     assert not parser.ACCESSORY_RE.search("thumbnail sheet")  # "nail" inside another word
+
+
+# --- a material line that carries a contact detail must not disappear (silent data loss) ---
+def test_material_line_with_a_masked_phone_or_email_is_kept_and_cleaned():
+    rows = parser.split_text("Hej\n120 m timber 45x95 C24 ring [PHONE] eller [EMAIL]\nRing på [PHONE].\n[EMAIL] ... 10 stk timber 45x95 C24")
+    assert [r.quantity for r in rows] == [120, 10]
+    assert all("[PHONE]" not in (r.item_text or "") and "[EMAIL]" not in (r.item_text or "") for r in rows)
+    assert rows[0].source_text.endswith("[EMAIL]")  # the source text keeps the (masked) original for the preview
+
+
+def test_pure_contact_lines_are_still_skipped():
+    assert parser.split_text("Ring på [PHONE].\nTlf: [PHONE]\nkunde: [EMAIL]\n") == []
