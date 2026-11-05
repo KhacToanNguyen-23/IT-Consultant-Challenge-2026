@@ -7,6 +7,7 @@ import copy
 import hashlib
 import json
 import os
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -24,8 +25,15 @@ def _now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
+REF_EPOCH = 1_767_225_600  # 2026-01-01 UTC
+
+
 class State:
     def __init__(self) -> None:
+        # A POS never reissues a reference, and SiteDesk stores them under a UNIQUE constraint. This state lives in
+        # memory, so the counter starts from the clock (survives a restart) and /admin/reset leaves it alone.
+        self.orders: dict[str, dict] = {}  # idempotency_key -> {hash, response}
+        self.order_seq = int(time.time()) - REF_EPOCH
         self.reset()
         self.fail_mode = os.getenv("FAIL_MODE", "false").lower() == "true"
 
@@ -39,8 +47,6 @@ class State:
         self.stock = {sku: {"on_hand": qty, "updated_at": now} for sku, qty in extra["stock"].items()}
         self.customers = {c["client_id"]: c for c in extra["customers"]}
         self.tiers = {t["tier_code"]: t for t in extra["discount_tiers"]}
-        self.orders: dict[str, dict] = {}  # idempotency_key -> {hash, response}
-        self.order_seq = 122
 
 
 S = State()
@@ -116,7 +122,8 @@ async def orders(request: Request, idempotency_key: Optional[str] = Header(None)
     key = idempotency_key or payload.get("order_session_id")
     if not key:
         return JSONResponse(status_code=422, content={"error": {"code": "MISSING_IDEMPOTENCY_KEY", "message": "Idempotency-Key required"}})
-    h = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+    # Elapsed time is measurement, not order content: a retry must still replay.
+    h = hashlib.sha256(json.dumps({k: v for k, v in payload.items() if k != "processing_time_seconds"}, sort_keys=True).encode()).hexdigest()
     if key in S.orders:
         prev = S.orders[key]
         if prev["hash"] != h:

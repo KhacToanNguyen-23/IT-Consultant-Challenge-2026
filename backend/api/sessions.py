@@ -2,6 +2,7 @@
 import random
 import time
 import uuid
+from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, Request
@@ -13,13 +14,14 @@ from api.common import ApiError, StrictBody
 from config import runtime, settings
 from db.database import get_db
 from i18n import t
-from db.models import AiInvocation, Customer, OrderSession, Quote, SessionLine
+from db.models import AiInvocation, Customer, DiscountTier, OrderSession, Quote, SessionLine
 from services import auth, connector, dictionary, parser, pii, pipeline, telemetry
 from services.pipeline import now
 
 router = APIRouter(prefix="/api/v1", tags=["Sessions (Flow 1)"])
 
 LOCKED = ("CONFIRMED", "SENT_OR_EXPORTED", "POS_ACCEPTED", "NEEDS_MANUAL")
+QUOTE_OPEN = ("SAVED", "SENT", "PREPARING")
 MAX_UPLOAD = 5 * 1024 * 1024
 
 
@@ -41,6 +43,18 @@ def get_session(db: Session, session_id: str, for_update: bool = False) -> Order
 def ensure_editable(s: OrderSession) -> None:
     if s.status in LOCKED:
         raise ApiError(409, "SESSION_LOCKED", t("session_locked"))
+
+
+def ensure_no_quote(db: Session, s: OrderSession, customer_decision: bool = False) -> None:
+    """A quote is what the customer agreed to, so the order behind it only changes through the customer's own decision."""
+    quote = db.query(Quote).filter(Quote.session_id == s.session_id).first()
+    if quote and not (customer_decision and quote.status in QUOTE_OPEN):
+        raise ApiError(409, "QUOTE_LOCKED", t("quote_locks_session", id=quote.quote_id))
+
+
+def discount_rate(db: Session, tier: Optional[str]) -> Decimal:
+    row = db.get(DiscountTier, tier) if tier else None
+    return Decimal(str(row.discount_rate)) if row else Decimal("0")
 
 
 def lines_of(db: Session, s: OrderSession) -> list[SessionLine]:
@@ -65,10 +79,12 @@ def session_view(db: Session, s: OrderSession, products: Optional[dict] = None) 
     lines = lines_of(db, s)
     quote = db.query(Quote).filter(Quote.session_id == s.session_id).first()
     analyzed = s.status not in ("DRAFT", "PARSED")
+    customer = db.get(Customer, s.client_id) if s.client_id else None
     return {
         "session_id": str(s.session_id), "order_session_id": s.order_session_id, "status": s.status,
         "input_type": s.input_type, "market": s.market, "store_id": s.store_id, "user_id": s.user_id,
-        "client_id": s.client_id, "masked_source": s.masked_source, "read_line_count": len(lines),
+        "client_id": s.client_id, "discount_rate": float(discount_rate(db, customer.discount_tier if customer else None)),
+        "masked_source": s.masked_source, "read_line_count": len(lines),
         "ai_degraded": s.ai_fail_mode, "analyzed": analyzed, "locked": s.status in LOCKED,
         "stage_timings_ms": s.stage_timings or {},
         "lines": [pipeline.serialize_line(l, products) for l in lines],
@@ -119,6 +135,7 @@ def read_session(session_id: str, db: Session = Depends(get_db)):
 async def ingest(session_id: str, request: Request, db: Session = Depends(get_db)):
     s = get_session(db, session_id, for_update=True)
     ensure_editable(s)
+    ensure_no_quote(db, s)
     ctype = request.headers.get("content-type", "")
     language_hint = None
     if ctype.startswith("multipart/form-data"):
@@ -194,6 +211,7 @@ class LinePatch(StrictBody):
 def patch_line(session_id: str, line_no: int, body: LinePatch, db: Session = Depends(get_db)):
     s = get_session(db, session_id, for_update=True)
     ensure_editable(s)
+    ensure_no_quote(db, s)
     l = get_line(db, s, line_no)
     changed = []
     if body.item_text is not None and body.item_text.strip() != (l.parsed_name or ""):
@@ -235,6 +253,7 @@ class AnalyzeBody(StrictBody):
 def analyze(session_id: str, body: AnalyzeBody = AnalyzeBody(), db: Session = Depends(get_db)):
     s = get_session(db, session_id, for_update=True)
     ensure_editable(s)
+    ensure_no_quote(db, s)
     lines = lines_of(db, s)
     if not lines:
         raise ApiError(400, "NO_LINES", t("no_lines"))
@@ -284,6 +303,7 @@ class Selection(StrictBody):
 def select(session_id: str, line_no: int, body: Selection, db: Session = Depends(get_db)):
     s = get_session(db, session_id, for_update=True)
     ensure_editable(s)
+    ensure_no_quote(db, s, customer_decision=body.decision != "SKU_EDITED")
     l = get_line(db, s, line_no)
     products = pipeline.load_products(db)
     if body.sku not in products:
@@ -340,6 +360,7 @@ class ClientBody(StrictBody):
 def set_client(session_id: str, body: ClientBody, db: Session = Depends(get_db)):
     s = get_session(db, session_id, for_update=True)
     ensure_editable(s)
+    ensure_no_quote(db, s)
     if not db.get(Customer, body.client_id):
         raise ApiError(422, "INVALID_CLIENT", t("client_not_found"))
     s.client_id = body.client_id
@@ -351,9 +372,31 @@ class ConfirmBody(StrictBody):
     client_id: Optional[str] = None
 
 
+def recheck_stock(db: Session, s: OrderSession, lines: list[SessionLine]) -> None:
+    """Time passes between Prepare and Confirm. A changed line stops this attempt so the associate sees it first;
+    with POS down there is nothing to compare and Confirm carries on to the CSV path."""
+    products = pipeline.load_products(db)
+    stock = pipeline.load_stock(list(products), s.store_id)
+    if stock is None:
+        return
+    before = {l.line_no: (l.final_sku, l.fulfillment_action) for l in lines}
+    for l in lines:
+        pipeline.evaluate(l, products, stock)
+    changed = [l.line_no for l in lines if (l.final_sku, l.fulfillment_action) != before[l.line_no]]
+    if changed:
+        refresh_status(s, lines)
+        db.commit()
+        raise ApiError(409, "STOCK_CHANGED", t("stock_changed_confirm", lines=", ".join(map(str, changed))), {"line_nos": changed})
+
+
+def confirm_result(db: Session, s: OrderSession, replayed: bool, **extra) -> dict:
+    return {**session_view(db, s)["confirmation"], "order_session_id": s.order_session_id, "delivery_status": "SENT_OR_EXPORTED",
+            "locked": True, "replayed": replayed, **extra}
+
+
 def do_confirm(db: Session, s: OrderSession, client_id: Optional[str]) -> dict:
     if s.status in LOCKED:  # idempotent replay → same reference, no second order
-        return {**session_view(db, s)["confirmation"], "replayed": True}
+        return confirm_result(db, s, replayed=True)
     if s.status in ("DRAFT", "PARSED"):
         raise ApiError(400, "NOT_ANALYZED", t("not_analyzed_confirm"))
     quote = db.query(Quote).filter(Quote.session_id == s.session_id).with_for_update().first()
@@ -363,10 +406,12 @@ def do_confirm(db: Session, s: OrderSession, client_id: Optional[str]) -> dict:
         if quote.status != "PREPARING":
             raise ApiError(409, "QUOTE_STATE", t("quote_needs_prepare", id=quote.quote_id, status=quote.status))
     lines = lines_of(db, s)
+    if quote:
+        recheck_stock(db, s, lines)
     b = pipeline.blockers(lines)
     if b:
         raise ApiError(409, "UNRESOLVED_LINES", t("unresolved_confirm", n=len(b)), {"line_nos": [x["line_no"] for x in b], "blockers": b})
-    cid = client_id or s.client_id or f"{s.store_id}-WALKIN"
+    cid = quote.client_id if quote else client_id or s.client_id or f"{s.store_id}-WALKIN"
     if not db.get(Customer, cid):
         raise ApiError(422, "INVALID_CLIENT", t("client_not_found"))
     s.client_id = cid
@@ -385,7 +430,7 @@ def do_confirm(db: Session, s: OrderSession, client_id: Optional[str]) -> dict:
         telemetry.event(db, "QUOTE_CONFIRMED", s.session_id, actor_id=s.user_id)
     s.masked_source = None  # retention: purge source after Confirm
     db.commit()
-    return {**session_view(db, s)["confirmation"], "payload": payload, "replayed": False}
+    return confirm_result(db, s, replayed=False, payload=payload)
 
 
 @router.post("/sessions/{session_id}/confirm")

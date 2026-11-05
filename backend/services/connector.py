@@ -7,8 +7,10 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
+from api.common import ApiError
 from config import settings
 from db.models import ConnectorAttempt, OrderSession, SessionLine
+from i18n import t
 from services import pos_client
 
 CSV_HEADER = ["order_session_id", "quote_id", "store_id", "client_id", "confirmed_by_associate", "processing_time_seconds",
@@ -52,10 +54,16 @@ def to_csv(payload: dict) -> str:
     return "﻿" + buf.getvalue()
 
 
+def payload_hash(payload: dict) -> str:
+    """Order content only: elapsed time changes on every attempt and must not break an idempotent replay."""
+    content = {k: v for k, v in payload.items() if k != "processing_time_seconds"}
+    return hashlib.sha256(json.dumps(content, sort_keys=True).encode()).hexdigest()
+
+
 def push(db: Session, s: OrderSession, payload: dict) -> dict:
     """POST to mock-pos with one idempotency key; retry once; else CSV + NEEDS_MANUAL."""
     key = s.order_session_id
-    h = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+    h = payload_hash(payload)
     status, body = 0, None
     if settings.connector_mode == "api":
         for _ in range(2):
@@ -70,6 +78,8 @@ def push(db: Session, s: OrderSession, payload: dict) -> dict:
         s.pos_order_ref = body["pos_order_ref"]
         s.fulfillment_reference = body["pos_order_ref"]
         return {"order_status": "POS_ACCEPTED", "delivery_status": "SENT_OR_EXPORTED", "pos_order_ref": s.pos_order_ref}
+    if status == 409:  # POS already holds this order with other content: a CSV would enter it twice
+        raise ApiError(409, "POS_CONFLICT", t("pos_conflict"))
     s.status = "NEEDS_MANUAL"
     s.push_status = "SENT_OR_EXPORTED"
     s.fulfillment_reference = f"CSV-{s.order_session_id}"
