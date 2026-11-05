@@ -98,13 +98,19 @@ def match_lines(db: Session, lines: list[SessionLine], products: dict[str, dict]
     sem, timings = retrieval.semantic_candidates(db, [l.parsed_name for l in readable],
                                                  [attrs[l.line_id].get("category") for l in readable])
     sem_by_line = {l.line_id: s for l, s in zip(readable, sem)}
+    from db.models import OrderSession
+    from services import dictionary
+
+    owner = db.get(OrderSession, lines[0].session_id) if lines else None
+    learned = dictionary.boosts_for(db, owner.store_id) if owner else {}
     for l in lines:
-        match_line(l, products, sem_by_line.get(l.line_id), attrs.get(l.line_id))
+        match_line(l, products, sem_by_line.get(l.line_id), attrs.get(l.line_id),
+                   learned.get(dictionary.normalize_phrase(l.parsed_name)))
     return {**timings, **llm_info}
 
 
 def match_line(line: SessionLine, products: dict[str, dict], semantic: Optional[dict] = None,
-               attrs: Optional[dict] = None) -> None:
+               attrs: Optional[dict] = None, boosts: Optional[dict] = None) -> None:
     """(Re)compute candidates for the line from its current parsed fields."""
     line.line_status = "NEEDS_CLARIFICATION"
     if line.parse_status == "UNREADABLE" or not line.parsed_name:
@@ -115,7 +121,7 @@ def match_line(line: SessionLine, products: dict[str, dict], semantic: Optional[
     attrs = attrs if attrs is not None else line_attrs(line)
     line.attributes = attrs
     cands = matcher.match(line.parsed_name, {k: v for k, v in attrs.items() if k != "length_hint" and not k.startswith("_")},
-                          list(products.values()), semantic)
+                          list(products.values()), semantic, boosts)
     line.candidates = cands
     if cands:
         top = cands[0]

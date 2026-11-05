@@ -72,6 +72,7 @@ M: dict[str, dict[str, str]] = {
     "bad_request_body": {"en": "The request body is not valid", "vi": "Nội dung yêu cầu không hợp lệ"},
     "db_unavailable": {"en": "The database is not reachable right now. Nothing was changed; retry in a moment.",
                        "vi": "Hiện chưa kết nối được cơ sở dữ liệu. Chưa có gì bị thay đổi; hãy thử lại sau ít phút."},
+    "dictionary_not_found": {"en": "Dictionary entry not found", "vi": "Không tìm thấy mục từ điển"},
     "internal_error": {"en": "Unexpected server error. Nothing was lost; try again or continue manually.",
                        "vi": "Lỗi máy chủ không mong đợi. Không mất dữ liệu; hãy thử lại hoặc tiếp tục thủ công."},
     "no_text": {"en": "Nothing to read", "vi": "Không có nội dung để đọc"},

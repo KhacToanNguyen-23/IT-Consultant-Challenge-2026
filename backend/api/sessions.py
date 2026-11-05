@@ -14,7 +14,7 @@ from config import runtime, settings
 from db.database import get_db
 from i18n import t
 from db.models import AiInvocation, Customer, OrderSession, Quote, SessionLine
-from services import connector, parser, pii, pipeline, telemetry
+from services import connector, dictionary, parser, pii, pipeline, telemetry
 from services.pipeline import now
 
 router = APIRouter(prefix="/api/v1", tags=["Sessions (Flow 1)"])
@@ -378,6 +378,7 @@ def do_confirm(db: Session, s: OrderSession, client_id: Optional[str]) -> dict:
     telemetry.event(db, "POS_ACCEPTED" if result["order_status"] == "POS_ACCEPTED" else "CSV_EXPORTED", s.session_id, actor_id=s.user_id)
     for l in lines:
         l.resolved = True
+    dictionary.record_after_confirm(db, s, lines)  # FR-021: remember manual SKU choices, only after Confirm
     if quote:
         quote.status = "CONFIRMED"
         quote.status_changed_by, quote.status_changed_at = s.user_id, now()
