@@ -86,7 +86,7 @@ export function SoftKeys({ slots }: { slots: React.ReactNode[] }) {
   return (
     <div className="pos-softkeys print:hidden">
       {slots.map((slot, i) => (
-        <div key={i} className={clsx("min-w-0 [&>.key]:h-[calc(100%-3px)] [&>.key]:w-full", !slot && "hidden lg:block")}>
+        <div key={i} className={clsx("min-w-0 [&>.key]:h-[calc(100%-3px)] [&>.key]:w-full", !slot && "hidden sm:block")}>
           {slot || <div className="key key--blank" aria-hidden />}
         </div>
       ))}

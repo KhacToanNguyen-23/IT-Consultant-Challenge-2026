@@ -57,15 +57,15 @@ export default function AppHeader() {
         </PosKey>
       </nav>
 
-      <div className="ml-auto flex flex-wrap items-center gap-2">
-        <span className="text-[var(--case-ink-soft)]" title={t("mock_login_title")}>
+      <div className="pos-status-tools ml-auto flex min-w-0 flex-wrap items-center gap-2">
+        <span className="pos-operator text-[var(--case-ink-soft)]" title={t("mock_login_title")}>
           EMP-1042, {t("store_terminal")} DK-CPH-04, <i>{t("mock_login")}</i>
         </span>
         <FailToggle label={t("ai_fail")} title={t("demo_toggle")} on={!!health?.ai_fail_mode} disabled={busy || !health} onClick={() => toggle("ai")} />
         <FailToggle label={t("pos_fail")} title={t("demo_toggle")} on={!!health?.pos_fail_mode} disabled={busy || !health} onClick={() => toggle("pos")} />
         <span className="inline-flex items-center gap-1.5 font-semibold">
           <span className={clsx("lamp", !health ? "lamp--bad" : health.status === "healthy" ? "lamp--ok" : "lamp--warn")} aria-hidden />
-          {!health ? t("api_offline") : health.status === "healthy" ? t("system_ok") : t("degraded")}
+          <span className="pos-health-text">{!health ? t("api_offline") : health.status === "healthy" ? t("system_ok") : t("degraded")}</span>
         </span>
         <Clock />
         <div role="group" aria-label={t("lang_switch")} className="flex gap-1">
