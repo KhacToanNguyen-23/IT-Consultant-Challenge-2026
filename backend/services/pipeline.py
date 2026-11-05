@@ -249,8 +249,12 @@ def evaluate(line: SessionLine, products: dict[str, dict], stock: Optional[dict[
     accepted_sku = line.final_sku if line.customer_accepted_substitution_at else None
     fulfil_line(line, products, stock)
     if accepted_sku:
-        alt = next((a for a in line.alternatives if a["sku"] == accepted_sku), None)
+        alts = line.alternatives
+        if not alts and stock is not None and line.original_sku in products:  # original restocked: the customer's choice stands
+            alts = alternatives_for(line, products[line.original_sku], products, stock)
+        alt = next((a for a in alts if a["sku"] == accepted_sku), None)
         if alt:
+            line.alternatives = alts
             apply_accepted_substitution(line, alt)
         else:  # substitute no longer valid (stock changed) → ask again
             line.customer_accepted_substitution_at = None

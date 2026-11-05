@@ -15,28 +15,22 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from api.common import ApiError
-from api.sessions import LOCKED, do_confirm, get_session, lines_of, refresh_status
+from api.sessions import LOCKED, QUOTE_OPEN, discount_rate, do_confirm, get_session, lines_of, refresh_status
 from config import settings
 from i18n import lang, t
 from db.database import get_db
-from db.models import Customer, DiscountTier, OrderSession, Quote, QuoteLineSnapshot, SessionLine
+from db.models import Customer, OrderSession, Quote, QuoteLineSnapshot, SessionLine
 from services import pipeline, pos_client, telemetry
 from services.pipeline import now
 
 router = APIRouter(prefix="/api/v1", tags=["Quotes (Flow 2)"])
 
 PRICE_SOURCE = "mock-pos simulated"
-OPEN_STATES = ("SAVED", "SENT", "PREPARING")
 CONFIRM_CHANNELS = ("email", "phone", "in_store")
 
 
 def _money(x) -> Decimal:
     return Decimal(str(x)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-
-
-def _rate(db: Session, tier: str) -> Decimal:
-    t = db.get(DiscountTier, tier)
-    return Decimal(str(t.discount_rate)) if t else Decimal("0")
 
 
 def get_quote(db: Session, quote_id: str, for_update: bool = False) -> Quote:
@@ -51,7 +45,7 @@ def get_quote(db: Session, quote_id: str, for_update: bool = False) -> Quote:
 
 def touch_expiry(db: Session, quote: Quote) -> None:
     """Expiry on access (MVP-FR-027): no scheduler."""
-    if quote.status in OPEN_STATES and quote.valid_until < datetime.now(timezone.utc).date():
+    if quote.status in QUOTE_OPEN and quote.valid_until < datetime.now(timezone.utc).date():
         quote.status = "EXPIRED"
         quote.status_changed_by, quote.status_changed_at = "system", now()
         s = db.get(OrderSession, quote.session_id)
@@ -70,10 +64,10 @@ def quote_view(db: Session, quote: Quote, with_live: bool = True) -> dict:
     lines = {l.line_id: l for l in lines_of(db, s)}
     snaps = sorted(_snapshots(db, quote), key=lambda x: lines[x.line_id].line_no if x.line_id in lines else 0)
     products = pipeline.load_products(db)
-    rate = _rate(db, quote.applied_discount_tier)
+    rate = discount_rate(db, quote.applied_discount_tier)
     live_prices = live_stock = None
     live_error = None
-    if with_live and quote.status in OPEN_STATES:
+    if with_live and quote.status in QUOTE_OPEN:
         skus = list({sn.sku for sn in snaps} | {l.final_sku for l in lines.values() if l.final_sku})
         try:
             live_prices = pos_client.prices(skus)
@@ -81,32 +75,42 @@ def quote_view(db: Session, quote: Quote, with_live: bool = True) -> dict:
         except pos_client.PosUnavailable:
             live_error = t("pos_live_error")
     checked_at = now().isoformat() if live_prices is not None else None
-    out_lines, total = [], Decimal("0")
+    out_lines, total, current_total = [], Decimal("0"), Decimal("0")
     for sn in snaps:
         l = lines.get(sn.line_id)
         qty = Decimal(str(sn.quantity or 0))
         line_total = _money(Decimal(str(sn.unit_price)) * qty)
         total += line_total
+        # The snapshot stays as quoted. A later customer decision shows up beside it, priced as the till would.
+        sku_now, qty_now, price_now, total_now = sn.sku, qty, _money(sn.unit_price), line_total
+        if l and l.final_sku and l.selling_qty and (l.final_sku != sn.sku or Decimal(str(l.selling_qty)) != qty):
+            sku_now, qty_now = l.final_sku, Decimal(str(l.selling_qty))
+            price_now = _money(Decimal(str(products[sku_now]["unit_price"])) * (1 - rate))
+            total_now = _money(price_now * qty_now)
+        replaced = (sku_now, qty_now) != (sn.sku, qty)
+        current_total += total_now
         item = {
             "line_no": l.line_no if l else None, "raw_customer_input": l.raw_customer_input if l else None,
             "sku": sn.sku, "name": products.get(sn.sku, {}).get("name"), "category": products.get(sn.sku, {}).get("category"),
             "quantity": float(qty), "selling_unit": l.selling_unit if l else None,
             "snapshot": {"unit_price": float(sn.unit_price), "list_unit_price": float(sn.list_unit_price or 0),
                          "on_hand": float(sn.on_hand), "line_total": float(line_total)},
+            "current": {"sku": sku_now, "name": products.get(sku_now, {}).get("name"), "quantity": float(qty_now),
+                        "selling_unit": l.selling_unit, "unit_price": float(price_now), "line_total": float(total_now)} if replaced else None,
             "live": None, "changed_fields": [], "alternative_required": False,
             "current_line": {"final_sku": l.final_sku, "line_status": l.line_status, "stock_status": l.stock_status,
                              "fulfillment_action": l.fulfillment_action} if l else None,
         }
-        if live_prices is not None and sn.sku in live_prices:
-            live_net = _money(Decimal(str(live_prices[sn.sku])) * (1 - rate))
-            st = (live_stock or {}).get(sn.sku, {})
+        if live_prices is not None and sku_now in live_prices:
+            live_net = _money(Decimal(str(live_prices[sku_now])) * (1 - rate))
+            st = (live_stock or {}).get(sku_now, {})
             item["live"] = {"unit_price": float(live_net), "on_hand": st.get("on_hand"), "checked_at": checked_at,
                             "stock_updated_at": st.get("updated_at")}
-            if live_net != _money(sn.unit_price):
+            if live_net != price_now:
                 item["changed_fields"].append("price")
-            if st.get("on_hand") is not None and Decimal(str(st["on_hand"])) != Decimal(str(sn.on_hand)):
+            if not replaced and st.get("on_hand") is not None and Decimal(str(st["on_hand"])) != Decimal(str(sn.on_hand)):
                 item["changed_fields"].append("stock")
-            item["alternative_required"] = st.get("on_hand") is not None and Decimal(str(st["on_hand"])) < qty
+            item["alternative_required"] = st.get("on_hand") is not None and Decimal(str(st["on_hand"])) < qty_now
         out_lines.append(item)
     cust = db.get(Customer, quote.client_id)
     return {
@@ -121,7 +125,8 @@ def quote_view(db: Session, quote: Quote, with_live: bool = True) -> dict:
         "created_at": quote.created_at.isoformat() if quote.created_at else None, "created_by": quote.created_by,
         "status_changed_at": quote.status_changed_at.isoformat() if quote.status_changed_at else None,
         "status_changed_by": quote.status_changed_by,
-        "disclaimer": t("quote_disclaimer"), "snapshot_total": float(total), "lines": out_lines,
+        "disclaimer": t("quote_disclaimer"), "snapshot_total": float(total), "current_total": float(current_total),
+        "current_total_delta": float(current_total - total), "lines": out_lines,
         "live_checked_at": checked_at, "live_error": live_error,
         "session_status": s.status, "session_locked": s.status in LOCKED,
         "order": {"fulfillment_reference": s.fulfillment_reference, "pos_order_ref": s.pos_order_ref,
@@ -140,7 +145,7 @@ def _allowed(quote: Quote, s: OrderSession) -> list[str]:
         a.append("PREPARE")
     if quote.status == "PREPARING":
         a += ["PRINT_PICK_SLIP", "CONFIRM"]
-    if quote.status in OPEN_STATES:
+    if quote.status in QUOTE_OPEN:
         a.append("CANCEL")
     return a
 
@@ -166,7 +171,14 @@ def create_quote(body: QuoteCreate, db: Session = Depends(get_db)):
     cust = db.get(Customer, body.client_id)
     if not cust:
         raise ApiError(422, "INVALID_CLIENT", t("client_not_found"))
+    products = pipeline.load_products(db)
+    stock = pipeline.load_stock(list(products), s.store_id)
+    if stock is None:  # a snapshot needs real stock: unknown must not be saved as zero
+        raise ApiError(503, "POS_UNAVAILABLE", t("pos_unavailable_quote"))
     lines = lines_of(db, s)
+    for l in lines:
+        pipeline.evaluate(l, products, stock)
+    refresh_status(s, lines)
     unresolved = [l.line_no for l in lines if l.line_status == "NEEDS_CLARIFICATION"]
     if unresolved:
         raise ApiError(409, "UNRESOLVED_LINES", t("quote_unresolved", n=len(unresolved)), {"line_nos": unresolved})
@@ -174,8 +186,7 @@ def create_quote(body: QuoteCreate, db: Session = Depends(get_db)):
     while db.get(Quote, f"BG-{s.market}-{seq:04d}"):
         seq += 1
     captured = now()
-    rate = _rate(db, cust.discount_tier)
-    products = pipeline.load_products(db)
+    rate = discount_rate(db, cust.discount_tier)
     quote = Quote(quote_id=f"BG-{s.market}-{seq:04d}", session_id=s.session_id, client_id=cust.client_id, status="SAVED",
                   valid_until=body.valid_until, applied_discount_tier=cust.discount_tier, price_source=PRICE_SOURCE,
                   price_captured_at=captured, created_by=s.user_id, status_changed_by=s.user_id, status_changed_at=captured)
@@ -187,7 +198,7 @@ def create_quote(body: QuoteCreate, db: Session = Depends(get_db)):
         lp = Decimal(str(products[l.final_sku]["unit_price"]))
         db.add(QuoteLineSnapshot(quote_id=quote.quote_id, line_id=l.line_id, sku=l.final_sku, quantity=l.selling_qty,
                                  list_unit_price=lp, unit_price=_money(lp * (1 - rate)),
-                                 on_hand=l.on_hand if l.on_hand is not None else 0, captured_at=captured))
+                                 on_hand=(stock.get(l.final_sku) or {}).get("on_hand", 0), captured_at=captured))
     s.client_id = cust.client_id
     telemetry.event(db, "QUOTE_SAVED", s.session_id, actor_id=s.user_id)
     db.commit()
@@ -345,7 +356,8 @@ def print_quote(quote_id: str, kind: str = Query("quote", pattern="^(quote|pick-
 {f"<div class=warn>{t('p_cancelled')}</div>" if v['status'] == 'CANCELLED' else ""}
 {f"<div class=warn>{t('p_expired')}</div>" if v['status'] == 'EXPIRED' else ""}
 <table><thead><tr><th>SKU</th><th>{t('p_product')}</th><th>{t('p_qty')}</th><th>{t('p_unit')}</th><th>{t('p_unit_price')} ({_e(cur)})</th><th>{t('p_line_total')}</th></tr></thead>
-<tbody>{rows}</tbody><tfoot><tr><th colspan=5>{t('p_total')}</th><th class=n>{v['snapshot_total']:.2f}</th></tr></tfoot></table>
+<tbody>{rows}</tbody><tfoot><tr><th colspan=5>{t('p_total')}</th><th class=n>{v['snapshot_total']:.2f}</th></tr>
+{f"<tr><th colspan=5>{t('p_current_total')}</th><th class=n>{v['current_total']:.2f}</th></tr>" if v['current_total_delta'] else ""}</tfoot></table>
 <div class=warn>{_e(t('quote_disclaimer'))}</div>"""
         title = f"{t('p_quote_title')} {v['quote_id']}"
     else:

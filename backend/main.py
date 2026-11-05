@@ -2,6 +2,7 @@ import logging
 import time
 
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
 import i18n
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,6 +21,17 @@ app = FastAPI(
     description="AI-Assisted Trade Counter Engine for Company A (DK/NO/SE). POS/ERP/catalog/stock/price are simulated.",
     version="0.2.0",
 )
+
+
+@app.middleware("http")
+async def unexpected_errors(request: Request, call_next):
+    """Registered before CORS so it runs inside it. Otherwise a 500 has no CORS headers and the browser reports a network failure."""
+    try:
+        return await call_next(request)
+    except Exception:  # noqa: BLE001
+        log.exception("unhandled error on %s %s", request.method, request.url.path)
+        return JSONResponse(status_code=500, content={"error": {"code": "INTERNAL", "message": i18n.t("internal_error"), "details": {}}})
+
 
 app.add_middleware(
     CORSMiddleware,
