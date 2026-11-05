@@ -24,6 +24,8 @@ MUST_MATCH = {
 OPTIONAL = ["length_m", "brand"]
 GRADE_RANK = {"C14": 14, "C16": 16, "C18": 18, "C24": 24, "C30": 30}
 ALIAS_BOOST = 0.03
+REQUIRE_LEXICAL_ANCHOR = True  # see match(); tests switch it off to measure the baseline
+LEXICAL_ANCHOR_MIN = 0.0  # a candidate must share at least one word with the line (a higher bar drops valid synonyms)
 
 
 def _tokens(s: str) -> set[str]:
@@ -79,6 +81,10 @@ def match(query: str, attrs: dict, products: list[dict], semantic: Optional[dict
     req_cat = attrs.get("category")
     by_sku = {p["sku"]: p for p in products}
     pool = [by_sku[s] for s in semantic if s in by_sku] if semantic is not None else products
+    if not req_cat and REQUIRE_LEXICAL_ANCHOR:
+        # No category detected: vector scores of unrelated text are still high ((cos+1)/2), so a candidate must share
+        # at least one word with the SKU name/aliases. Otherwise the item is not in the catalog → offer nothing.
+        pool = [p for p in pool if token_overlap(query, p) > LEXICAL_ANCHOR_MIN or alias_hit(query, p)]
     ranked = []
     for p in pool:
         if req_cat and p["category"] != req_cat:

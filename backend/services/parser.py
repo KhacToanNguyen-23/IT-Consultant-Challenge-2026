@@ -33,7 +33,9 @@ NUM = r"\d+(?:[.,]\d+)?"
 # order matters: more specific groups first ("terrassebræt" before generic "træ")
 CATEGORY_KEYWORDS = {
     "decking": ["terrasse", "terrassebræt", "deck", "trall", "terrassebord", "komposit"],
-    "gypsum": ["gips", "gypsum", "vådrum", "våtrom", "våtrum", "drywall", "plasterboard", "brandplade", "brannplate", "brandskiva"],
+    # English phrases below are the catalog's own English aliases (mock-pos/seeds/generate.py TYPE_ALIAS)
+    "gypsum": ["gips", "gypsum", "vådrum", "våtrom", "våtrum", "drywall", "plasterboard", "brandplade", "brannplate", "brandskiva",
+               "moisture board", "wet room board", "wetroom board", "fire board", "fireboard", "fire-rated board"],
     "insulation": ["isolering", "isolasjon", "insulation", "rockwool", "isover", "knauf", "batts", "mineraluld", "stenuld",
                    "glasuld", "steinull", "glassull", "stenull", "glasull"],
     "cement": ["cement", "sement", "mørtel", "mortel", "murbruk", "mortar", "beton", "fliseklæb", "flislim", "tile adhesive",
@@ -213,8 +215,15 @@ def pdf_text(content: bytes) -> str:
 
 
 # ---------- attribute extraction (rules) ----------
+# Accessories (screws, nails, fixings) are outside the 5 seeded categories (SRS v2 drops accessories/vít). A word like
+# "gipsskruer" must not be read as gypsum just because it contains "gips".
+ACCESSORY_RE = re.compile(r"skru|screw|spik|bolt|beslag|dübel|dubel|(?:søm|sømmer|nail|nails|plugg)")
+
+
 def detect_category(text: str) -> Optional[str]:
     low = f" {text.lower()} "
+    if ACCESSORY_RE.search(low):
+        return None
     for cat, words in CATEGORY_KEYWORDS.items():
         if any(w in low for w in words):
             return cat

@@ -43,9 +43,10 @@ def test_llm_disabled_by_default_without_key():
 
 
 def test_llm_fills_category_and_type_with_evidence():
+    # a phrasing the rules cannot classify (the rules do recognise "Moisture board", so it no longer needs the LLM)
     reply = json.dumps({"category": "gypsum", "board_type": "moisture", "thickness_mm": 12.5,
-                        "evidence": {"category": "Moisture board", "board_type": "Moisture", "thickness_mm": "12.5mm"}})
-    attrs, info, db = _enrich("Moisture board 12.5mm", reply)
+                        "evidence": {"category": "wallboard", "board_type": "bathroom", "thickness_mm": "12.5mm"}})
+    attrs, info, db = _enrich("Bathroom wallboard 12.5mm", reply)
     assert attrs["category"] == "gypsum" and attrs["board_type"] == "moisture"
     assert "category" in attrs["_llm"] and info["llm_calls"] == 1
     assert db.added and db.added[0].step == "llm_attribute_extraction" and db.added[0].input_tokens == 10
