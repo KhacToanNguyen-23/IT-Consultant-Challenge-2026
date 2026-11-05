@@ -22,7 +22,9 @@ os.environ["DATABASE_URL"] = TEST_DB_URL
 os.environ["EMBEDDING_PROVIDER"] = "fake"
 os.environ.pop("LLM_API_KEY", None)
 
-SEEDS = Path(__file__).resolve().parents[2] / "mock-pos" / "seeds"
+# repository checkout, or /seeds when running inside the backend container (compose mounts ./mock-pos/seeds there)
+SEEDS = next((p for p in (Path(__file__).resolve().parents[2] / "mock-pos" / "seeds", Path("/seeds")) if (p / "catalog.json").exists()),
+             Path(__file__).resolve().parents[2] / "mock-pos" / "seeds")
 
 
 # ---------------------------------------------------------------- database
