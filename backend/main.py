@@ -7,16 +7,16 @@ import i18n
 from fastapi.middleware.cors import CORSMiddleware
 
 from ai import embedding
-from api import catalog, quotes, sessions
+from api import auth as auth_api, catalog, quotes, sessions
 from fastapi.exceptions import RequestValidationError
 
 from sqlalchemy.exc import InterfaceError, OperationalError
 
-from api.common import (ApiError, api_error_handler, db_unavailable_handler, unexpected_error_handler,
+from api.common import (ApiError, _envelope, api_error_handler, db_unavailable_handler, unexpected_error_handler,
                         validation_error_handler)
 from config import settings
 from db.database import SessionLocal, init_db
-from services import seed
+from services import auth, seed
 
 log = logging.getLogger("sitedesk")
 
@@ -45,6 +45,20 @@ async def language(request: Request, call_next):
     """UI language per request: header X-Lang, or ?lang= (print pages opened in a new tab)."""
     i18n.set_lang(request.query_params.get("lang") or request.headers.get("x-lang"))
     return await call_next(request)
+
+
+@app.middleware("http")
+async def require_login_when_enabled(request: Request, call_next):
+    """AUTH_REQUIRED=true: every /api/v1 call except /auth/*, /health and CORS preflight needs a valid demo session (FR-032)."""
+    path = request.url.path
+    guarded = (settings.auth_required and path.startswith("/api/v1/") and not path.startswith("/api/v1/auth/")
+               and path != "/api/v1/health" and request.method != "OPTIONS")
+    if guarded and auth.user_from_request(request) is None:
+        return _envelope(401, "UNAUTHENTICATED", i18n.t("unauthenticated"))
+    return await call_next(request)
+
+
+app.include_router(auth_api.router)
 app.include_router(sessions.router)
 app.include_router(quotes.router)
 app.include_router(catalog.router)

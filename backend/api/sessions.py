@@ -14,7 +14,7 @@ from config import runtime, settings
 from db.database import get_db
 from i18n import t
 from db.models import AiInvocation, Customer, OrderSession, Quote, SessionLine
-from services import connector, dictionary, parser, pii, pipeline, telemetry
+from services import auth, connector, dictionary, parser, pii, pipeline, telemetry
 from services.pipeline import now
 
 router = APIRouter(prefix="/api/v1", tags=["Sessions (Flow 1)"])
@@ -94,14 +94,14 @@ class CreateSession(StrictBody):
 
 
 @router.post("/sessions")
-def create_session(body: CreateSession, db: Session = Depends(get_db)):
+def create_session(body: CreateSession, request: Request, db: Session = Depends(get_db)):
     if body.input_type not in ("paste_text", "email", "file"):
         raise ApiError(422, "VALIDATION", t("input_type_invalid"))
     for _ in range(5):
         osid = f"SD-{now().year}-{body.market}-{random.randint(10000, 99999)}"
         if not db.query(OrderSession).filter(OrderSession.order_session_id == osid).first():
             break
-    s = OrderSession(order_session_id=osid, store_id=settings.default_store, user_id=settings.default_user,
+    s = OrderSession(order_session_id=osid, store_id=settings.default_store, user_id=auth.user_from_request(request) or settings.default_user,
                      status="DRAFT", input_type=body.input_type, market=body.market)
     db.add(s)
     db.flush()

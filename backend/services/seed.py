@@ -18,10 +18,17 @@ def ensure_reference(db: Session) -> None:
     if not db.get(Store, settings.default_store):
         db.add(Store(store_id=settings.default_store, country="DK", currency="DKK", timezone="Europe/Copenhagen"))
         db.flush()
-    if not db.get(DemoUser, settings.default_user):
-        # Mock login is cut (SRS §0.3 rule 2): one hard-coded associate, no usable password.
-        db.add(DemoUser(user_id=settings.default_user, store_id=settings.default_store,
-                        display_name="Demo Associate", password_hash="!disabled"))
+    # Two simulated associates (SRS 6.3). The password is the DEMO_PASSWORD env value (hash only in the DB); with it unset
+    # the hash stays "!disabled" and /auth/login answers 503, while the counter still works with the default associate.
+    from services import auth
+
+    wanted_hash = auth.hash_password(settings.demo_password) if settings.demo_password else "!disabled"
+    for user_id, name in ((settings.default_user, "Demo Associate"), ("EMP-2077", "Demo Associate 2")):
+        u = db.get(DemoUser, user_id)
+        if u is None:
+            db.add(DemoUser(user_id=user_id, store_id=settings.default_store, display_name=name, password_hash=wanted_hash))
+        elif settings.demo_password and not auth.verify_password(settings.demo_password, u.password_hash):
+            u.password_hash = wanted_hash  # the env password changed (or was just set)
     db.commit()
 
 

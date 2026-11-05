@@ -133,9 +133,13 @@ def app_env(pos):
     from db.database import SessionLocal
     from services import retrieval, seed
 
+    from config import settings
+
     embedding.set_provider_for_tests(embedding.FakeEmbedding())
     llm.set_provider_for_tests(None)
     runtime["ai_fail_mode"] = False
+    saved_auth = (settings.demo_password, settings.auth_required)
+    settings.demo_password, settings.auth_required = "test-only-password", False  # simulated login on, enforcement off
     from sqlalchemy import text
 
     with SessionLocal() as db:
@@ -146,6 +150,7 @@ def app_env(pos):
         seed.sync_from_pos(db)
         retrieval.reindex(db, only_missing=True)
     yield pos
+    settings.demo_password, settings.auth_required = saved_auth
     runtime["ai_fail_mode"] = False
     embedding.set_provider_for_tests(None)
     llm.set_provider_for_tests(None)
