@@ -9,7 +9,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from api.common import ApiError
+from api.common import ApiError, StrictBody
 from config import runtime, settings
 from db.database import get_db
 from i18n import t
@@ -88,7 +88,7 @@ def session_view(db: Session, s: OrderSession, products: Optional[dict] = None) 
 
 
 # ---------- endpoints ----------
-class CreateSession(BaseModel):
+class CreateSession(StrictBody):
     input_type: str = "paste_text"  # paste_text | email | file
     market: str = "DK"
 
@@ -155,6 +155,9 @@ async def ingest(session_id: str, request: Request, db: Session = Depends(get_db
             raise ApiError(422, "VALIDATION", t("bad_request_body")) from e
         if body is not None and not isinstance(body, dict):
             raise ApiError(422, "VALIDATION", t("bad_request_body"))
+        unknown = sorted(set(body or {}) - {"text", "language_hint"})
+        if unknown:
+            raise ApiError(422, "VALIDATION", t("bad_request_body"), {"fields": [{"field": k, "problem": "extra_forbidden"} for k in unknown]})
         text = (body or {}).get("text") or ""
         language_hint = (body or {}).get("language_hint")
     if not text.strip():
@@ -181,7 +184,7 @@ async def ingest(session_id: str, request: Request, db: Session = Depends(get_db
     return session_view(db, s)
 
 
-class LinePatch(BaseModel):
+class LinePatch(StrictBody):
     item_text: Optional[str] = None
     requested_qty: Optional[float] = None
     requested_unit: Optional[str] = None
@@ -224,7 +227,7 @@ def patch_line(session_id: str, line_no: int, body: LinePatch, db: Session = Dep
     return session_view(db, s)
 
 
-class AnalyzeBody(BaseModel):
+class AnalyzeBody(StrictBody):
     language_hint: Optional[str] = None
 
 
@@ -271,7 +274,7 @@ def analyze(session_id: str, body: AnalyzeBody = AnalyzeBody(), db: Session = De
     return session_view(db, s, products)
 
 
-class Selection(BaseModel):
+class Selection(StrictBody):
     sku: str
     decision: str  # SKU_KEPT | SKU_EDITED | SUBSTITUTION_ACCEPTED | SUBSTITUTION_REJECTED
     reason: Optional[str] = None
@@ -329,7 +332,7 @@ def alternatives(session_id: str, line_no: int, db: Session = Depends(get_db)):
             "message": None if l.alternatives else t("alt_none")}
 
 
-class ClientBody(BaseModel):
+class ClientBody(StrictBody):
     client_id: str
 
 
@@ -344,7 +347,7 @@ def set_client(session_id: str, body: ClientBody, db: Session = Depends(get_db))
     return {"client_id": s.client_id}
 
 
-class ConfirmBody(BaseModel):
+class ConfirmBody(StrictBody):
     client_id: Optional[str] = None
 
 

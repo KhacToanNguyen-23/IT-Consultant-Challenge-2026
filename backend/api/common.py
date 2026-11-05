@@ -5,11 +5,17 @@ from typing import Optional
 from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.exc import InterfaceError, OperationalError
 
 from i18n import t
 
 log = logging.getLogger("sitedesk.api")
+
+
+class StrictBody(BaseModel):
+    """Request body that rejects unknown fields: a typo like `quantity` for `requested_qty` must be a 422, not a silent no-op."""
+    model_config = ConfigDict(extra="forbid")
 
 
 class ApiError(Exception):

@@ -110,3 +110,21 @@ def test_decision_events_cover_the_flow_without_personal_data(counter, app_env):
         kinds = {e.event_type for e in events}
         assert {"SESSION_CREATED", "AI_SUGGESTED", "SUBSTITUTION_ACCEPTED", "CONFIRMED", "POS_ACCEPTED"} <= kinds
         assert "22 33 44 55" not in str([(e.event_type, e.metadata_) for e in events])
+
+
+# ------------------------------------------------------------------ typos in request bodies are errors, not silent no-ops
+def test_unknown_body_fields_are_rejected_with_the_field_name(counter):
+    sid = counter.open("120 m timber 45x95 C24")
+    counter.analyze(sid)
+    for method, path, body in [
+        ("PATCH", f"/sessions/{sid}/lines/1", {"quantity": 5}),                      # should be requested_qty
+        ("PUT", f"/sessions/{sid}/lines/1/selection", {"sku": "SKU-DK-4595-480", "decision": "SKU_KEPT", "why": "x"}),
+        ("POST", f"/sessions/{sid}/confirm", {"client": "C-88921"}),
+        ("POST", f"/sessions/{sid}/analyze", {"lang": "DA"}),
+        ("POST", "/sessions", {"input_type": "paste_text", "markett": "DK"}),
+        ("POST", f"/sessions/{sid}/ingest", {"text": "x", "txt": "y"}),
+    ]:
+        r = counter.call(method, path, json=body)
+        assert r.status_code == 422 and r.json()["error"]["code"] == "VALIDATION", (method, path, r.text)
+        assert r.json()["error"]["details"]["fields"], (method, path)
+    assert counter.view(sid)["lines"][0]["parsed"]["quantity"] == 120  # nothing was changed by the rejected calls
