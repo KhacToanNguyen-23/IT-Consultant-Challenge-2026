@@ -10,6 +10,9 @@ import LinePanel from "@/components/pos/LinePanel";
 import { LoadingTerminal, Notice, PosKey, SoftKeys, Terminal, Vfd } from "@/components/pos/Terminal";
 import TicketLines, { lineAmount } from "@/components/pos/TicketLines";
 import { StatePill } from "@/components/StatusBadge";
+import ImpactStrip from "@/components/story/ImpactStrip";
+import ResultStory from "@/components/story/ResultStory";
+import TrustPanel from "@/components/story/TrustPanel";
 
 function plusDays(n: number) {
   const d = new Date();
@@ -145,7 +148,10 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                 <FlowMetric label={t("metric_stock_alerts")} value={stockAlertCount} tone={stockAlertCount ? "warn" : "good"} />
               </div>
             )}
+            {s.analyzed && <ImpactStrip session={s} />}
           </div>
+
+          {s.analyzed && <TrustPanel session={s} />}
 
           {(s.ai_degraded || s.lines.some((l) => l.stock.status === "UNKNOWN") || error) && (
             <div className="space-y-2 px-[18px] py-3">
@@ -373,6 +379,7 @@ function ConfirmResult({ s }: { s: SessionView }) {
       </dl>
       <div className="my-2 border-t-2 border-dashed border-[var(--rule)]" />
       <p className="text-xs soft">{t("locked_note")}</p>
+      <ResultStory session={s} />
     </div>
   );
 }

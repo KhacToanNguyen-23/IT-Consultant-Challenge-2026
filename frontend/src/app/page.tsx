@@ -6,6 +6,7 @@ import { BadgeCheck, ClipboardList, Eraser, FileUp, Mail, PackageCheck, ScanLine
 import { api, ApiError } from "@/client/api";
 import { useI18n } from "@/client/i18n";
 import { Notice, PosKey, SoftKeys, Terminal, Vfd } from "@/components/pos/Terminal";
+import ProblemValue from "@/components/story/ProblemValue";
 
 type Mode = "counter" | "email";
 
@@ -74,6 +75,16 @@ function IntakePage() {
           <div className="paper-head">
             <h1 className="paper-title">{t("intake_title")}</h1>
           </div>
+          {!isEmail && (
+            <ProblemValue
+              compact={lineCount > 0 || !!file}
+              onSample={(sample) => {
+                setText(sample);
+                setFile(null);
+                setError(null);
+              }}
+            />
+          )}
           <input
             ref={fileRef}
             type="file"
