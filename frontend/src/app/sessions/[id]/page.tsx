@@ -1,13 +1,14 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
-import { AlertTriangle, CheckCircle2, Download, FileText, Loader2, Lock, Sparkles } from "lucide-react";
-import { api, ApiError, fileUrl, type Customer, type SessionView } from "@/client/api";
+import { AlertTriangle, CheckCircle2, Download, FileText, FilePlus2, FileSignature, ListChecks, ScanLine, UserRound } from "lucide-react";
+import { api, ApiError, fileUrl, fmtMoney, type Customer, type SessionView } from "@/client/api";
 import { useI18n } from "@/client/i18n";
-import ReviewTable from "@/components/ReviewTable";
+import LinePanel from "@/components/pos/LinePanel";
+import { LoadingTerminal, Notice, PosKey, SoftKeys, Terminal, Vfd } from "@/components/pos/Terminal";
+import TicketLines, { lineAmount } from "@/components/pos/TicketLines";
 import { StatePill } from "@/components/StatusBadge";
 
 function plusDays(n: number) {
@@ -25,13 +26,19 @@ export default function SessionPage({ params }: { params: { id: string } }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [clientId, setClientId] = useState("");
   const [validUntil, setValidUntil] = useState(plusDays(7));
-  const [showSource, setShowSource] = useState(true);
+  const [sourceOpen, setSourceOpen] = useState<boolean | null>(null);
+  const [selected, setSelected] = useState<number | null>(null);
+  const opened = useRef(false);
 
   const load = useCallback(async () => {
     try {
       const v = await api<SessionView>(`/sessions/${params.id}`);
       setS(v);
       setClientId((c) => c || v.client_id || "");
+      if (!opened.current) {
+        opened.current = true;
+        if (v.analyzed && !v.locked) setSelected(v.blockers[0]?.line_no ?? null);
+      }
     } catch (e) {
       setError(e instanceof ApiError ? e.message : String(e));
     }
@@ -61,197 +68,233 @@ export default function SessionPage({ params }: { params: { id: string } }) {
     }
   };
 
-  if (!s) return <div className="py-20 text-center text-slate-500">{error || <Loader2 className="mx-auto animate-spin" />}</div>;
+  if (!s) return <LoadingTerminal error={error} />;
 
   const isEmail = s.input_type === "email";
   const walkIn = customers.find((c) => c.customer_type === "B2C_WalkIn")?.client_id;
   const effectiveClient = clientId || walkIn || "";
   const canConfirmQuote = !s.quote || s.quote.status === "PREPARING";
   const tm = s.stage_timings_ms;
+  const line = s.lines.find((l) => l.line_no === selected) || null;
+  const blockerNos = s.blockers.map((b) => b.line_no);
+  const showSource = sourceOpen ?? !s.analyzed;
+
+  const amounts = s.lines.map(lineAmount);
+  const total = amounts.reduce<number>((sum, a) => sum + (a ?? 0), 0);
+  const unpriced = amounts.filter((a) => a == null).length;
+  const currency = s.lines.find((l) => l.currency)?.currency || "DKK";
+
+  // A resolved line hands over to the next one, so the associate never hunts for what is left.
+  const onLineChange = (v: SessionView) => {
+    const wasBlocked = selected != null && blockerNos.includes(selected);
+    const stillBlocked = v.blockers.some((b) => b.line_no === selected);
+    setS(v);
+    if (wasBlocked && !stillBlocked) setSelected(v.blockers[0]?.line_no ?? null);
+  };
+
+  const nextIssue = () => {
+    const after = blockerNos.find((n) => selected == null || n > selected);
+    setSelected(after ?? blockerNos[0] ?? null);
+  };
+
+  const analyze = () =>
+    act("analyze", async () => {
+      const v = await api<SessionView>(`/sessions/${s.session_id}/analyze`, { method: "POST", json: { language_hint: "DA" } });
+      setS(v);
+      setSelected(v.blockers[0]?.line_no ?? null);
+    });
+
+  const confirm = () =>
+    act("confirm", async () => {
+      await api(`/sessions/${s.session_id}/confirm`, { method: "POST", json: { client_id: effectiveClient }, headers: { "Idempotency-Key": s.order_session_id } });
+      setSelected(null);
+      await load();
+    });
+
+  const saveQuote = () =>
+    act("quote", async () => {
+      const q = await api<{ quote_id: string }>("/quotes", { method: "POST", json: { session_id: s.session_id, client_id: effectiveClient, valid_until: validUntil } });
+      router.push(`/quotes/${q.quote_id}`);
+    });
+
+  const vfdTop = s.locked ? s.confirmation.order_status || s.status : !s.analyzed ? t("vfd_review", { n: s.read_line_count }) : s.blockers.length ? t("vfd_blocked", { n: s.blockers.length }) : t("vfd_clear");
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <div>
-          <div className="text-xs text-slate-500">
-            <Link href="/" className="hover:underline">
-              {t("new_list")}
-            </Link>{" "}
-            · {isEmail ? t("flow2") : t("flow1")}
-          </div>
-          <h1 className="text-xl font-bold">
-            {s.order_session_id} <StatePill status={s.status} />
-          </h1>
-        </div>
-        <Stepper analyzed={s.analyzed} locked={s.locked} blockers={s.blockers.length} />
-        {s.analyzed && typeof tm.total_ms === "number" && (
-          <div className="ml-auto text-right text-xs text-slate-500 tabular" title={t("measured_title")}>
-            {t("analyzed_n", { n: tm.lines as number })}: <b className="text-slate-800">{((tm.total_ms as number) / 1000).toFixed(2)} s</b>
-            <div>
-              {t("t_match")} {String(tm.match_ms)}ms · {t("t_stock")} {String(tm.stock_ms)}ms · {t("t_rules")} {String(tm.rules_convert_alternatives_ms)}ms
-              {Number(tm.llm_calls) > 0 && ` · ${t("t_llm")} ${tm.llm_ms}ms (${tm.llm_calls})`}
+    <Terminal
+      ticket={
+        <div className="paper">
+          <div className="paper-head">
+            <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
+              <div className="min-w-0">
+                <div className="text-sm soft">{isEmail ? t("flow2") : t("flow1")}</div>
+                <h1 className="paper-title">
+                  {s.order_session_id} <StatePill status={s.status} />
+                </h1>
+              </div>
+              {s.analyzed && typeof tm.total_ms === "number" && (
+                <div className="ml-auto text-right text-xs soft tabular" title={t("measured_title")}>
+                  {t("analyzed_n", { n: tm.lines as number })}: <b className="text-[var(--ink)]">{((tm.total_ms as number) / 1000).toFixed(2)} s</b>
+                  <div>
+                    {t("t_match")} {String(tm.match_ms)}ms, {t("t_stock")} {String(tm.stock_ms)}ms, {t("t_rules")} {String(tm.rules_convert_alternatives_ms)}ms
+                    {Number(tm.llm_calls) > 0 && `, ${t("t_llm")} ${tm.llm_ms}ms (${tm.llm_calls})`}
+                  </div>
+                </div>
+              )}
             </div>
+            <Stepper analyzed={s.analyzed} locked={s.locked} blockers={s.blockers.length} />
           </div>
-        )}
-      </div>
 
-      {s.ai_degraded && (
-        <div role="status" className="flex items-center gap-2 rounded-md border border-amber-600 bg-amber-100 px-3 py-2 text-sm text-amber-950">
-          <AlertTriangle size={16} /> {t("ai_degraded_banner")}
-        </div>
-      )}
-      {s.lines.some((l) => l.stock.status === "UNKNOWN") && (
-        <div role="status" className="flex items-center gap-2 rounded-md border border-amber-600 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-          <AlertTriangle size={16} /> {t("stock_unknown_banner")}
-        </div>
-      )}
-      {error && (
-        <p role="alert" className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900">
-          {error}
-        </p>
-      )}
-
-      {s.masked_source && (
-        <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
-          <button onClick={() => setShowSource(!showSource)} className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm font-semibold">
-            <FileText size={16} /> {t("source_title", { n: s.read_line_count })}
-            <span className="ml-auto text-xs font-normal text-slate-500">{showSource ? t("hide") : t("show")}</span>
-          </button>
-          {showSource && (
-            <div className="border-t border-slate-200 px-4 py-3">
-              <pre className="max-h-48 overflow-auto whitespace-pre-wrap font-mono text-xs text-slate-700">{s.masked_source}</pre>
-              <p className="mt-2 text-[11px] text-slate-500">{t("source_note")}</p>
+          {(s.ai_degraded || s.lines.some((l) => l.stock.status === "UNKNOWN") || error) && (
+            <div className="space-y-2 px-[18px] py-3">
+              {s.ai_degraded && (
+                <Notice tone="warn" icon={<AlertTriangle size={16} />}>
+                  {t("ai_degraded_banner")}
+                </Notice>
+              )}
+              {s.lines.some((l) => l.stock.status === "UNKNOWN") && (
+                <Notice tone="warn" icon={<AlertTriangle size={16} />}>
+                  {t("stock_unknown_banner")}
+                </Notice>
+              )}
+              {error && (
+                <Notice tone="bad" alert>
+                  {error}
+                </Notice>
+              )}
             </div>
           )}
-        </div>
-      )}
 
-      {!s.analyzed && (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm">
-          <span>{t("step2_hint", { n: s.read_line_count })}</span>
-          <button
-            onClick={() => act("analyze", async () => setS(await api(`/sessions/${s.session_id}/analyze`, { method: "POST", json: { language_hint: "DA" } })))}
-            disabled={!!busy}
-            className="ml-auto inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 font-semibold text-white hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:opacity-60"
-          >
-            {busy === "analyze" ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />} {t("analyze")}
-          </button>
-        </div>
-      )}
-
-      <ReviewTable session={s} onChange={setS} />
-
-      {s.locked ? (
-        <ConfirmResult s={s} />
-      ) : (
-        s.analyzed && (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-              <h2 className="font-semibold">
-                {t("step4_title")} {s.quote && t("quote_ref", { id: s.quote.quote_id })}
-              </h2>
-              <label className="mt-3 block text-sm">
-                {t("client_id")}
-                <select
-                  value={effectiveClient}
-                  onChange={(e) => setClientId(e.target.value)}
-                  disabled={!!s.quote}
-                  className="mt-1 block w-full rounded border border-slate-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
-                >
-                  {customers.map((c) => (
-                    <option key={c.client_id} value={c.client_id}>
-                      {c.client_id} · {c.customer_type === "B2B" ? `B2B · ${c.discount_tier}` : t("walk_in")}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {s.blockers.length > 0 && (
-                <div className="mt-3 rounded-md border border-amber-400 bg-amber-50 p-2 text-sm text-amber-950">
-                  <b>{t("cannot_confirm", { n: s.blockers.length })}</b>
-                  <ul className="mt-1 list-disc pl-5">
-                    {s.blockers.map((b) => (
-                      <li key={b.line_no}>
-                        {t("line_n", { n: b.line_no })}: {b.reason}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {!canConfirmQuote && (
-                <p className="mt-3 rounded-md border border-violet-300 bg-violet-50 p-2 text-sm text-violet-900">
-                  {t("quote_needs_prepare", { id: s.quote!.quote_id, status: s.quote!.status })}{" "}
-                  <Link className="font-semibold underline" href={`/quotes/${s.quote!.quote_id}`}>
-                    {t("open_quote")}
-                  </Link>
-                </p>
-              )}
-              <button
-                disabled={!!busy || s.blockers.length > 0 || !canConfirmQuote || !effectiveClient}
-                onClick={() =>
-                  act("confirm", async () => {
-                    await api(`/sessions/${s.session_id}/confirm`, {
-                      method: "POST",
-                      json: { client_id: effectiveClient },
-                      headers: { "Idempotency-Key": s.order_session_id },
-                    });
-                    await load();
-                  })
-                }
-                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-md bg-emerald-700 px-4 py-2.5 font-semibold text-white hover:bg-emerald-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300"
-              >
-                {busy === "confirm" ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} {t("confirm_send")}
-              </button>
-              <p className="mt-2 text-xs text-slate-500">{t("confirm_note")}</p>
+          {s.masked_source && showSource && (
+            <div className="border-b-2 border-dashed border-[var(--rule)] px-[18px] py-3">
+              <div className="mb-1 font-semibold">{t("source_title", { n: s.read_line_count })}</div>
+              <pre className="font-mono max-h-48 overflow-auto whitespace-pre-wrap text-xs">{s.masked_source}</pre>
+              <p className="mt-2 text-[11px] soft">{t("source_note")}</p>
             </div>
+          )}
 
-            {!s.quote ? (
-              <div className={clsx("rounded-lg border bg-white p-4 shadow-sm", isEmail ? "border-violet-300 ring-1 ring-violet-200" : "border-slate-200")}>
-                <h2 className="font-semibold">{t("save_quote_title")}</h2>
-                <p className="mt-1 text-xs text-slate-500">{t("save_quote_note")}</p>
-                <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                  <label>
-                    {t("customer")}
-                    <select value={effectiveClient} onChange={(e) => setClientId(e.target.value)} className="mt-1 block w-full rounded border border-slate-300 px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-600">
-                      {customers.map((c) => (
-                        <option key={c.client_id} value={c.client_id}>
-                          {c.client_id} · {c.discount_tier}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    {t("valid_until")}
-                    <input type="date" value={validUntil} min={plusDays(0)} onChange={(e) => setValidUntil(e.target.value)} className="mt-1 block w-full rounded border border-slate-300 px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-600" />
-                  </label>
+          <TicketLines session={s} selected={selected} onSelect={setSelected} />
+          <p className="paper-foot">{t("table_foot")}</p>
+          <p className="px-[18px] pb-3 text-xs soft">{t("kbd_hint")}</p>
+        </div>
+      }
+      rail={
+        <>
+          <Vfd
+            top={vfdTop}
+            main={s.analyzed ? fmtMoney(total, "").trim() : s.read_line_count}
+            unit={s.analyzed ? currency : undefined}
+            sub={s.analyzed ? (unpriced ? `${t("vfd_list_total")}, ${t("vfd_unpriced", { n: unpriced })}` : t("vfd_list_total")) : undefined}
+          />
+          <div className="pos-screen">
+            {line ? (
+              <LinePanel key={line.line_id} session={s} line={line} onChange={onLineChange} onClose={() => setSelected(null)} />
+            ) : s.locked ? (
+              <ConfirmResult s={s} />
+            ) : s.analyzed ? (
+              <div className="space-y-3">
+                <h2 className="screen-title">
+                  {t("step4_title")} {s.quote && t("quote_ref", { id: s.quote.quote_id })}
+                </h2>
+                <div role="group" aria-label={t("client_id")}>
+                  <div className="mb-1.5 font-semibold">{t("client_id")}</div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {customers.map((c) => (
+                      <button key={c.client_id} type="button" disabled={!!s.quote} aria-pressed={effectiveClient === c.client_id} onClick={() => setClientId(c.client_id)} className="tile">
+                        <span className="block font-semibold leading-tight">{c.customer_type === "B2B" ? c.client_id : t("walk_in")}</span>
+                        <span className="block break-all text-xs soft">{c.customer_type === "B2B" ? `B2B, ${c.discount_tier}` : c.client_id}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <button
-                  disabled={!!busy || !effectiveClient}
-                  onClick={() =>
-                    act("quote", async () => {
-                      const q = await api<{ quote_id: string }>("/quotes", { method: "POST", json: { session_id: s.session_id, client_id: effectiveClient, valid_until: validUntil } });
-                      router.push(`/quotes/${q.quote_id}`);
-                    })
-                  }
-                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-md bg-violet-700 px-4 py-2.5 font-semibold text-white hover:bg-violet-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:bg-slate-300"
-                >
-                  {busy === "quote" && <Loader2 size={16} className="animate-spin" />} {t("save_quote")}
-                </button>
+
+                {s.blockers.length > 0 && (
+                  <div>
+                    <div className="mb-1.5 font-semibold text-amber-900">{t("cannot_confirm", { n: s.blockers.length })}</div>
+                    <ul className="space-y-1.5">
+                      {s.blockers.map((b) => (
+                        <li key={b.line_no}>
+                          <button type="button" className="tile text-sm" onClick={() => setSelected(b.line_no)}>
+                            <b>{t("line_n", { n: b.line_no })}:</b> {b.reason}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {!canConfirmQuote && <Notice tone="quote">{t("quote_needs_prepare", { id: s.quote!.quote_id, status: s.quote!.status })}</Notice>}
+                {s.quote && (
+                  <p>
+                    {t("quote_n", { id: s.quote.quote_id })}: <StatePill status={s.quote.status} />
+                  </p>
+                )}
+
+                {!s.quote && (
+                  <div className="space-y-1.5">
+                    <label className="block font-semibold">
+                      {t("valid_until")}
+                      <input type="date" value={validUntil} min={plusDays(0)} onChange={(e) => setValidUntil(e.target.value)} className="field mt-1 font-normal" />
+                    </label>
+                    <p className="screen-note">{t("save_quote_note")}</p>
+                  </div>
+                )}
+                <p className="screen-note">{t("confirm_note")}</p>
               </div>
             ) : (
-              <div className="rounded-lg border border-violet-300 bg-white p-4 shadow-sm">
-                <h2 className="font-semibold">{t("quote_n", { id: s.quote.quote_id })}</h2>
-                <p className="mt-1 text-sm">
-                  {t("status")}: <StatePill status={s.quote.status} />
-                </p>
-                <Link href={`/quotes/${s.quote.quote_id}`} className="mt-3 inline-block rounded-md border border-violet-400 px-3 py-1.5 text-sm font-semibold text-violet-900 hover:bg-violet-50">
-                  {t("open_quote")}
-                </Link>
-              </div>
+              <p className="screen-title">{t("step2_hint", { n: s.read_line_count })}</p>
             )}
           </div>
-        )
-      )}
-    </div>
+        </>
+      }
+      keys={
+        <SoftKeys
+          slots={[
+            <PosKey key="new" hotkey="F3" icon={<FilePlus2 size={17} />} href="/">
+              {t("new_list")}
+            </PosKey>,
+            s.masked_source ? (
+              <PosKey key="src" hotkey="F4" icon={<FileText size={17} />} tone={showSource ? "on" : "std"} current={showSource} onClick={() => setSourceOpen(!showSource)}>
+                {t("source")}
+              </PosKey>
+            ) : null,
+            !s.locked && s.analyzed ? (
+              <PosKey key="next" hotkey="F6" tone="hold" icon={<ListChecks size={17} />} disabled={!blockerNos.length} onClick={nextIssue}>
+                {t("key_next_issue")} {blockerNos.length > 0 && `(${blockerNos.length})`}
+              </PosKey>
+            ) : null,
+            !s.locked && s.analyzed ? (
+              <PosKey key="cust" hotkey="F7" tone={line ? "std" : "on"} icon={<UserRound size={17} />} onClick={() => setSelected(null)}>
+                {t("key_order")}
+              </PosKey>
+            ) : null,
+            s.locked ? (
+              s.confirmation.csv_download_url ? (
+                <PosKey key="csv" hotkey="F8" tone="hold" icon={<Download size={17} />} href={fileUrl(s.confirmation.csv_download_url)} external>
+                  {t("download_csv_short")}
+                </PosKey>
+              ) : null
+            ) : !s.analyzed ? null : s.quote ? (
+              <PosKey key="quote" hotkey="F8" tone="quote" icon={<FileSignature size={17} />} href={`/quotes/${s.quote.quote_id}`}>
+                {t("open_quote")}
+              </PosKey>
+            ) : (
+              <PosKey key="quote" hotkey="F8" tone="quote" icon={<FileSignature size={17} />} busy={busy === "quote"} disabled={!!busy || !effectiveClient} onClick={saveQuote}>
+                {t("save_quote")}
+              </PosKey>
+            ),
+            s.locked ? null : !s.analyzed ? (
+              <PosKey key="analyze" hotkey="F9" tone="nav" icon={<ScanLine size={18} />} busy={busy === "analyze"} disabled={!!busy} onClick={analyze}>
+                {t("analyze")}
+              </PosKey>
+            ) : (
+              <PosKey key="confirm" hotkey="F9" tone="go" icon={<CheckCircle2 size={18} />} busy={busy === "confirm"} disabled={!!busy || s.blockers.length > 0 || !canConfirmQuote || !effectiveClient} onClick={confirm}>
+                {t("confirm_send")}
+              </PosKey>
+            ),
+          ]}
+        />
+      }
+    />
   );
 }
 
@@ -264,13 +307,11 @@ function Stepper({ analyzed, locked, blockers }: { analyzed: boolean; locked: bo
     { label: t("step_confirm"), done: locked },
   ];
   return (
-    <ol className="flex items-center gap-1 text-xs">
+    <ol className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
       {steps.map((st, i) => (
-        <li key={i} className="flex items-center gap-1">
-          <span className={clsx("rounded-full px-2 py-0.5 font-semibold", st.done ? "bg-emerald-100 text-emerald-900" : "bg-slate-200 text-slate-600")}>
-            {i + 1}. {st.label}
-          </span>
-          {i < steps.length - 1 && <span className="text-slate-300">—</span>}
+        <li key={i} className={clsx("flex items-center gap-1.5", st.done ? "font-semibold" : "soft")}>
+          <span className={clsx("lamp", st.done && "lamp--ok")} aria-hidden />
+          {i + 1}. {st.label}
         </li>
       ))}
     </ol>
@@ -282,37 +323,39 @@ function ConfirmResult({ s }: { s: SessionView }) {
   const c = s.confirmation;
   const ok = c.order_status === "POS_ACCEPTED";
   return (
-    <div className={clsx("rounded-lg border p-4 shadow-sm", ok ? "border-emerald-400 bg-emerald-50" : "border-amber-500 bg-amber-50")}>
-      <div className="flex items-center gap-2 text-lg font-bold">
-        <Lock size={18} /> {ok ? t("pos_ok") : t("pos_csv")}
-      </div>
-      <dl className="mt-2 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+    <div className="receipt">
+      <div className="text-center text-base font-semibold">{ok ? t("pos_ok") : t("pos_csv")}</div>
+      <div className="my-2 border-t-2 border-dashed border-[var(--rule)]" />
+      <dl className="space-y-1.5">
         <div>
-          {t("order_status")}: <StatePill status={c.order_status || s.status} /> {!ok && <StatePill status="SENT_OR_EXPORTED" />}
+          <dt className="soft">{t("order_status")}</dt>
+          <dd className="flex flex-wrap gap-1">
+            <StatePill status={c.order_status || s.status} /> {!ok && <StatePill status="SENT_OR_EXPORTED" />}
+          </dd>
         </div>
         <div>
-          {t("reference")}: <b className="font-mono">{c.fulfillment_reference}</b>
+          <dt className="soft">{t("reference")}</dt>
+          <dd className="break-all font-semibold">{c.fulfillment_reference}</dd>
         </div>
         {c.pos_order_ref && (
           <div>
-            POS order ref: <b className="font-mono">{c.pos_order_ref}</b>
+            <dt className="soft">POS order ref</dt>
+            <dd className="break-all font-semibold">{c.pos_order_ref}</dd>
           </div>
         )}
         <div>
-          {t("client")}: <b>{s.client_id}</b>
+          <dt className="soft">{t("client")}</dt>
+          <dd className="break-all font-semibold">{s.client_id}</dd>
         </div>
         {c.processing_time_seconds != null && (
           <div>
-            {t("time_to_confirm")}: <b className="tabular">{c.processing_time_seconds} s</b>
+            <dt className="soft">{t("time_to_confirm")}</dt>
+            <dd className="font-semibold tabular">{c.processing_time_seconds} s</dd>
           </div>
         )}
       </dl>
-      {c.csv_download_url && (
-        <a href={fileUrl(c.csv_download_url)} className="mt-3 inline-flex items-center gap-2 rounded-md bg-amber-700 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-800">
-          <Download size={16} /> {t("download_csv")}
-        </a>
-      )}
-      <p className="mt-2 text-xs text-slate-600">{t("locked_note")}</p>
+      <div className="my-2 border-t-2 border-dashed border-[var(--rule)]" />
+      <p className="text-xs soft">{t("locked_note")}</p>
     </div>
   );
 }

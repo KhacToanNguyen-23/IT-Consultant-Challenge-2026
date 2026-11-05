@@ -5,7 +5,7 @@ import { AlertTriangle, ArrowUpCircle, CheckCircle2, Eye, PackageX, HelpCircle }
 import type { Band, Line, LineStatus } from "@/client/api";
 import { useI18n } from "@/client/i18n";
 
-const base = "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-semibold whitespace-nowrap";
+const base = "inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap";
 
 // SRS v2 §8 colour map — colour is never the only signal (icon + text always present)
 export function BandBadge({ band, score }: { band: Band; score: number | null }) {

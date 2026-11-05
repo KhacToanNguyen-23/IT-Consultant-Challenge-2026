@@ -1,11 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
-import clsx from "clsx";
-import { FileUp, Mail, ClipboardList, Loader2 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { ClipboardList, Eraser, FileUp, Mail, ScanLine, Sparkles } from "lucide-react";
 import { api, ApiError } from "@/client/api";
 import { useI18n } from "@/client/i18n";
+import { Notice, PosKey, SoftKeys, Terminal, Vfd } from "@/components/pos/Terminal";
 
 type Mode = "counter" | "email";
 
@@ -33,8 +33,18 @@ Terrassebræt 28x120 trykimp 10 x 4.2m
 Mvh
 Jens`;
 
-export default function IntakePage() {
+// useSearchParams needs a Suspense boundary for the production build
+export default function IntakeRoute() {
+  return (
+    <Suspense>
+      <IntakePage />
+    </Suspense>
+  );
+}
+
+function IntakePage() {
   const router = useRouter();
+  const emailLink = useSearchParams().get("mode") === "email";
   const { t } = useI18n();
   const [mode, setMode] = useState<Mode>("counter");
   const [text, setText] = useState("");
@@ -42,6 +52,16 @@ export default function IntakePage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // The quote list links here with ?mode=email; F1 returns to the plain counter URL
+  useEffect(() => setMode(emailLink ? "email" : "counter"), [emailLink]);
+
+  const clear = () => {
+    setText("");
+    setFile(null);
+    setError(null);
+    if (fileRef.current) fileRef.current.value = "";
+  };
 
   const submit = async () => {
     setError(null);
@@ -68,52 +88,37 @@ export default function IntakePage() {
     }
   };
 
+  const lineCount = text.split("\n").filter((l) => l.trim()).length;
+  const isEmail = mode === "email";
+
   return (
-    <div className="mx-auto max-w-3xl">
-      <h1 className="text-2xl font-bold">{t("intake_title")}</h1>
-      <p className="mt-1 text-sm text-slate-600">{t("intake_sub")}</p>
-
-      <div role="tablist" aria-label={t("flow_label")} className="mt-5 grid grid-cols-2 gap-2">
-        <ModeTab active={mode === "counter"} onClick={() => setMode("counter")} icon={<ClipboardList size={18} />} title={t("mode_counter")} sub={t("mode_counter_sub")} />
-        <ModeTab active={mode === "email"} onClick={() => setMode("email")} icon={<Mail size={18} />} title={t("mode_email")} sub={t("mode_email_sub")} />
-      </div>
-
-      <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <label htmlFor="intake" className="flex items-center justify-between text-sm font-semibold">
-          {mode === "email" ? t("paste_email") : t("paste_list")}
-          <button
-            type="button"
-            className="text-xs font-medium text-blue-700 hover:underline"
-            onClick={() => {
-              setFile(null);
-              setText(mode === "email" ? SAMPLE_EMAIL : SAMPLE_COUNTER);
+    <Terminal
+      ticket={
+        <div className="paper flex min-h-full flex-col">
+          <div className="paper-head">
+            <h1 className="paper-title">{t("intake_title")}</h1>
+            <p className="mt-1 text-sm soft">{t("intake_sub")}</p>
+          </div>
+          <label htmlFor="intake" className="px-[18px] pt-3 text-base font-semibold">
+            {isEmail ? t("paste_email") : t("paste_list")}
+          </label>
+          <textarea
+            id="intake"
+            value={text}
+            onChange={(e) => {
+              setText(e.target.value);
+              if (e.target.value) setFile(null);
             }}
-          >
-            {t("use_sample")}
-          </button>
-        </label>
-        <textarea
-          id="intake"
-          value={text}
-          onChange={(e) => {
-            setText(e.target.value);
-            if (e.target.value) setFile(null);
-          }}
-          rows={12}
-          placeholder={mode === "email" ? "Fra: ...\nHej, ...\nTimber 45x95 C24 - 120 m\n..." : "Timber 45x95 C24 - 120 m\nRockwool FlexiBatts 95mm - 15 pk\n..."}
-          className="mt-2 w-full rounded-md border border-slate-300 p-3 font-mono text-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/30"
-        />
-
-        {mode === "counter" && (
-          <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-            <span className="text-slate-500">{t("or")}</span>
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 font-medium hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
-            >
-              <FileUp size={16} /> {t("choose_file")}
-            </button>
+            rows={14}
+            placeholder={isEmail ? "Fra: ...\nHej, ...\nTimber 45x95 C24 - 120 m\n..." : "Timber 45x95 C24 - 120 m\nRockwool FlexiBatts 95mm - 15 pk\n..."}
+            className="font-mono mt-1 w-full flex-1 resize-none bg-transparent px-[18px] py-2 text-[15px] leading-7 placeholder:text-slate-400"
+          />
+        </div>
+      }
+      rail={
+        <>
+          <Vfd top={file ? t("vfd_file") : lineCount ? t("vfd_reading") : t("vfd_ready")} main={file ? "1" : lineCount} sub={file?.name} />
+          <div className="pos-screen space-y-3">
             <input
               ref={fileRef}
               type="file"
@@ -125,52 +130,61 @@ export default function IntakePage() {
                 if (f) setText("");
               }}
             />
-            {file && <span className="font-medium text-slate-800">{file.name}</span>}
+            <div role="tablist" aria-label={t("flow_label")} className="grid gap-2">
+              <FlowTile active={!isEmail} onClick={() => setMode("counter")} icon={<ClipboardList size={20} />} title={t("mode_counter")} sub={t("mode_counter_sub")} />
+              <FlowTile active={isEmail} onClick={() => setMode("email")} icon={<Mail size={20} />} title={t("mode_email")} sub={t("mode_email_sub")} />
+            </div>
+            {error && (
+              <Notice tone="bad" alert>
+                {error}
+              </Notice>
+            )}
+            <ul className="screen-note list-disc space-y-1.5 pl-4">
+              <li>{t("intake_hint_pdf")}</li>
+              <li>{t("intake_hint_pii")}</li>
+            </ul>
           </div>
-        )}
-
-        <ul className="mt-3 list-disc space-y-0.5 pl-5 text-xs text-slate-500">
-          <li>{t("intake_hint_pdf")}</li>
-          <li>{t("intake_hint_pii")}</li>
-        </ul>
-
-        {error && (
-          <p role="alert" className="mt-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900">
-            {error}
-          </p>
-        )}
-
-        <div className="mt-4 flex justify-end">
-          <button
-            type="button"
-            onClick={submit}
-            disabled={busy}
-            className="inline-flex items-center gap-2 rounded-md bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:opacity-60"
-          >
-            {busy && <Loader2 size={16} className="animate-spin" />} {t("read_list")}
-          </button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+      keys={
+        <SoftKeys
+          slots={[
+            <PosKey key="clear" hotkey="F3" tone="void" icon={<Eraser size={17} />} onClick={clear} disabled={!text && !file}>
+              {t("key_clear")}
+            </PosKey>,
+            <PosKey
+              key="sample"
+              hotkey="F4"
+              icon={<Sparkles size={17} />}
+              onClick={() => {
+                setFile(null);
+                setText(isEmail ? SAMPLE_EMAIL : SAMPLE_COUNTER);
+              }}
+            >
+              {t("key_sample")}
+            </PosKey>,
+            <PosKey key="file" hotkey="F6" icon={<FileUp size={17} />} onClick={() => fileRef.current?.click()} disabled={isEmail}>
+              {t("key_file")}
+            </PosKey>,
+            null,
+            null,
+            <PosKey key="read" hotkey="F9" tone="go" icon={<ScanLine size={18} />} onClick={submit} busy={busy} disabled={busy}>
+              {t("read_list")}
+            </PosKey>,
+          ]}
+        />
+      }
+    />
   );
 }
 
-function ModeTab({ active, onClick, icon, title, sub }: { active: boolean; onClick: () => void; icon: React.ReactNode; title: string; sub: string }) {
+function FlowTile({ active, onClick, icon, title, sub }: { active: boolean; onClick: () => void; icon: React.ReactNode; title: string; sub: string }) {
   return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={clsx(
-        "flex items-start gap-3 rounded-lg border p-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600",
-        active ? "border-slate-900 bg-white shadow-sm ring-1 ring-slate-900" : "border-slate-200 bg-white/60 hover:bg-white"
-      )}
-    >
-      <span className={clsx("mt-0.5", active ? "text-slate-900" : "text-slate-400")}>{icon}</span>
+    <button type="button" role="tab" aria-selected={active} aria-pressed={active} onClick={onClick} className="tile flex items-start gap-3">
+      <span className="mt-0.5 flex-none">{icon}</span>
       <span>
-        <span className="block text-sm font-semibold">{title}</span>
-        <span className="block text-xs text-slate-500">{sub}</span>
+        <span className="block font-[family-name:var(--font-key)] text-xl font-bold leading-tight">{title}</span>
+        <span className="block text-sm soft">{sub}</span>
       </span>
     </button>
   );
