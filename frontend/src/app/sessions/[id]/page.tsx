@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import clsx from "clsx";
 import { AlertTriangle, CheckCircle2, Download, FileText, FilePlus2, FileSignature, ListChecks, ScanLine, Search, UserRound } from "lucide-react";
 import { api, ApiError, fileUrl, fmtMoney, type Customer, type SessionView } from "@/client/api";
 import { useI18n } from "@/client/i18n";
@@ -12,7 +11,6 @@ import TicketLines, { lineAmount } from "@/components/pos/TicketLines";
 import ListPagination from "@/components/pos/ListPagination";
 import { StatePill } from "@/components/StatusBadge";
 
-import ResultStory from "@/components/story/ResultStory";
 
 
 const BLOCKER_PAGE_SIZE = 5;
@@ -78,7 +76,6 @@ export default function SessionPage({ params }: { params: { id: string } }) {
 
   if (!s) return <LoadingTerminal error={error} />;
 
-  const isEmail = s.input_type === "email";
   const walkIn = customers.find((c) => c.customer_type === "B2C_WalkIn")?.client_id;
   const effectiveClient = clientId || walkIn || "";
   const canConfirmQuote = !s.quote || s.quote.status === "PREPARING";
@@ -90,8 +87,6 @@ export default function SessionPage({ params }: { params: { id: string } }) {
   const total = amounts.reduce<number>((sum, a) => sum + (a ?? 0), 0);
   const unpriced = amounts.filter((a) => a == null).length;
   const currency = s.lines.find((l) => l.currency)?.currency || "DKK";
-  const matchedCount = s.lines.filter((l) => !!l.final_sku).length;
-  const stockAlertCount = s.lines.filter((l) => l.stock.status === "PARTIAL" || l.stock.status === "OUT_OF_STOCK").length;
   const manualLine = s.blockers[0]?.line_no ?? s.lines.find((l) => !l.final_sku)?.line_no ?? s.lines[0]?.line_no ?? null;
 
   // A resolved line hands over to the next one, so the associate never hunts for what is left.
@@ -137,21 +132,11 @@ export default function SessionPage({ params }: { params: { id: string } }) {
           <div className="paper-head">
             <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
               <div className="min-w-0">
-                <div className="text-sm soft">{isEmail ? t("flow2") : t("flow1")}</div>
                 <h1 className="paper-title">
                   {s.order_session_id} <StatePill status={s.status} />
                 </h1>
               </div>
             </div>
-            <Stepper analyzed={s.analyzed} locked={s.locked} blockers={s.blockers.length} />
-            {s.analyzed && (
-              <div className="flow-summary" aria-label={t("review_summary")}>
-                <FlowMetric label={t("metric_skus")} value={`${matchedCount}/${s.lines.length}`} />
-                <FlowMetric label={t("metric_attention")} value={s.blockers.length} tone={s.blockers.length ? "warn" : "good"} />
-                <FlowMetric label={t("metric_stock_alerts")} value={stockAlertCount} tone={stockAlertCount ? "warn" : "good"} />
-              </div>
-            )}
-
           </div>
 
 
@@ -180,12 +165,14 @@ export default function SessionPage({ params }: { params: { id: string } }) {
             <div className="border-b-2 border-dashed border-[var(--rule)] px-[18px] py-3">
               <div className="mb-1 font-semibold">{t("source_title", { n: s.read_line_count })}</div>
               <pre className="font-mono max-h-48 overflow-auto whitespace-pre-wrap text-xs">{s.masked_source}</pre>
-              <p className="mt-2 text-[11px] soft">{t("source_note")}</p>
+              <details className="source-limits mt-2">
+                <summary>{t("source_limit_title")}</summary>
+                <p className="mt-1 text-[11px] soft">{t("source_note")}</p>
+              </details>
             </div>
           )}
 
           <TicketLines session={s} selected={selected} onSelect={setSelected} />
-          <p className="paper-foot">{t("table_foot")}</p>
         </div>
       }
       rail={
@@ -208,9 +195,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
               <ConfirmResult s={s} />
             ) : s.analyzed ? (
               <div className="space-y-3">
-                <h2 className="screen-title">
-                  {t("step4_title")} {s.quote && t("quote_ref", { id: s.quote.quote_id })}
-                </h2>
+                {s.quote && <h2 className="screen-title">{t("quote_ref", { id: s.quote.quote_id })}</h2>}
                 <div role="group" aria-label={t("client_id")}>
                   <div className="mb-1.5 font-semibold">{t("client_id")}</div>
                   <div className="grid grid-cols-2 gap-1.5">
@@ -252,14 +237,10 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                       {t("valid_until")}
                       <input type="date" value={validUntil} min={plusDays(0)} onChange={(e) => setValidUntil(e.target.value)} className="field mt-1 font-normal" />
                     </label>
-                    <p className="screen-note">{t("save_quote_note")}</p>
                   </div>
                 )}
-                <p className="screen-note">{t("confirm_note")}</p>
               </div>
-            ) : (
-              <p className="screen-title">{t("step2_hint", { n: s.read_line_count })}</p>
-            )}
+            ) : null}
           </div>
         </>
       }
@@ -315,36 +296,6 @@ export default function SessionPage({ params }: { params: { id: string } }) {
   );
 }
 
-function Stepper({ analyzed, locked, blockers }: { analyzed: boolean; locked: boolean; blockers: number }) {
-  const { t } = useI18n();
-  const current = locked ? 3 : !analyzed ? 1 : blockers > 0 ? 2 : 3;
-  const steps = [
-    { label: t("step_received"), done: true },
-    { label: t("step_read"), done: analyzed },
-    { label: blockers ? `${t("step_review")} (${blockers})` : t("step_review"), done: analyzed && blockers === 0 },
-    { label: t("step_confirm"), done: locked },
-  ];
-  return (
-    <ol className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-      {steps.map((st, i) => (
-        <li key={i} aria-current={i === current ? "step" : undefined} className={clsx("flex items-center gap-1.5 rounded-full px-2 py-1", st.done ? "font-semibold" : "soft", i === current && "bg-blue-50 text-blue-950 ring-1 ring-blue-200")}>
-          <span className={clsx("lamp", st.done && "lamp--ok")} aria-hidden />
-          {i + 1}. {st.label}
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-function FlowMetric({ label, value, tone = "default" }: { label: string; value: React.ReactNode; tone?: "default" | "warn" | "good" }) {
-  return (
-    <div className={clsx("flow-metric", tone === "warn" && "flow-metric--warn", tone === "good" && "flow-metric--good")}>
-      <span className="flow-metric-value tabular">{value}</span>
-      <span className="flow-metric-label">{label}</span>
-    </div>
-  );
-}
-
 function ConfirmResult({ s }: { s: SessionView }) {
   const { t } = useI18n();
   const c = s.confirmation;
@@ -382,8 +333,6 @@ function ConfirmResult({ s }: { s: SessionView }) {
         )}
       </dl>
       <div className="my-2 border-t-2 border-dashed border-[var(--rule)]" />
-      <p className="text-xs soft">{t("locked_note")}</p>
-      <ResultStory session={s} />
     </div>
   );
 }

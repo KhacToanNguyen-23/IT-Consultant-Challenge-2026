@@ -53,7 +53,6 @@ export default function AppHeader() {
           <span className="sidebar-mark">SD</span>
           <span className="sidebar-brand-name">SiteDesk</span>
         </Link>
-        <span className="sidebar-section-label">WORKSPACE</span>
         <nav className="sidebar-nav" aria-label={t("flow_label")}>
           <PosKey size="sm" hotkey="F1" href="/" tone={onCounter ? "on" : "std"} current={onCounter} ariaLabel={t("nav_counter")} icon={<ClipboardList size={18} />} className="side-nav-link">
             <span className="sidebar-link-text">{t("nav_counter")}</span>
@@ -67,7 +66,6 @@ export default function AppHeader() {
         </nav>
 
         <div className="sidebar-spacer" />
-        <div className="sidebar-store"><span className="lamp lamp--ok" aria-hidden /> DK-CPH-04</div>
         <div className="sidebar-footer">
           <details className="demo-menu sidebar-demo">
             <summary className="sidebar-tool cursor-pointer list-none" aria-label={t("demo_menu")}>

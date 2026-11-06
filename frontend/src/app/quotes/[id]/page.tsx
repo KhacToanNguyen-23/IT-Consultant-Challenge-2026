@@ -9,7 +9,6 @@ import { LoadingTerminal, Notice, PosKey, SoftKeys, Terminal, useArmed, Vfd } fr
 import { StatePill } from "@/components/StatusBadge";
 import ListPagination from "@/components/pos/ListPagination";
 
-const FLOW = ["SAVED", "SENT", "CUST", "PREPARING", "CONFIRMED"] as const;
 const CHANNELS = [
   { id: "email", label: "ch_email" },
   { id: "phone", label: "ch_phone" },
@@ -59,26 +58,17 @@ export default function QuoteDetailPage({ params }: { params: { id: string } }) 
 
   const printUrl = (kind: string) => `${API_URL}/api/v1/quotes/${q.quote_id}/print?kind=${kind}&lang=${lang}`;
   const can = (a: string) => q.allowed_actions.includes(a);
-  const reached = (k: (typeof FLOW)[number]) => {
-    if (k === "CUST") return !!q.customer_confirmed_at;
-    const order = ["SAVED", "SENT", "PREPARING", "CONFIRMED"];
-    return order.indexOf(q.status) >= order.indexOf(k) || (k === "SENT" && !!q.customer_confirmed_at && q.status !== "SAVED");
-  };
   const pageSize = 10;
   const visibleLines = q.lines.slice(linePage * pageSize, (linePage + 1) * pageSize);
   const changedCount = q.lines.filter((l) => l.changed_fields.length).length;
   const shortCount = q.lines.filter((l) => l.alternative_required).length;
   const blockers = q.lines.filter((l) => l.current_line?.line_status === "SUBSTITUTE_PROPOSED" || l.current_line?.line_status === "NEEDS_CLARIFICATION").length;
-  const activeStep = ["EXPIRED", "CANCELLED"].includes(q.status)
-    ? null
-    : q.status === "CONFIRMED" || q.status === "PREPARING"
-      ? "CONFIRMED"
-      : q.customer_confirmed_at
-        ? "PREPARING"
-        : q.status === "SENT"
-          ? "CUST"
-          : "SENT";
-
+  const nextStep = can("SEND") ? t("quote_next_send")
+    : can("RECORD_CUSTOMER_CONFIRMATION") ? t("quote_next_customer")
+    : can("PREPARE") ? t("quote_next_prepare")
+    : can("CONFIRM") && blockers > 0 ? t("quote_next_resolve", { n: blockers })
+    : can("CONFIRM") ? t("quote_next_confirm")
+    : null;
   const cancel = () => {
     if (!cancelKey.armed) return cancelKey.arm();
     cancelKey.disarm();
@@ -130,12 +120,11 @@ export default function QuoteDetailPage({ params }: { params: { id: string } }) 
       ticket={
         <div className="paper">
           <div className="paper-head">
-            <div className="text-sm soft">{t("flow2_short")}</div>
             <h1 className="paper-title">
               {q.quote_id} <StatePill status={q.status} />
             </h1>
             <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm sm:grid-cols-3">
-              <Info k="Client ID" v={`${q.client_id}${q.customer_type ? `, ${q.customer_type}` : ""}`} />
+              <Info k={t("client_id")} v={`${q.client_id}${q.customer_type ? `, ${q.customer_type}` : ""}`} />
               <Info k={t("valid_until")} v={q.valid_until} />
               <Info k={t("discount")} v={`${q.applied_discount_tier} (${(q.discount_rate * 100).toFixed(0)}%)`} />
               <Info k={t("price_source")} v={q.price_source} />
@@ -145,7 +134,7 @@ export default function QuoteDetailPage({ params }: { params: { id: string } }) 
 
           <div className="space-y-2 px-[18px] pt-3">
             <Notice tone="warn">
-              <b>{q.disclaimer}</b>
+              <b>{t("quote_disclaimer")}</b>
             </Notice>
             {(q.status === "EXPIRED" || q.status === "CANCELLED") && (
               <Notice tone="bad" icon={<Ban size={16} />}>
@@ -218,22 +207,12 @@ export default function QuoteDetailPage({ params }: { params: { id: string } }) 
             </table>
           </div>
           <ListPagination total={q.lines.length} page={linePage} pageSize={pageSize} onPageChange={setLinePage} />
-          <p className="paper-foot !border-t-0">{t("quote_foot")}</p>
         </div>
       }
       rail={
         <>
           <Vfd top={q.status} main={fmtMoney(q.snapshot_total, "").trim()} unit={q.currency} sub={t("vfd_quote_total")} />
           <div className="pos-screen space-y-3">
-            <ol className="grid gap-1" aria-label={t("flow_steps")}>
-              {FLOW.map((k) => (
-                <li key={k} aria-current={k === activeStep ? "step" : undefined} className={clsx("flex items-center gap-2 rounded px-1.5 py-0.5", reached(k) ? "font-semibold" : "soft", k === activeStep && "bg-blue-50 text-blue-950 ring-1 ring-blue-200")}>
-                  <span className={clsx("lamp", reached(k) && "lamp--ok")} aria-hidden />
-                  {t(`qf_${k}` as Key)}
-                </li>
-              ))}
-            </ol>
-
             {error && (
               <Notice tone="bad" alert>
                 {error}
@@ -241,9 +220,10 @@ export default function QuoteDetailPage({ params }: { params: { id: string } }) 
             )}
             {notice && <Notice tone="good">{notice}</Notice>}
 
+            {nextStep && <div className="quote-next-step" aria-live="polite">{nextStep}</div>}
+
             {(secondary || primary) && (
-              <section className="space-y-2 border-y border-[var(--rule)] py-3" aria-labelledby="next-step-heading">
-                <h2 id="next-step-heading" className="text-sm font-semibold">{t("next_step")}</h2>
+              <section className="space-y-2 border-y border-[var(--rule)] py-3" aria-label={t("quote_actions")}>
                 {primary && <div className="[&>.key]:w-full">{primary}</div>}
                 {secondary && <div className="[&>.key]:w-full">{secondary}</div>}
               </section>
@@ -263,8 +243,6 @@ export default function QuoteDetailPage({ params }: { params: { id: string } }) 
             )}
 
             {q.customer_confirmed_at && <p className="text-sm font-semibold text-emerald-900">{t("cust_confirmed_at", { time: fmtTime(q.customer_confirmed_at), by: q.customer_confirmed_by || "" })}</p>}
-            {!q.customer_confirmed_at && ["SAVED", "SENT"].includes(q.status) && <p className="screen-note">{t("prepare_locked")}</p>}
-
             {q.status === "CONFIRMED" && (
               <Notice tone={q.order.pos_order_ref ? "good" : "warn"}>
                 {q.order.pos_order_ref ? t("pos_received") : t("pos_failed_csv")} <b className="font-mono break-all">{q.order.pos_order_ref || q.order.fulfillment_reference}</b>
@@ -372,7 +350,6 @@ function DemoTools({ q, onDone }: { q: QuoteView; onDone: () => void }) {
           </PosKey>
         </div>
         {msg && <p className="screen-note">{msg}</p>}
-        <p className="screen-note">{t("demo_only")}</p>
       </div>
     </details>
   );
