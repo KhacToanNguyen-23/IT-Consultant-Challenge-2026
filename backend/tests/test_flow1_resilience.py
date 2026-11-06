@@ -124,16 +124,47 @@ def test_confirm_twice_creates_exactly_one_pos_order(counter, pos):
     assert first["pos_order_ref"] == second["pos_order_ref"] and len(pos.orders) == 1
 
 
+def test_confirm_replay_requires_the_same_idempotency_key(counter, pos):
+    sid = counter.open(ORDER)
+    counter.analyze(sid)
+    counter.resolve_all(sid)
+    first = counter.confirm(sid).json()
+    replay = counter.call("POST", f"/sessions/{sid}/confirm", json={}, headers={"Idempotency-Key": "different-order-key"})
+    assert first["order_status"] == "POS_ACCEPTED"
+    assert replay.status_code == 409 and replay.json()["error"]["code"] == "IDEMPOTENCY_CONFLICT"
+    assert len(pos.orders) == 1
+
+
+def test_confirm_forwards_the_idempotency_key_to_the_pos(counter, pos):
+    sid = counter.open(ORDER)
+    counter.analyze(sid)
+    counter.resolve_all(sid)
+    key = "associate-order-key-42"
+    result = counter.confirm(sid, key).json()
+    replay = counter.confirm(sid, key).json()
+    assert result["order_status"] == "POS_ACCEPTED" and replay["replayed"] is True
+    assert set(pos.orders) == {key}
+
+
+def test_confirm_requires_idempotency_key(counter):
+    sid = counter.open(ORDER)
+    counter.analyze(sid)
+    counter.resolve_all(sid)
+    response = counter.call("POST", f"/sessions/{sid}/confirm", json={})
+    assert response.status_code == 422 and "idempotency-key" in str(response.json()["error"]["details"])
+
+
 def test_two_simultaneous_confirms_create_exactly_one_order(counter, client, pos):
     import main
 
     sid = counter.open(ORDER)
     counter.analyze(sid)
     counter.resolve_all(sid)
+    key = counter.view(sid)["order_session_id"]
 
     def go(_):
         c = TestClient(main.app, raise_server_exceptions=False)
-        return c.post(f"/api/v1/sessions/{sid}/confirm", json={})
+        return c.post(f"/api/v1/sessions/{sid}/confirm", json={}, headers={"Idempotency-Key": key})
 
     with ThreadPoolExecutor(2) as ex:
         results = list(ex.map(go, range(2)))

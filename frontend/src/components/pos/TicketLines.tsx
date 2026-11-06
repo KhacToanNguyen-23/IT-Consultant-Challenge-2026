@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import { fmtMoney, fmtTime, type Line, type SessionView } from "@/client/api";
 import { useI18n, type Key } from "@/client/i18n";
 import { AttributeChips, BandBadge, LineStatusBadge, RoundedBadge, StockBadge } from "@/components/StatusBadge";
+import ListPagination from "@/components/pos/ListPagination";
 
+const PAGE_SIZE = 10;
 type T = ReturnType<typeof useI18n>["t"];
 export const attrLabel = (t: T, a: string) => t(`a_${a}` as Key);
 export const unitLabel = (t: T, u: string) => t(`u_${u}` as Key);
@@ -39,17 +41,38 @@ interface Props {
 export default function TicketLines({ session, selected, onSelect }: Props) {
   const { t } = useI18n();
   const sorted = useMemo(() => [...session.lines].sort((a, b) => priority(a) - priority(b) || a.line_no - b.line_no), [session.lines]);
+  const [page, setPage] = useState(0);
+  const pendingFocus = useRef<number | null>(null);
   const rows = useRef<Record<number, HTMLDivElement | null>>({});
 
   useEffect(() => {
     if (selected != null) rows.current[selected]?.scrollIntoView({ block: "nearest" });
   }, [selected]);
+  useEffect(() => {
+    if (selected == null) return;
+    const index = sorted.findIndex((line) => line.line_no === selected);
+    if (index >= 0) setPage(Math.floor(index / PAGE_SIZE));
+  }, [selected, sorted]);
+  useEffect(() => {
+    if (pendingFocus.current != null) {
+      rows.current[pendingFocus.current]?.focus();
+      pendingFocus.current = null;
+    }
+  }, [page]);
+  useEffect(() => setPage((current) => Math.min(current, Math.max(0, Math.ceil(sorted.length / PAGE_SIZE) - 1))), [sorted.length]);
 
   const onRowKey = (e: React.KeyboardEvent, idx: number, l: Line) => {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
-      const next = sorted[idx + (e.key === "ArrowDown" ? 1 : -1)];
-      if (next) rows.current[next.line_no]?.focus();
+      const nextIndex = idx + (e.key === "ArrowDown" ? 1 : -1);
+      const next = sorted[nextIndex];
+      if (next) {
+        const nextPage = Math.floor(nextIndex / PAGE_SIZE);
+        if (nextPage !== page) {
+          pendingFocus.current = next.line_no;
+          setPage(nextPage);
+        } else rows.current[next.line_no]?.focus();
+      }
     } else if (e.key === "Enter") {
       e.preventDefault();
       onSelect(selected === l.line_no ? null : l.line_no);
@@ -112,6 +135,7 @@ export default function TicketLines({ session, selected, onSelect }: Props) {
 
   const flagged = sorted.filter((l) => priority(l) <= 3);
   const clean = sorted.filter((l) => priority(l) > 3);
+  const pageRows = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   return (
     <>
@@ -124,14 +148,15 @@ export default function TicketLines({ session, selected, onSelect }: Props) {
       </div>
       {session.analyzed && exceptions > 0 ? (
         <>
-          <div className="tline-group text-amber-900">{t("group_attention", { n: flagged.length })}</div>
-          {flagged.map((l, i) => row(l, i))}
-          {clean.length > 0 && <div className="tline-group text-emerald-800">{t("group_ok", { n: clean.length })}</div>}
-          {clean.map((l, i) => row(l, flagged.length + i))}
+          {pageRows.some((l) => priority(l) <= 3) && <div className="tline-group text-amber-900">{t("group_attention", { n: flagged.length })}</div>}
+          {pageRows.filter((l) => priority(l) <= 3).map((l) => row(l, sorted.indexOf(l)))}
+          {pageRows.some((l) => priority(l) > 3) && <div className="tline-group text-emerald-800">{t("group_ok", { n: clean.length })}</div>}
+          {pageRows.filter((l) => priority(l) > 3).map((l) => row(l, sorted.indexOf(l)))}
         </>
       ) : (
-        sorted.map((l, i) => row(l, i))
+        pageRows.map((l) => row(l, sorted.indexOf(l)))
       )}
+      <ListPagination total={sorted.length} page={page} pageSize={PAGE_SIZE} onPageChange={setPage} />
     </>
   );
 }

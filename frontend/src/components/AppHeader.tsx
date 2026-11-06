@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import clsx from "clsx";
-import { Activity, ChevronDown, ClipboardList, FileText, FlaskConical, UserRound } from "lucide-react";
+import { ChevronDown, ClipboardList, FileText, FlaskConical, UserRound, WandSparkles } from "lucide-react";
 import { api, type Health } from "@/client/api";
 import { useI18n } from "@/client/i18n";
 import { PosKey } from "@/components/pos/Terminal";
@@ -44,6 +44,7 @@ export default function AppHeader() {
 
   const onCounter = path === "/" || path.startsWith("/sessions/");
   const onQuotes = path === "/quotes" || path.startsWith("/quotes/");
+  const onDictionary = path === "/store-dictionary";
 
   return (
     <>
@@ -59,6 +60,9 @@ export default function AppHeader() {
           </PosKey>
           <PosKey size="sm" hotkey="F2" href="/quotes" tone={onQuotes ? "on" : "std"} current={onQuotes} ariaLabel={t("nav_quotes")} icon={<FileText size={18} />} className="side-nav-link">
             <span className="sidebar-link-text">{t("nav_quotes")}</span>
+          </PosKey>
+          <PosKey size="sm" href="/store-dictionary" tone={onDictionary ? "on" : "std"} current={onDictionary} ariaLabel={t("nav_dictionary")} icon={<WandSparkles size={18} />} className="side-nav-link">
+            <span className="sidebar-link-text">{t("nav_dictionary")}</span>
           </PosKey>
         </nav>
 

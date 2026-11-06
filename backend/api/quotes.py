@@ -316,7 +316,7 @@ def prepare(quote_id: str, db: Session = Depends(get_db)):
 def confirm_quote(quote_id: str, db: Session = Depends(get_db)):
     quote = get_quote(db, quote_id)
     s = get_session(db, str(quote.session_id), for_update=True)
-    return do_confirm(db, s, quote.client_id)
+    return do_confirm(db, s, quote.client_id, s.order_session_id)
 
 
 # ---------- print (browser) ----------

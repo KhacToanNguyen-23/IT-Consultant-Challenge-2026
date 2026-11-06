@@ -124,7 +124,8 @@ def test_unknown_body_fields_are_rejected_with_the_field_name(counter):
         ("POST", "/sessions", {"input_type": "paste_text", "markett": "DK"}),
         ("POST", f"/sessions/{sid}/ingest", {"text": "x", "txt": "y"}),
     ]:
-        r = counter.call(method, path, json=body)
+        headers = {"Idempotency-Key": counter.view(sid)["order_session_id"]} if path.endswith("/confirm") else None
+        r = counter.call(method, path, json=body, headers=headers)
         assert r.status_code == 422 and r.json()["error"]["code"] == "VALIDATION", (method, path, r.text)
         assert r.json()["error"]["details"]["fields"], (method, path)
     assert counter.view(sid)["lines"][0]["parsed"]["quantity"] == 120  # nothing was changed by the rejected calls

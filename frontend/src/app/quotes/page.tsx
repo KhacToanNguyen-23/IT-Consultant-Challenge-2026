@@ -7,6 +7,7 @@ import { api, ApiError } from "@/client/api";
 import { useI18n } from "@/client/i18n";
 import { Notice, PosKey, SoftKeys, Terminal, Vfd } from "@/components/pos/Terminal";
 import { StatePill } from "@/components/StatusBadge";
+import ListPagination from "@/components/pos/ListPagination";
 
 interface Item {
   quote_id: string;
@@ -19,12 +20,14 @@ interface Item {
 }
 
 const STATUSES = ["", "SAVED", "SENT", "PREPARING", "CONFIRMED", "EXPIRED", "CANCELLED"];
+const PAGE_SIZE = 10;
 
 export default function QuotesPage() {
   const { t, lang } = useI18n();
   const [items, setItems] = useState<Item[] | null>(null);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
+  const [page, setPage] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async (query = "", st = "") => {
@@ -34,6 +37,7 @@ export default function QuotesPage() {
       if (query.trim()) p.set("q", query.trim());
       if (st) p.set("status", st);
       setItems((await api<{ items: Item[] }>(`/quotes?${p}`)).items);
+      setPage(0);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : String(e));
       setItems([]);
@@ -44,17 +48,19 @@ export default function QuotesPage() {
     load();
   }, [load, lang]);
 
+  const pageItems = items?.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
   return (
     <Terminal
       ticket={
-        <div className="paper min-h-full">
+        <div className="paper paper--quotes min-h-full">
           <div className="paper-head">
             <h1 className="paper-title">{t("quotes_title")}</h1>
           </div>
           {items === null && <Loader2 className="mx-auto my-12 animate-spin soft" aria-label={t("loading")} />}
           {items?.length === 0 && <p className="px-[18px] py-10 text-center text-base font-semibold">{t("no_quotes")}</p>}
           <ul>
-            {items?.map((i) => (
+            {pageItems?.map((i) => (
               <li key={i.quote_id} className="border-b border-dotted border-[var(--rule)]">
                 <Link href={`/quotes/${i.quote_id}`} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 px-[18px] py-3 hover:bg-[#f3f2ea]" style={{ outlineOffset: -3 }}>
                   <span className="min-w-0">
@@ -69,6 +75,7 @@ export default function QuotesPage() {
               </li>
             ))}
           </ul>
+          <ListPagination total={items?.length ?? 0} page={page} pageSize={PAGE_SIZE} onPageChange={setPage} />
         </div>
       }
       rail={

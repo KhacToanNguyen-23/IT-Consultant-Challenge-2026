@@ -9,10 +9,13 @@ import { useI18n } from "@/client/i18n";
 import LinePanel from "@/components/pos/LinePanel";
 import { LoadingTerminal, Notice, PosKey, SoftKeys, Terminal, Vfd } from "@/components/pos/Terminal";
 import TicketLines, { lineAmount } from "@/components/pos/TicketLines";
+import ListPagination from "@/components/pos/ListPagination";
 import { StatePill } from "@/components/StatusBadge";
-import ImpactStrip from "@/components/story/ImpactStrip";
+
 import ResultStory from "@/components/story/ResultStory";
-import TrustPanel from "@/components/story/TrustPanel";
+
+
+const BLOCKER_PAGE_SIZE = 5;
 
 function plusDays(n: number) {
   const d = new Date();
@@ -31,6 +34,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
   const [validUntil, setValidUntil] = useState(plusDays(7));
   const [sourceOpen, setSourceOpen] = useState<boolean | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
+  const [blockerPage, setBlockerPage] = useState(0);
   const opened = useRef(false);
 
   const load = useCallback(async () => {
@@ -55,6 +59,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
     window.addEventListener("sitedesk:health", h);
     return () => window.removeEventListener("sitedesk:health", h);
   }, [load, lang]);
+  useEffect(() => setBlockerPage((page) => Math.min(page, Math.max(0, Math.ceil((s?.blockers.length ?? 0) / BLOCKER_PAGE_SIZE) - 1))), [s?.blockers.length]);
 
   const act = async (key: string, fn: () => Promise<void>) => {
     setBusy(key);
@@ -122,6 +127,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
       router.push(`/quotes/${q.quote_id}`);
     });
 
+  const visibleBlockers = s.blockers.slice(blockerPage * BLOCKER_PAGE_SIZE, (blockerPage + 1) * BLOCKER_PAGE_SIZE);
   const vfdTop = s.locked ? s.confirmation.order_status || s.status : !s.analyzed ? t("vfd_review", { n: s.read_line_count }) : s.blockers.length ? t("vfd_blocked", { n: s.blockers.length }) : t("vfd_clear");
 
   return (
@@ -145,10 +151,10 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                 <FlowMetric label={t("metric_stock_alerts")} value={stockAlertCount} tone={stockAlertCount ? "warn" : "good"} />
               </div>
             )}
-            {s.analyzed && <ImpactStrip session={s} />}
+
           </div>
 
-          {s.analyzed && <TrustPanel session={s} />}
+
 
           {(s.ai_degraded || s.lines.some((l) => l.stock.status === "UNKNOWN") || error) && (
             <div className="space-y-2 px-[18px] py-3">
@@ -221,7 +227,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                   <div>
                     <div className="mb-1.5 font-semibold text-amber-900">{t("cannot_confirm", { n: s.blockers.length })}</div>
                     <ul className="space-y-1.5">
-                      {s.blockers.map((b) => (
+                      {visibleBlockers.map((b) => (
                         <li key={b.line_no}>
                           <button type="button" className="tile text-sm" onClick={() => setSelected(b.line_no)}>
                             <b>{t("line_n", { n: b.line_no })}:</b> {b.reason}
@@ -229,6 +235,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                         </li>
                       ))}
                     </ul>
+                    <ListPagination total={s.blockers.length} page={blockerPage} pageSize={BLOCKER_PAGE_SIZE} onPageChange={setBlockerPage} />
                   </div>
                 )}
 

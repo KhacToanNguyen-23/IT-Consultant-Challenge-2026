@@ -60,9 +60,11 @@ def payload_hash(payload: dict) -> str:
     return hashlib.sha256(json.dumps(content, sort_keys=True).encode()).hexdigest()
 
 
-def push(db: Session, s: OrderSession, payload: dict) -> dict:
+def push(db: Session, s: OrderSession, payload: dict, idempotency_key: Optional[str] = None) -> dict:
     """POST to mock-pos with one idempotency key; retry once; else CSV + NEEDS_MANUAL."""
-    key = s.order_session_id
+    key = (idempotency_key or s.order_session_id).strip()
+    if not key or len(key) > 128:
+        raise ValueError("Idempotency-Key must contain 1-128 characters")
     h = payload_hash(payload)
     status, body = 0, None
     if settings.connector_mode == "api":
@@ -84,7 +86,7 @@ def push(db: Session, s: OrderSession, payload: dict) -> dict:
     s.push_status = "SENT_OR_EXPORTED"
     s.fulfillment_reference = f"CSV-{s.order_session_id}"
     s.csv_object_key = f"SiteDesk_{s.order_session_id}_{s.confirmed_at.strftime('%Y%m%dT%H%M%SZ')}.csv"
-    db.add(ConnectorAttempt(session_id=s.session_id, mode="csv", idempotency_key=key + ":csv", request_hash=h,
+    db.add(ConnectorAttempt(session_id=s.session_id, mode="csv", idempotency_key=key, request_hash=h,
                             http_status=status or None, result_ref=s.fulfillment_reference))
     return {"order_status": "NEEDS_MANUAL", "delivery_status": "SENT_OR_EXPORTED", "pos_order_ref": None,
             "pos_error": (body or {}).get("error", {}).get("code") if body else "POS_UNREACHABLE"}

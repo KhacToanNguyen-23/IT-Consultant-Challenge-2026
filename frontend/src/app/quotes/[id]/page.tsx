@@ -7,6 +7,7 @@ import { api, ApiError, API_URL, fileUrl, fmtMoney, fmtTime, type QuoteView } fr
 import { useI18n, type Key } from "@/client/i18n";
 import { LoadingTerminal, Notice, PosKey, SoftKeys, Terminal, useArmed, Vfd } from "@/components/pos/Terminal";
 import { StatePill } from "@/components/StatusBadge";
+import ListPagination from "@/components/pos/ListPagination";
 
 const FLOW = ["SAVED", "SENT", "CUST", "PREPARING", "CONFIRMED"] as const;
 const CHANNELS = [
@@ -21,6 +22,7 @@ export default function QuoteDetailPage({ params }: { params: { id: string } }) 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [channel, setChannel] = useState("email");
+  const [linePage, setLinePage] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
   const cancelKey = useArmed();
 
@@ -35,6 +37,7 @@ export default function QuoteDetailPage({ params }: { params: { id: string } }) 
   useEffect(() => {
     load();
   }, [load, lang]);
+  useEffect(() => setLinePage(0), [params.id]);
 
   const act = async (key: string, fn: () => Promise<QuoteView | void>, msg?: string) => {
     setBusy(key);
@@ -61,6 +64,8 @@ export default function QuoteDetailPage({ params }: { params: { id: string } }) 
     const order = ["SAVED", "SENT", "PREPARING", "CONFIRMED"];
     return order.indexOf(q.status) >= order.indexOf(k) || (k === "SENT" && !!q.customer_confirmed_at && q.status !== "SAVED");
   };
+  const pageSize = 10;
+  const visibleLines = q.lines.slice(linePage * pageSize, (linePage + 1) * pageSize);
   const changedCount = q.lines.filter((l) => l.changed_fields.length).length;
   const shortCount = q.lines.filter((l) => l.alternative_required).length;
   const blockers = q.lines.filter((l) => l.current_line?.line_status === "SUBSTITUTE_PROPOSED" || l.current_line?.line_status === "NEEDS_CLARIFICATION").length;
@@ -176,7 +181,7 @@ export default function QuoteDetailPage({ params }: { params: { id: string } }) 
                 </tr>
               </thead>
               <tbody>
-                {q.lines.map((l) => {
+                {visibleLines.map((l) => {
                   const priceChanged = l.changed_fields.includes("price");
                   const stockChanged = l.changed_fields.includes("stock");
                   return (
@@ -212,6 +217,7 @@ export default function QuoteDetailPage({ params }: { params: { id: string } }) 
               </tbody>
             </table>
           </div>
+          <ListPagination total={q.lines.length} page={linePage} pageSize={pageSize} onPageChange={setLinePage} />
           <p className="paper-foot !border-t-0">{t("quote_foot")}</p>
         </div>
       }

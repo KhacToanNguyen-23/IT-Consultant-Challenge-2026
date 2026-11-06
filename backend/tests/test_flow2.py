@@ -179,7 +179,8 @@ def test_session_route_keeps_the_quote_client(api):
     sid = session(api)
     q = save(api, sid, "C-88921")
     prepare(api, q["quote_id"])
-    r = api.post(f"/sessions/{sid}/confirm", json={"client_id": "C-65002"})
+    order_session_id = api.get(f"/sessions/{sid}").json()["order_session_id"]
+    r = api.post(f"/sessions/{sid}/confirm", json={"client_id": "C-65002"}, headers={"Idempotency-Key": order_session_id})
     assert r.status_code == 200 and r.json()["payload"]["client_id"] == "C-88921"
 
 

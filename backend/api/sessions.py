@@ -14,7 +14,7 @@ from api.common import ApiError, StrictBody
 from config import runtime, settings
 from db.database import get_db
 from i18n import t
-from db.models import AiInvocation, Customer, DiscountTier, OrderSession, Quote, SessionLine
+from db.models import AiInvocation, ConnectorAttempt, Customer, DiscountTier, OrderSession, Quote, SessionLine
 from services import auth, connector, dictionary, parser, pii, pipeline, telemetry
 from services.pipeline import now
 
@@ -394,8 +394,18 @@ def confirm_result(db: Session, s: OrderSession, replayed: bool, **extra) -> dic
             "locked": True, "replayed": replayed, **extra}
 
 
-def do_confirm(db: Session, s: OrderSession, client_id: Optional[str]) -> dict:
+def do_confirm(db: Session, s: OrderSession, client_id: Optional[str], idempotency_key: Optional[str] = None) -> dict:
+    key = (idempotency_key or s.order_session_id).strip()
+    if not key or len(key) > 128:
+        raise ApiError(422, "VALIDATION", t("idempotency_key_invalid"), {"fields": ["Idempotency-Key"]})
     if s.status in LOCKED:  # idempotent replay → same reference, no second order
+        first_attempt = (db.query(ConnectorAttempt).filter(ConnectorAttempt.session_id == s.session_id)
+                         .order_by(ConnectorAttempt.attempt_id).first())
+        stored_key = first_attempt.idempotency_key if first_attempt else s.order_session_id
+        if stored_key.endswith(":csv") and stored_key[:-4] == s.order_session_id:
+            stored_key = stored_key[:-4]
+        if stored_key != key:
+            raise ApiError(409, "IDEMPOTENCY_CONFLICT", t("idempotency_key_conflict"))
         return confirm_result(db, s, replayed=True)
     if s.status in ("DRAFT", "PARSED"):
         raise ApiError(400, "NOT_ANALYZED", t("not_analyzed_confirm"))
@@ -419,7 +429,7 @@ def do_confirm(db: Session, s: OrderSession, client_id: Optional[str]) -> dict:
     s.status = "CONFIRMED"
     payload = connector.build_payload(s, lines, quote.quote_id if quote else None)
     telemetry.event(db, "CONFIRMED", s.session_id, actor_id=s.user_id, lines=len(lines))
-    result = connector.push(db, s, payload)
+    result = connector.push(db, s, payload, idempotency_key=key)
     telemetry.event(db, "POS_ACCEPTED" if result["order_status"] == "POS_ACCEPTED" else "CSV_EXPORTED", s.session_id, actor_id=s.user_id)
     for l in lines:
         l.resolved = True
@@ -434,10 +444,10 @@ def do_confirm(db: Session, s: OrderSession, client_id: Optional[str]) -> dict:
 
 
 @router.post("/sessions/{session_id}/confirm")
-def confirm(session_id: str, body: ConfirmBody = ConfirmBody(), idempotency_key: Optional[str] = Header(None),
+def confirm(session_id: str, body: ConfirmBody = ConfirmBody(), idempotency_key: str = Header(..., min_length=1, max_length=128),
             db: Session = Depends(get_db)):
     s = get_session(db, session_id, for_update=True)
-    return do_confirm(db, s, body.client_id)
+    return do_confirm(db, s, body.client_id, idempotency_key)
 
 
 @router.get("/sessions/{session_id}/export.csv")

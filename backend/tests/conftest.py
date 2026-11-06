@@ -210,8 +210,9 @@ class Counter:
                 assert r.status_code == 200, r.text
         return self.view(sid)
 
-    def confirm(self, sid):
-        return self.call("POST", f"/sessions/{sid}/confirm", json={})
+    def confirm(self, sid, key=None):
+        key = key or self.view(sid)["order_session_id"]
+        return self.call("POST", f"/sessions/{sid}/confirm", json={}, headers={"Idempotency-Key": key})
 
 
 @pytest.fixture

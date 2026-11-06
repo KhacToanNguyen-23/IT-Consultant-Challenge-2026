@@ -90,6 +90,8 @@ M: dict[str, dict[str, str]] = {
     "decision_invalid": {"en": "Invalid decision", "vi": "decision không hợp lệ"},
     "client_not_found": {"en": "Client ID does not exist", "vi": "Client ID không tồn tại"},
     "not_analyzed_confirm": {"en": "Analyze before confirming", "vi": "Cần Analyze trước khi Confirm"},
+    "idempotency_key_invalid": {"en": "Idempotency-Key must contain 1–128 characters", "vi": "Idempotency-Key phải dài từ 1 đến 128 ký tự"},
+    "idempotency_key_conflict": {"en": "This order was already confirmed with a different Idempotency-Key", "vi": "Đơn đã được Confirm với Idempotency-Key khác"},
     "quote_needs_prepare": {"en": "Quote {id} is {status} — record customer confirmation and Prepare before confirming",
                             "vi": "Báo giá {id} đang {status} — cần Prepare (sau khi khách xác nhận) trước khi Confirm"},
     "quote_locks_session": {"en": "Quote {id} is saved: the order can no longer be edited. Cancel it and start a new list to change it.",

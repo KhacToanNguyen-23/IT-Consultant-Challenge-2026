@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
-import { BadgeCheck, ClipboardList, Eraser, FileUp, Mail, PackageCheck, ScanLine, Sparkles, X } from "lucide-react";
+import { forwardRef, Suspense, useEffect, useRef, useState } from "react";
+import { ClipboardList, Eraser, FileUp, Mail, ScanLine, X } from "lucide-react";
 import { api, ApiError } from "@/client/api";
 import { useI18n } from "@/client/i18n";
 import { Notice, PosKey, SoftKeys, Terminal, Vfd } from "@/components/pos/Terminal";
@@ -21,6 +21,7 @@ export default function IntakeRoute() {
 
 function IntakePage() {
   const router = useRouter();
+  const modeButtons = useRef<HTMLButtonElement[]>([]);
   const emailLink = useSearchParams().get("mode") === "email";
   const { t } = useI18n();
   const [mode, setMode] = useState<Mode>("counter");
@@ -68,10 +69,18 @@ function IntakePage() {
   const lineCount = text.split("\n").filter((l) => l.trim()).length;
   const isEmail = mode === "email";
 
+  const onModeKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (!["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"].includes(e.key)) return;
+    e.preventDefault();
+    const next = (index + (e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : -1) + 2) % 2;
+    setMode(next === 0 ? "counter" : "email");
+    modeButtons.current[next]?.focus();
+  };
+
   return (
     <Terminal
       ticket={
-        <div className="paper flex min-h-full flex-col">
+        <div id="intake-panel" role="tabpanel" aria-labelledby={isEmail ? "email-mode-tab" : "counter-mode-tab"} className="paper flex min-h-full flex-col">
           <div className="paper-head">
             <h1 className="paper-title">{t("intake_title")}</h1>
           </div>
@@ -104,7 +113,7 @@ function IntakePage() {
                 <label htmlFor="intake" className="block text-base font-semibold">
                   {isEmail ? t("paste_email") : t("paste_list")}
                 </label>
-                {!isEmail && <p className="mt-0.5 text-xs soft">{t("unstructured_input_hint")}</p>}
+
               </div>
             )}
             {!isEmail && (
@@ -138,23 +147,14 @@ function IntakePage() {
           <Vfd top={file ? t("vfd_file") : lineCount ? t("vfd_reading") : t("vfd_ready")} main={file ? "1" : lineCount} sub={file?.name} />
           <div className="pos-screen space-y-3">
             <div role="tablist" aria-label={t("flow_label")} className="grid gap-2">
-              <FlowTile active={!isEmail} onClick={() => setMode("counter")} icon={<ClipboardList size={20} />} title={t("mode_counter")} />
-              <FlowTile active={isEmail} onClick={() => setMode("email")} icon={<Mail size={20} />} title={t("mode_email")} />
+              <FlowTile id="counter-mode-tab" ref={(el) => { if (el) modeButtons.current[0] = el; }} active={!isEmail} onClick={() => setMode("counter")} onKeyDown={(e) => onModeKeyDown(e, 0)} icon={<ClipboardList size={20} />} title={t("mode_counter")} />
+              <FlowTile id="email-mode-tab" ref={(el) => { if (el) modeButtons.current[1] = el; }} active={isEmail} onClick={() => setMode("email")} onKeyDown={(e) => onModeKeyDown(e, 1)} icon={<Mail size={20} />} title={t("mode_email")} />
             </div>
-            {!isEmail && (
-              <div className="intake-journey">
-                <h2 className="intake-journey-title">{t("journey_title")}</h2>
-                <JourneyStep icon={<Sparkles size={17} />} title={t("journey_match")} detail={t("journey_match_detail")} />
-                <JourneyStep icon={<PackageCheck size={17} />} title={t("journey_stock")} detail={t("journey_stock_detail")} />
-                <JourneyStep icon={<BadgeCheck size={17} />} title={t("journey_confirm")} detail={t("journey_confirm_detail")} last />
-              </div>
-            )}
             {error && (
               <Notice tone="bad" alert>
                 {error}
               </Notice>
             )}
-            <p className="screen-note">PDF text only · Max 5 MB · E-mail/phone masked. Names and addresses may remain.</p>
           </div>
         </>
       }
@@ -174,25 +174,20 @@ function IntakePage() {
   );
 }
 
-function FlowTile({ active, onClick, icon, title }: { active: boolean; onClick: () => void; icon: React.ReactNode; title: string }) {
+const FlowTile = forwardRef<HTMLButtonElement, {
+  id: string;
+  active: boolean;
+  onClick: () => void;
+  onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
+  icon: React.ReactNode;
+  title: string;
+}>(function FlowTile({ id, active, onClick, onKeyDown, icon, title }, ref) {
   return (
-    <button type="button" role="tab" aria-selected={active} aria-pressed={active} onClick={onClick} className="tile flex items-start gap-3">
+    <button id={id} ref={ref} type="button" role="tab" aria-controls="intake-panel" aria-selected={active} tabIndex={active ? 0 : -1} onClick={onClick} onKeyDown={onKeyDown} className="tile flex items-start gap-3">
       <span className="mt-0.5 flex-none">{icon}</span>
       <span>
         <span className="block font-[family-name:var(--font-key)] text-lg font-semibold leading-tight">{title}</span>
       </span>
     </button>
   );
-}
-
-function JourneyStep({ icon, title, detail, last }: { icon: React.ReactNode; title: string; detail: string; last?: boolean }) {
-  return (
-    <div className={`intake-journey-step${last ? " intake-journey-step--last" : ""}`}>
-      <span className="intake-journey-icon" aria-hidden>{icon}</span>
-      <span className="min-w-0">
-        <span className="block font-semibold">{title}</span>
-        <span className="block text-xs soft">{detail}</span>
-      </span>
-    </div>
-  );
-}
+});

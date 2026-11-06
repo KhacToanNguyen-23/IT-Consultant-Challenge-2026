@@ -19,9 +19,10 @@ API = os.getenv("SITEDESK_API", "http://localhost:8000").rstrip("/") + "/api/v1"
 RESULTS: list[tuple[str, bool, str]] = []
 
 
-def call(method, path, body=None, raw=None, ctype="application/json", timeout=60):
+def call(method, path, body=None, raw=None, ctype="application/json", timeout=60, headers=None):
     data = raw if raw is not None else (json.dumps(body).encode() if body is not None else None)
-    req = urllib.request.Request(API + path, data=data, method=method, headers={"Content-Type": ctype})
+    req = urllib.request.Request(API + path, data=data, method=method,
+                                 headers={"Content-Type": ctype, **(headers or {})})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             payload = r.read()
@@ -63,6 +64,12 @@ def open_session(text):
 
 def view(sid):
     return call("GET", f"/sessions/{sid}")[1]
+
+
+def confirm(sid, body=None, key=None):
+    key = key or view(sid)["order_session_id"]
+    return call("POST", f"/sessions/{sid}/confirm", {} if body is None else body,
+                headers={"Idempotency-Key": key})
 
 
 def resolve_all(sid):
@@ -138,7 +145,7 @@ def main() -> int:
               [L[3]["match"]["candidates"], L[4]["match"]["candidates"]])
         check("FR-009 missing grade never reaches the high band", L[5]["match"]["band"] != "HIGH", L[5]["match"]["band"])
         check("FR-010 blockers stop Confirm and name the lines", (lambda r: r[0] == 409 and err_code(r) == "UNRESOLVED_LINES"
-                                                                  and r[1]["error"]["details"]["line_nos"])(call("POST", f"/sessions/{sid}/confirm", {})))
+                                                                  and r[1]["error"]["details"]["line_nos"])(confirm(sid)))
         known = [l for l in v["lines"] if l["stock"]["status"] not in (None, "UNKNOWN")]  # stock is evaluated once a quantity exists
         check("FR-014 every stock reading carries the reference label and its timestamp",
               known and all(l["stock"].get("label") and l["stock"].get("updated_at") for l in known) and all(l["stock"].get("label") for l in v["lines"]))
@@ -152,7 +159,7 @@ def main() -> int:
         check("FR-016 reject needs a reason", err_code(call("PUT", f"/sessions/{sid}/lines/1/selection", {"sku": "SKU-GYP-MR-125", "decision": "SUBSTITUTION_REJECTED"})) == "REASON_REQUIRED")
         check("FR-016 SKU unchanged before the customer agrees", view(sid)["lines"][0]["final_sku"] == "SKU-GYP-MR-125")
         call("PUT", f"/sessions/{sid}/lines/1/selection", {"sku": "SKU-GYP-MR-125-B", "decision": "SUBSTITUTION_ACCEPTED"})
-        r = call("POST", f"/sessions/{sid}/confirm", {})
+        r = confirm(sid)
         item = (r[1].get("payload") or {}).get("line_items", [{}])[0]
         check("FR-020 payload: original_sku kept, score null, substituted", item.get("original_sku") == "SKU-GYP-MR-125"
               and item.get("confidence_score") is None and item.get("fulfillment_action") == "substituted", item)
@@ -161,10 +168,14 @@ def main() -> int:
         sid, _, _ = open_session(ORDER)
         call("POST", f"/sessions/{sid}/analyze")
         resolve_all(sid)
-        c1 = call("POST", f"/sessions/{sid}/confirm", {})[1]
-        c2 = call("POST", f"/sessions/{sid}/confirm", {})[1]
+        c1 = confirm(sid)[1]
+        c2 = confirm(sid)[1]
         check("FR-019 Confirm -> POS_ACCEPTED with reference", c1.get("order_status") == "POS_ACCEPTED" and str(c1.get("fulfillment_reference", "")).startswith("POS-"), c1.get("order_status"))
         check("FR-018 repeat Confirm replays the same reference", c2.get("replayed") is True and c2.get("fulfillment_reference") == c1.get("fulfillment_reference"))
+        wrong_key = confirm(sid, key="different-key")
+        missing_key = call("POST", f"/sessions/{sid}/confirm", {})
+        check("FR-018 different key on replay -> 409 IDEMPOTENCY_CONFLICT", wrong_key[0] == 409 and err_code(wrong_key) == "IDEMPOTENCY_CONFLICT")
+        check("FR-018 missing key -> 422", missing_key[0] == 422 and err_code(missing_key) == "VALIDATION")
         check("FR-018 confirmed order is read-only", err_code(call("PATCH", f"/sessions/{sid}/lines/1", {"requested_qty": 999})) == "SESSION_LOCKED")
         check("SRS 7 confirm response has order_session_id/locked/delivery_status", all(k in c1 for k in ("order_session_id", "locked", "delivery_status")))
 
@@ -181,7 +192,7 @@ def main() -> int:
             sid, _, _ = open_session(ORDER + "\n45x95 timber")
             va = call("POST", f"/sessions/{sid}/analyze")[1]
             resolve_all(sid)
-            r = call("POST", f"/sessions/{sid}/confirm", {})[1]
+            r = confirm(sid)[1]
             ok = r.get("order_status") == expect and (not ai or va.get("ai_degraded") is True)
             if expect == "NEEDS_MANUAL":
                 csv = call_text(f"/sessions/{sid}/export.csv")
