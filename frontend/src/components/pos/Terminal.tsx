@@ -109,10 +109,13 @@ export function Terminal({ ticket, rail, keys }: { ticket: React.ReactNode; rail
   );
 }
 
-export function Vfd({ top, main, unit, sub }: { top: React.ReactNode; main: React.ReactNode; unit?: string; sub?: React.ReactNode }) {
+export function Vfd({ top, main, unit, sub, accessory }: { top: React.ReactNode; main: React.ReactNode; unit?: string; sub?: React.ReactNode; accessory?: React.ReactNode }) {
   return (
     <div className="vfd" role="status">
-      <div className="vfd-top">{top}</div>
+      <div className="vfd-heading">
+        <div className="vfd-top">{top}</div>
+        {accessory}
+      </div>
       <div className="vfd-main">
         <span className="min-w-0 truncate">{main}</span>
         {unit && <span className="vfd-unit">{unit}</span>}

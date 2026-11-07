@@ -27,7 +27,7 @@ Giọng đọc: tiếng Anh, câu ngắn, khoảng 130 từ mỗi phút. `[ ]` l
 "We did not try to replace the ERP. That takes years. We chose one problem: turn a customer's messy list into one clean, standard order, at the counter, without touching the legacy systems."
 
 **[0:55] Thẻ SiteDesk:**
-"That is SiteDesk, a thin layer on top. We use AI where it helps: reading lists in four languages and matching products. And a human always makes the final call."
+"That is SiteDesk, a thin layer on top. It uses parsing and product matching to turn a list into reviewable order lines. AI can help with product matching, while the associate makes the final decision."
 
 **[1:05] Thẻ lộ trình (3 case):** "Three cases: a customer at the counter, a customer who sends a file or an e-mail, and what happens when something breaks."
 
@@ -48,7 +48,7 @@ Giọng đọc: tiếng Anh, câu ngắn, khoảng 130 từ mỗi phút. `[ ]` l
 - **[1:55]** [Customer accepts ×3, dừng ở thẻ C30]
   "Instead of 'sorry, we do not have it', the associate offers a safe alternative with the price difference. A higher grade is labelled as such. A substitute counts only once the customer agrees."
 - **[2:20]** [Confirm → biên nhận, dừng 4 giây]
-  "One click, and the order goes to the POS in a standard format. Here is what it earned: sales rescued by substitutes, and the time from upload to confirmation."
+  "One click sends the order to our simulated POS in a standard format. The receipt shows the order result, substitute decisions and elapsed time; these are demo records, not measured real sales."
 
 ## CASE 2: khách gửi file hoặc email (2:45–3:55)
 
@@ -79,15 +79,15 @@ Giọng đọc: tiếng Anh, câu ngắn, khoảng 130 từ mỗi phút. `[ ]` l
 ## KIẾN TRÚC VÀ THAY ĐỔI SO VỚI ROUND 1 (5:15–5:50)
 
 **[5:15]** [System Diagram trang 1 trong 8 giây, rồi trang 2]
-"Under the hood: a web screen, one API with an AI gateway and a connector, a database with vector search, and local embeddings, so data does not leave the machine. The connector is the only part that changes per country. That is how one solution fits three markets."
+"Under the hood: a web screen, one API with an AI gateway and a connector, PostgreSQL with vector search, and local embeddings. The optional external LLM is disabled in this demo. POS, stock and prices are simulated; we have not validated this build against live systems in all three markets."
 
 **[5:35]** [Thẻ thay đổi: LLM re-ranking → hard rules + local embeddings]
-"Compared with Round 1, we replaced LLM re-ranking with hard rules and local embeddings, because matching must be safe and repeatable."
+"Compared with Round 1, we replaced LLM re-ranking with local embeddings for candidate retrieval and hard rules for required product attributes. That makes the match easier to inspect; it does not establish production accuracy."
 
 ## CHỐT: lợi ích và hướng triển khai (5:50–6:40)
 
 **[5:50] Thẻ "Benefits":**
-"What this gives Company A: faster service, because the retyping disappears. Fewer lost sales, because every stock-out gets a safe alternative. And one standard order format for every market, so improvements can scale."
+"What we expect to improve: time at the counter by reducing retyping, and the handling of stock-outs by showing safe alternatives for associate review. A pilot with real catalog and POS data would need to measure those outcomes."
 
 **[6:08] Thẻ "How we would roll out":**
 "We would start with a pilot in Norway, add a connector for each country, and judge it on three measures: time to serve, substitution acceptance, and how many lines need no touch."
@@ -96,7 +96,7 @@ Giọng đọc: tiếng Anh, câu ngắn, khoảng 130 từ mỗi phút. `[ ]` l
 "The POS, stock and prices here are simulated, and our matching evaluation is an initial test. The next step is a pilot with the real catalog and POS."
 
 **[6:32] Thẻ kết:**
-"SiteDesk: one standard order, a human in control, and a counter that never stops. Thank you."
+"SiteDesk: one standard order format, an associate in control, and tested fallback paths for AI and POS failures. Thank you."
 
 ---
 
