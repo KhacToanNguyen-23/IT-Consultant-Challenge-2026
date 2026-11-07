@@ -429,6 +429,8 @@ def do_confirm(db: Session, s: OrderSession, client_id: Optional[str], idempoten
     if s.status in ("DRAFT", "PARSED"):
         raise ApiError(400, "NOT_ANALYZED", t("not_analyzed_confirm"))
     quote = db.query(Quote).filter(Quote.session_id == s.session_id).with_for_update().first()
+    if s.input_type == "email" and not quote:
+        raise ApiError(409, "QUOTE_REQUIRED", t("quote_required"))
     if quote:
         from api.quotes import touch_expiry
         touch_expiry(db, quote)

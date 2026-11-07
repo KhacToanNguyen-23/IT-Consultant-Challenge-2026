@@ -93,6 +93,8 @@ M: dict[str, dict[str, str]] = {
     "not_analyzed_confirm": {"en": "Analyze before confirming", "vi": "Cần Analyze trước khi Confirm"},
     "idempotency_key_invalid": {"en": "Idempotency-Key must contain 1–128 characters", "vi": "Idempotency-Key phải dài từ 1 đến 128 ký tự"},
     "idempotency_key_conflict": {"en": "This order was already confirmed with a different Idempotency-Key", "vi": "Đơn đã được Confirm với Idempotency-Key khác"},
+    "quote_required": {"en": "An e-mail request is confirmed through its quote: save the quote, record the customer's approval and prepare it first",
+                       "vi": "Yêu cầu qua email phải Confirm qua báo giá: lưu báo giá, ghi nhận khách duyệt và Prepare trước"},
     "quote_needs_prepare": {"en": "Quote {id} is {status} — record customer confirmation and Prepare before confirming",
                             "vi": "Báo giá {id} đang {status} — cần Prepare (sau khi khách xác nhận) trước khi Confirm"},
     "quote_locks_session": {"en": "Quote {id} is saved: the order can no longer be edited. Cancel it and start a new list to change it.",
