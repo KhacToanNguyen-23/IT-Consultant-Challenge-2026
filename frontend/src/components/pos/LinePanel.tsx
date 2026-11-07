@@ -6,7 +6,7 @@ import { api, ApiError, fmtMoney, fmtTime, UNITS, type Line, type SessionView } 
 import { useI18n } from "@/client/i18n";
 import { BandBadge } from "@/components/StatusBadge";
 import { Notice, PosKey } from "./Terminal";
-import { attrLabel, unitLabel } from "./TicketLines";
+import { attention, attrLabel, unitLabel } from "./TicketLines";
 
 type Run = (fn: () => Promise<SessionView>) => Promise<void>;
 
@@ -22,6 +22,8 @@ export default function LinePanel({ session, line, onChange, onClose }: Props) {
   const { t } = useI18n();
   const locked = session.locked;
   const [busy, setBusy] = useState(false);
+  const [armed, setArmed] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   const run: Run = async (fn) => {
@@ -38,7 +40,10 @@ export default function LinePanel({ session, line, onChange, onClose }: Props) {
   const select = (sku: string, decision: string, reason?: string) =>
     run(() => api(`/sessions/${session.session_id}/lines/${line.line_no}/selection`, { method: "PUT", json: { sku, decision, reason: reason ?? null } }));
 
-  const searchOpen = session.ai_degraded || (line.line_status === "NEEDS_CLARIFICATION" && line.match.candidates.length === 0);
+  // A line with nothing to resolve is read-only; the edit tools appear only for exceptions or on an explicit request.
+  const issue = session.analyzed ? attention(line, t) : null;
+  const showTools = !locked && (!session.analyzed || !!issue || editing);
+  const searchOpen = (session.ai_degraded && !!issue) || (line.line_status === "NEEDS_CLARIFICATION" && line.match.candidates.length === 0);
 
   return (
     <div className="space-y-3">
@@ -48,7 +53,7 @@ export default function LinePanel({ session, line, onChange, onClose }: Props) {
           <div className="font-mono text-xs soft">
             {t("source")}: {line.source.text}
           </div>
-          {session.analyzed && (
+          {session.analyzed && session.ai_degraded && (
             <div className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${session.ai_degraded ? "bg-amber-100 text-amber-950" : "bg-blue-50 text-blue-900"}`}>
               <span className={`lamp ${session.ai_degraded ? "lamp--warn" : "lamp--ok"}`} aria-hidden />
               {session.ai_degraded ? t("rules_fallback_mode") : t("ai_match_mode")}
@@ -71,20 +76,41 @@ export default function LinePanel({ session, line, onChange, onClose }: Props) {
       ) : (
         <>
           <Resolve session={session} line={line} busy={busy} select={select} />
-          {!locked && (
+          {!locked && !issue && !editing && (
+            <>
+              {line.line_status !== "CUSTOMER_ACCEPTED" && <Notice tone={line.stock.status === "UNKNOWN" ? "warn" : "good"}>{line.stock.status === "UNKNOWN" ? t("line_ok_stock_unknown") : t("line_ok")}</Notice>}
+              <button type="button" className="inspector-link" onClick={() => setEditing(true)}>
+                {t("change_line")}
+              </button>
+            </>
+          )}
+          {showTools && (
             <>
               <details className="inspector-details" open={searchOpen}>
-                <summary className="tile font-semibold">{t("manual_search_title")}</summary>
+                <summary className="inspector-link">{t("manual_search_title")}</summary>
                 <div className="pt-3">
                   <CatalogSearch initial={line.parsed.name || line.source.text || ""} busy={busy} onPick={(sku) => select(sku, sku === line.match.sku ? "SKU_KEPT" : "SKU_EDITED")} />
                 </div>
               </details>
               <details className="inspector-details">
-                <summary className="tile font-semibold">{t("tab_edit")}</summary>
+                <summary className="inspector-link">{t("tab_edit")}</summary>
                 <div className="pt-3">
                   <ParseEditor session={session} line={line} locked={locked} run={run} />
                 </div>
               </details>
+              {session.lines.length > 1 && !session.quote && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="inspector-link !text-red-800"
+                  onClick={() => {
+                    if (!armed) return setArmed(true);
+                    run(() => api(`/sessions/${session.session_id}/lines/${line.line_no}`, { method: "DELETE" }));
+                  }}
+                >
+                  {armed ? t("remove_line_confirm") : t("remove_line")}
+                </button>
+              )}
             </>
           )}
         </>
@@ -104,7 +130,7 @@ function Resolve({ session, line, busy, select }: { session: SessionView; line: 
 
   return (
     <div className="space-y-3">
-      {substitute && <Alternatives line={line} busy={busy} onAccept={(sku) => select(sku, "SUBSTITUTION_ACCEPTED")} onReject={(reason) => select(line.match.sku!, "SUBSTITUTION_REJECTED", reason)} />}
+      {substitute && <Alternatives line={line} busy={busy} emailPending={session.input_type === "email" && session.quote?.status !== "PREPARING"} onAccept={(sku) => select(sku, "SUBSTITUTION_ACCEPTED")} onReject={(reason) => select(line.match.sku!, "SUBSTITUTION_REJECTED", reason)} />}
 
       {accepted && (
         <Notice tone="good">
@@ -117,16 +143,14 @@ function Resolve({ session, line, busy, select }: { session: SessionView; line: 
 
       {clarify && line.match.candidates.length > 0 && (
         <div>
-          <div className="mb-1.5 font-semibold">{t("candidates_title")}</div>
-          <ul className="space-y-1.5">
+          <div className="suggest-title">{session.ai_degraded ? t("ask_which_rules") : t("ask_which")}</div>
+          <ul className="space-y-2">
             {line.match.candidates.map((c) => (
               <li key={c.sku}>
-                <button type="button" disabled={busy} className="tile" onClick={() => select(c.sku, c.sku === line.match.sku ? "SKU_KEPT" : "SKU_EDITED")}>
-                  <span className="block font-semibold leading-snug">{c.name}</span>
-                  <span className="mt-1 flex flex-wrap items-center gap-2">
-                    <BandBadge band={c.band} score={c.score} />
-                    <span className="font-mono text-xs soft">{c.sku}</span>
-                  </span>
+                <button type="button" disabled={busy} className="cand" onClick={() => select(c.sku, c.sku === line.match.sku ? "SKU_KEPT" : "SKU_EDITED")}>
+                  <span className="cand-name">{c.name}</span>
+                  <span className="cand-meta">{session.ai_degraded ? c.sku : `${c.sku} · ${t("match_score", { score: c.score.toFixed(2) })}`}</span>
+                  <span className="cand-pick"><Check size={15} aria-hidden /> {t("pick_this")}</span>
                 </button>
               </li>
             ))}
@@ -135,9 +159,9 @@ function Resolve({ session, line, busy, select }: { session: SessionView; line: 
       )}
 
       {clarify && line.match.candidates.length === 0 && <Notice tone="warn">{t("line_no_candidates")}</Notice>}
-      {line.match.sku && (reasons?.matched?.length || reasons?.mismatched?.length || reasons?.missing?.length || reasons?.ambiguous || line.llm_attributes?.length) && (
+      {!!(reasons?.matched?.length || reasons?.mismatched?.length || reasons?.missing?.length || reasons?.ambiguous || line.llm_attributes?.length) && (
         <details className="inspector-details">
-          <summary className="cursor-pointer text-xs font-semibold text-slate-600">{t("why_title")}</summary>
+          <summary className="inspector-link">{t("why_title")}</summary>
           <div className="mt-2 space-y-1 text-xs leading-relaxed">
             {reasons?.matched?.length ? <div>{t("why_matched", { list: list(reasons.matched) })}</div> : null}
             {reasons?.mismatched?.length ? <div className="text-red-800">{t("why_mismatched", { list: list(reasons.mismatched) })}</div> : null}
@@ -216,13 +240,14 @@ function ParseEditor({ session, line, locked, run }: { session: SessionView; lin
   );
 }
 
-function Alternatives({ line, busy, onAccept, onReject }: { line: Line; busy: boolean; onAccept: (sku: string) => void; onReject: (reason: string) => void }) {
+function Alternatives({ line, busy, emailPending, onAccept, onReject }: { line: Line; busy: boolean; emailPending: boolean; onAccept: (sku: string) => void; onReject: (reason: string) => void }) {
   const { t } = useI18n();
   const [reason, setReason] = useState("");
+  const [declining, setDeclining] = useState(false);
   return (
     <div className="space-y-2">
       <Notice tone="bad">
-        <b>{line.stock.status === "PARTIAL" ? t("partial_need", { have: line.stock.on_hand ?? 0, need: line.conversion.selling_quantity ?? "?" }) : t("out_here")}</b> {t("safe_subs")}
+        <b>{line.stock.status === "PARTIAL" ? t("partial_need", { have: line.stock.on_hand ?? 0, need: line.conversion.selling_quantity ?? "?" }) : t("out_here")}</b>. {t("safe_subs")}
       </Notice>
       <ul className="space-y-2">
         {line.alternatives.map((a) => (
@@ -235,19 +260,28 @@ function Alternatives({ line, busy, onAccept, onReject }: { line: Line; busy: bo
               {fmtMoney(a.total_price_delta, a.currency)}
             </div>
             <div className="mt-0.5 text-xs soft">{a.reasons.join(", ")}</div>
-            <PosKey size="sm" tone="go" icon={<Check size={16} />} disabled={busy} onClick={() => onAccept(a.sku)} className="mt-2 w-full">
-              {t("customer_accepts")}
+            <PosKey size="sm" tone={emailPending ? "quote" : "go"} icon={<Check size={16} />} disabled={busy} onClick={() => onAccept(a.sku)} className="mt-2 w-full">
+              {emailPending ? t("customer_agreed_email") : t("customer_accepts")}
             </PosKey>
+            {emailPending && <p className="mt-1.5 text-xs soft">{t("email_substitute_note")}</p>}
           </li>
         ))}
       </ul>
-      <label className="block font-semibold">
-        {t("reject_reason_ph")}
-        <input value={reason} onChange={(e) => setReason(e.target.value)} className="field mt-1 font-normal" />
-      </label>
-      <PosKey size="sm" tone="void" icon={<X size={16} />} disabled={busy || !reason.trim()} onClick={() => onReject(reason)} className="w-full">
-        {t("customer_rejects")}
-      </PosKey>
+      {declining ? (
+        <>
+          <label className="block font-semibold">
+            {t("reject_reason_ph")}
+            <input autoFocus value={reason} onChange={(e) => setReason(e.target.value)} className="field mt-1 font-normal" />
+          </label>
+          <PosKey size="sm" tone="void" icon={<X size={16} />} disabled={busy || !reason.trim()} onClick={() => onReject(reason)} className="w-full">
+            {t("customer_rejects")}
+          </PosKey>
+        </>
+      ) : (
+        <button type="button" className="text-sm font-semibold text-red-800 underline" onClick={() => setDeclining(true)}>
+          {t("customer_rejects")}…
+        </button>
+      )}
     </div>
   );
 }

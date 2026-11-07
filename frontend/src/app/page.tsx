@@ -2,10 +2,11 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { forwardRef, Suspense, useEffect, useRef, useState } from "react";
-import { ClipboardList, Eraser, FileUp, Mail, ScanLine, X } from "lucide-react";
+import { ClipboardList, Eraser, FileUp, Mail, ScanLine, ShieldCheck, X } from "lucide-react";
 import { api, ApiError } from "@/client/api";
 import { useI18n } from "@/client/i18n";
 import { Notice, PosKey, SoftKeys, Terminal, Vfd } from "@/components/pos/Terminal";
+import { EMAIL_SAMPLE, SAMPLE_ORDERS } from "@/components/story/samples";
 
 type Mode = "counter" | "email";
 
@@ -111,6 +112,19 @@ function IntakePage() {
               </PosKey>
             )}
           </div>
+          {!file && !text.trim() && (
+            <div className="story-samples px-[18px] pt-3" data-testid="sample-orders">
+              <span className="font-semibold">{t("story_samples_title")}</span>
+              <div className="story-sample-grid">
+                {(isEmail ? [EMAIL_SAMPLE] : SAMPLE_ORDERS).map((o) => (
+                  <button key={o.id} type="button" className="story-sample" data-testid={`sample-${o.id}`} onClick={() => setText(o.text)}>
+                    <span className="story-sample-title">{t(o.title)}</span>
+                    <span className="story-sample-detail">{t(o.detail)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {file ? (
             <div className="m-[18px] flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4" role="status">
               <FileUp size={20} className="flex-none text-blue-800" aria-hidden />
@@ -125,7 +139,7 @@ function IntakePage() {
               value={text}
               onChange={(e) => setText(e.target.value)}
               rows={14}
-              placeholder={isEmail ? "Paste the customer's e-mail here…" : "Paste or type a material list here…"}
+              placeholder={t(isEmail ? "intake_placeholder_email" : "intake_placeholder_list")}
               className="font-mono mt-1 w-full flex-1 resize-none bg-transparent px-[18px] py-2 text-[15px] leading-7 placeholder:text-slate-400"
             />
           )}
@@ -135,6 +149,13 @@ function IntakePage() {
         <>
           <Vfd top={file ? t("vfd_file") : lineCount ? t("vfd_reading") : t("vfd_ready")} main={file ? "1" : lineCount} sub={file?.name} />
           <div className="pos-screen space-y-3">
+            <div className="intake-proof">
+              <div className="intake-proof-main"><ShieldCheck size={16} aria-hidden /> {t("masking_proof")}</div>
+              <details>
+                <summary>{t("masking_limit_title")}</summary>
+                <p>{t("intake_hint_pii")}</p>
+              </details>
+            </div>
             <div role="tablist" aria-label={t("flow_label")} className="grid gap-2">
               <FlowTile id="counter-mode-tab" ref={(el) => { if (el) modeButtons.current[0] = el; }} active={!isEmail} onClick={() => setMode("counter")} onKeyDown={(e) => onModeKeyDown(e, 0)} icon={<ClipboardList size={20} />} title={t("mode_counter")} />
               <FlowTile id="email-mode-tab" ref={(el) => { if (el) modeButtons.current[1] = el; }} active={isEmail} onClick={() => setMode("email")} onKeyDown={(e) => onModeKeyDown(e, 1)} icon={<Mail size={20} />} title={t("mode_email")} />

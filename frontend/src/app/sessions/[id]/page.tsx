@@ -2,14 +2,16 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, Download, FileText, FilePlus2, FileSignature, ListChecks, ScanLine, Search, UserRound } from "lucide-react";
-import { api, ApiError, fileUrl, fmtMoney, type Customer, type SessionView } from "@/client/api";
+import { AlertTriangle, CheckCircle2, Download, FileText, FilePlus2, FileSignature, ListChecks, ScanLine, Search, ShieldCheck, UserRound } from "lucide-react";
+import { api, ApiError, fileUrl, fmtMoney, fmtTime, type Customer, type SessionView } from "@/client/api";
 import { useI18n } from "@/client/i18n";
 import LinePanel from "@/components/pos/LinePanel";
 import { LoadingTerminal, Notice, PosKey, SoftKeys, Terminal, Vfd } from "@/components/pos/Terminal";
 import TicketLines, { lineAmount } from "@/components/pos/TicketLines";
 import ListPagination from "@/components/pos/ListPagination";
 import { StatePill } from "@/components/StatusBadge";
+import ImpactStrip from "@/components/story/ImpactStrip";
+import ResultStory from "@/components/story/ResultStory";
 
 
 
@@ -33,6 +35,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
   const [sourceOpen, setSourceOpen] = useState<boolean | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [blockerPage, setBlockerPage] = useState(0);
+  const [copied, setCopied] = useState(false);
   const opened = useRef(false);
 
   const load = useCallback(async () => {
@@ -79,6 +82,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
   const walkIn = customers.find((c) => c.customer_type === "B2C_WalkIn")?.client_id;
   const effectiveClient = clientId || walkIn || "";
   const canConfirmQuote = !s.quote || s.quote.status === "PREPARING";
+  const emailNeedsQuote = s.input_type === "email" && !s.quote;
   const line = s.lines.find((l) => l.line_no === selected) || null;
   const blockerNos = s.blockers.map((b) => b.line_no);
   const showSource = sourceOpen ?? !s.analyzed;
@@ -87,6 +91,8 @@ export default function SessionPage({ params }: { params: { id: string } }) {
   const total = amounts.reduce<number>((sum, a) => sum + (a ?? 0), 0);
   const unpriced = amounts.filter((a) => a == null).length;
   const currency = s.lines.find((l) => l.currency)?.currency || "DKK";
+  const llmCalls = Number(s.stage_timings_ms.llm_calls || 0);
+  const stockChecked = s.lines.map((l) => l.stock.updated_at).filter(Boolean).sort().pop() || null;
   const manualLine = s.blockers[0]?.line_no ?? s.lines.find((l) => !l.final_sku)?.line_no ?? s.lines[0]?.line_no ?? null;
 
   // A resolved line hands over to the next one, so the associate never hunts for what is left.
@@ -139,10 +145,42 @@ export default function SessionPage({ params }: { params: { id: string } }) {
             </div>
           </div>
 
+          <div className="operation-proof" role="group" aria-label={t("evidence_title")}>
+            <ProofTag tone="good" icon={<ShieldCheck size={14} aria-hidden />}>{t("evidence_masked")}</ProofTag>
+            {s.analyzed && <ProofTag>{s.ai_degraded ? t("evidence_fallback") : t("evidence_semantic")}</ProofTag>}
+            {s.analyzed && stockChecked && <ProofTag>{t("evidence_stock_checked", { time: fmtTime(stockChecked) })}</ProofTag>}
+            {s.analyzed && llmCalls > 0 && <ProofTag>{t("evidence_llm", { n: llmCalls })}</ProofTag>}
+          </div>
 
+          {s.analyzed && (
+            <div className="px-[18px] pt-2">
+              <ImpactStrip session={s} />
+            </div>
+          )}
 
-          {(s.ai_degraded || s.lines.some((l) => l.stock.status === "UNKNOWN") || error) && (
+          {(s.ai_degraded || s.lines.some((l) => l.stock.status === "UNKNOWN") || error || (emailNeedsQuote && s.analyzed && !s.locked)) && (
             <div className="space-y-2 px-[18px] py-3">
+              {emailNeedsQuote && s.analyzed && !s.locked && (
+                <Notice tone="quote">
+                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                    <span>
+                      <b>{t("email_banner_title")}</b> · {t("email_needs_quote")}
+                    </span>
+                    <button
+                      type="button"
+                      className="flex-none rounded-md border border-[#9bc5e5] bg-white px-3 py-1.5 text-sm font-bold text-[#1769aa] hover:bg-[#f2f8fe]"
+                    onClick={() => {
+                      navigator.clipboard?.writeText(buildReply(s)).then(() => {
+                        setCopied(true);
+                        window.setTimeout(() => setCopied(false), 2500);
+                      });
+                    }}
+                  >
+                      {copied ? t("reply_copied") : t("copy_reply")}
+                    </button>
+                  </div>
+                </Notice>
+              )}
               {s.ai_degraded && (
                 <Notice tone="warn" icon={<AlertTriangle size={16} />}>
                   {t("ai_degraded_banner")}
@@ -184,7 +222,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
             sub={s.analyzed ? (unpriced ? `${t("vfd_list_total")}, ${t("vfd_unpriced", { n: unpriced })}` : t("vfd_list_total")) : undefined}
           />
           <div className="pos-screen">
-            {s.analyzed && s.ai_degraded && !line && manualLine != null && (
+            {s.analyzed && !s.locked && s.ai_degraded && !line && manualLine != null && (
               <PosKey tone="nav" icon={<Search size={17} />} onClick={() => setSelected(manualLine)} className="mb-3 w-full">
                 {t("manual_fallback_action")}
               </PosKey>
@@ -231,7 +269,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                   </p>
                 )}
 
-                {!s.quote && (
+                {!s.quote && s.input_type === "email" && (
                   <div className="space-y-1.5">
                     <label className="block font-semibold">
                       {t("valid_until")}
@@ -262,30 +300,24 @@ export default function SessionPage({ params }: { params: { id: string } }) {
             ) : null,
             !s.locked && s.analyzed ? (
               <PosKey key="cust" hotkey="F7" tone={line ? "std" : "on"} icon={<UserRound size={17} />} onClick={() => setSelected(null)}>
-                {t("key_order")}
+                {t("key_customer_is", { name: !effectiveClient || effectiveClient === walkIn ? t("walk_in_short") : effectiveClient })}
               </PosKey>
             ) : null,
-            s.locked ? (
-              s.confirmation.csv_download_url ? (
-                <PosKey key="csv" hotkey="F8" tone="hold" icon={<Download size={17} />} href={fileUrl(s.confirmation.csv_download_url)} external>
-                  {t("download_csv_short")}
-                </PosKey>
-              ) : null
-            ) : !s.analyzed ? null : s.quote ? (
+            s.locked ? null : !s.analyzed ? null : s.quote ? (
               <PosKey key="quote" hotkey="F8" tone="quote" icon={<FileSignature size={17} />} href={`/quotes/${s.quote.quote_id}`}>
                 {t("open_quote")}
               </PosKey>
-            ) : (
+            ) : s.input_type === "email" ? (
               <PosKey key="quote" hotkey="F8" tone="quote" icon={<FileSignature size={17} />} busy={busy === "quote"} disabled={!!busy || !effectiveClient} onClick={saveQuote}>
                 {t("save_quote")}
               </PosKey>
-            ),
+            ) : null,
             s.locked ? null : !s.analyzed ? (
               <PosKey key="analyze" hotkey="F9" tone="nav" icon={<ScanLine size={18} />} busy={busy === "analyze"} disabled={!!busy} onClick={analyze}>
                 {t("analyze")}
               </PosKey>
             ) : (
-              <PosKey key="confirm" hotkey="F9" tone="go" icon={<CheckCircle2 size={18} />} busy={busy === "confirm"} disabled={!!busy || s.blockers.length > 0 || !canConfirmQuote || !effectiveClient} onClick={confirm}>
+              <PosKey key="confirm" hotkey="F9" tone="go" icon={<CheckCircle2 size={18} />} busy={busy === "confirm"} disabled={!!busy || s.blockers.length > 0 || !canConfirmQuote || emailNeedsQuote || !effectiveClient} onClick={confirm}>
                 {t("confirm_send")}
               </PosKey>
             ),
@@ -300,24 +332,26 @@ function ConfirmResult({ s }: { s: SessionView }) {
   const { t } = useI18n();
   const c = s.confirmation;
   const ok = c.order_status === "POS_ACCEPTED";
+  const rescued = s.lines.filter((l) => l.line_status === "CUSTOMER_ACCEPTED");
+  const rescuedTotal = rescued.reduce((sum, l) => sum + (lineAmount(l) ?? 0), 0);
+  const rescuedCurrency = s.lines.find((l) => l.currency)?.currency || "DKK";
   return (
     <div className="receipt">
       <div className="text-center text-base font-semibold">{ok ? t("pos_ok") : t("pos_csv")}</div>
       <div className="my-2 border-t-2 border-dashed border-[var(--rule)]" />
+      {!ok && c.csv_download_url && (
+        <PosKey hotkey="F8" size="sm" tone="hold" icon={<Download size={16} />} href={fileUrl(c.csv_download_url)} external className="mb-3 w-full">
+          {t("download_csv_short")}
+        </PosKey>
+      )}
       <dl className="space-y-1.5">
-        <div>
-          <dt className="soft">{t("order_status")}</dt>
-          <dd className="flex flex-wrap gap-1">
-            <StatePill status={c.order_status || s.status} /> {!ok && <StatePill status="SENT_OR_EXPORTED" />}
-          </dd>
-        </div>
         <div>
           <dt className="soft">{t("reference")}</dt>
           <dd className="break-all font-semibold">{c.fulfillment_reference}</dd>
         </div>
-        {c.pos_order_ref && (
+        {c.pos_order_ref && c.pos_order_ref !== c.fulfillment_reference && (
           <div>
-            <dt className="soft">POS order ref</dt>
+            <dt className="soft">{t("pos_order_ref")}</dt>
             <dd className="break-all font-semibold">{c.pos_order_ref}</dd>
           </div>
         )}
@@ -325,14 +359,68 @@ function ConfirmResult({ s }: { s: SessionView }) {
           <dt className="soft">{t("client")}</dt>
           <dd className="break-all font-semibold">{s.client_id}</dd>
         </div>
+        {rescued.length > 0 && (
+          <div>
+            <dt className="soft">{t("rescued_title")}</dt>
+            <dd className="text-xl font-bold tabular text-[#155d3d]">{fmtMoney(rescuedTotal, rescuedCurrency)}</dd>
+            <dd className="text-xs soft">{t("rescued_note", { n: rescued.length })}</dd>
+          </div>
+        )}
         {c.processing_time_seconds != null && (
           <div>
             <dt className="soft">{t("time_to_confirm")}</dt>
-            <dd className="font-semibold tabular">{c.processing_time_seconds} s</dd>
+            <dd className="text-xl font-bold tabular text-[#12304d]">{c.processing_time_seconds} s</dd>
+            <dd className="text-xs soft">{t("time_target_note")}</dd>
           </div>
         )}
       </dl>
       <div className="my-2 border-t-2 border-dashed border-[var(--rule)]" />
+      <ResultStory session={s} />
     </div>
   );
+}
+
+function ProofTag({ children, icon, tone = "neutral" }: { children: React.ReactNode; icon?: React.ReactNode; tone?: "neutral" | "good" | "warn" }) {
+  return <span className={`proof-tag proof-tag--${tone}`}>{icon}{children}</span>;
+}
+
+
+/** Plain-text reply the associate sends from their own mail client (SiteDesk never sends e-mail). */
+function buildReply(s: SessionView): string {
+  const lines = [...s.lines].sort((a, b) => a.line_no - b.line_no);
+  const currency = lines.find((l) => l.currency)?.currency || "DKK";
+  const money = (n: number) => fmtMoney(n, currency).trim();
+  const say = (n: number | null | undefined, unit: string | null | undefined) => {
+    if (n == null || !unit) return "";
+    if (unit.startsWith("piece_")) return `${n} lengths of ${unit.slice(6)}`;
+    return `${n} ${unit}${n === 1 ? "" : "s"}`;
+  };
+  const qty = (l: SessionView["lines"][number]) => say(l.conversion.selling_quantity, l.conversion.selling_unit);
+  const name = (l: SessionView["lines"][number]) => l.final_name || l.parsed.name || l.source.text;
+  const short = (l: SessionView["lines"][number]) => l.line_status !== "CUSTOMER_ACCEPTED" && (l.stock.status === "OUT_OF_STOCK" || l.stock.status === "PARTIAL");
+  const unclear = lines.filter((l) => l.line_status === "NEEDS_CLARIFICATION");
+  const shortLines = lines.filter((l) => l.line_status !== "NEEDS_CLARIFICATION" && short(l));
+  const ok = lines.filter((l) => l.line_status !== "NEEDS_CLARIFICATION" && !short(l));
+  const out: string[] = ["Subject: Re: your material list", "", "Hi,", "", "Thanks for your list. Prices and stock are indicative; nothing is reserved until you confirm.", ""];
+  if (ok.length) {
+    out.push("Available:");
+    ok.forEach((l) => out.push(`- ${name(l)}: ${qty(l)}${lineAmount(l) != null ? `, ${money(lineAmount(l) as number)}` : ""}`));
+    out.push("");
+  }
+  if (shortLines.length) {
+    out.push("Short on stock, with a proposed alternative:");
+    shortLines.forEach((l) => {
+      const alt = l.alternatives?.[0];
+      const why = l.stock.status === "PARTIAL" ? `only ${l.stock.on_hand ?? 0} left` : "out of stock";
+      out.push(alt ? `- ${name(l)}: ${why}. Proposed: ${alt.name}, ${say(alt.needed_quantity, alt.selling_unit)} (${alt.total_price_delta >= 0 ? "+" : ""}${money(alt.total_price_delta)})` : `- ${name(l)}: ${why}, no safe alternative. Please advise.`);
+    });
+    out.push("");
+  }
+  if (unclear.length) {
+    out.push("Please clarify:");
+    unclear.forEach((l) => out.push(`- "${l.source.text}"`));
+    out.push("");
+  }
+  out.push("Please reply to confirm the quote and the alternatives.", "", "Best regards,", `${s.user_id} · ${s.store_id}`);
+  return out.join("\n");
 }

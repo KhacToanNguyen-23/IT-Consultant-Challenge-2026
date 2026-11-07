@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
+import { AlertTriangle } from "lucide-react";
 import { fmtMoney, fmtTime, type Line, type SessionView } from "@/client/api";
 import { useI18n, type Key } from "@/client/i18n";
 import { AttributeChips, BandBadge, LineStatusBadge, RoundedBadge, StockBadge } from "@/components/StatusBadge";
@@ -23,6 +24,24 @@ function priority(l: Line): number {
   if (l.stock.status === "OUT_OF_STOCK" || l.stock.status === "PARTIAL") return 2;
   if (l.match.band !== "HIGH") return 3;
   return 4;
+}
+
+/** The one thing the associate must see on an exception line, in plain words (never a guess). */
+export function attention(l: Line, t: T): { tone: "stop" | "warn"; text: string } | null {
+  const r = l.match.reasons as { missing?: string[]; ambiguous?: boolean } | undefined;
+  const need = l.conversion.selling_quantity ?? "?";
+  const have = l.stock.on_hand ?? 0;
+  if (l.line_status === "SUBSTITUTE_PROPOSED")
+    return { tone: "stop", text: l.stock.status === "PARTIAL" ? t("attn_partial", { have, need }) : t("attn_out") };
+  if (l.line_status === "NEEDS_CLARIFICATION") {
+    if (!l.match.sku && l.match.candidates.length === 0) return { tone: "stop", text: t("attn_nocand") };
+    if (r?.missing?.length) return { tone: "stop", text: t("attn_missing", { list: r.missing.map((m) => attrLabel(t, m)).join(", ") }) };
+    if (l.conversion.selling_quantity == null && l.conversion.blocked_reason) return { tone: "stop", text: l.conversion.blocked_reason };
+    return r?.ambiguous ? { tone: "warn", text: t("attn_ambiguous") } : { tone: "warn", text: t("attn_decide") };
+  }
+  if (l.line_status !== "CUSTOMER_ACCEPTED" && l.stock.status === "OUT_OF_STOCK") return { tone: "stop", text: t("attn_out_only") };
+  if (l.line_status !== "CUSTOMER_ACCEPTED" && l.stock.status === "PARTIAL") return { tone: "warn", text: t("attn_partial_only", { have, need }) };
+  return null;
 }
 
 function rowTone(l: Line) {
@@ -83,6 +102,7 @@ export default function TicketLines({ session, selected, onSelect }: Props) {
 
   const row = (l: Line, idx: number) => {
     const amount = lineAmount(l);
+    const attn = session.analyzed ? attention(l, t) : null;
     const isSelected = selected === l.line_no;
     return (
       <div
@@ -100,11 +120,17 @@ export default function TicketLines({ session, selected, onSelect }: Props) {
         <div className="tline-no tabular">{l.line_no}</div>
         <div className="min-w-0">
           {l.line_status === "CUSTOMER_ACCEPTED" && <div className="font-mono text-xs soft line-through">{l.match.sku}</div>}
-          <div className="line-source-label">{t("customer_wrote")}</div>
-          <div className="line-source-text" title={l.source.text}>{l.source.text}</div>
-          <div className="line-match-label">{t("matched_product")}</div>
-          <div className="text-[15px] font-semibold leading-snug">{l.final_name || l.parsed.name || <i className="text-red-800">{t("unreadable")}</i>}</div>
-          {l.final_sku ? <div className="font-mono text-xs soft">SKU {l.final_sku}</div> : session.analyzed && <div className="text-xs font-semibold text-amber-800">{t("no_sku")}</div>}
+          {session.analyzed && l.line_status === "NEEDS_CLARIFICATION" && l.final_sku && <div className="line-match-label">{session.ai_degraded ? t("suggested_rules") : t("suggested_unconfirmed")}</div>}
+          <div className={clsx("text-[17px] font-bold leading-snug", session.analyzed && l.line_status === "NEEDS_CLARIFICATION" ? "text-slate-500" : "text-[#12304d]")}>{l.final_name || l.parsed.name || <i className="text-red-800">{t("unreadable")}</i>}</div>
+          <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 text-[12.5px] text-slate-500">
+            {l.final_sku ? <span className="font-mono">{l.final_sku}</span> : session.analyzed && <span className="font-semibold text-amber-800">{t("no_sku")}</span>}
+            <span className="min-w-0 truncate" title={l.source.text}>“{l.source.text}”</span>
+          </div>
+          {attn && (
+            <div className={clsx("line-attn", `line-attn--${attn.tone}`)}>
+              <AlertTriangle size={15} aria-hidden /> {attn.text}
+            </div>
+          )}
           {isSelected && l.parsed.warnings.includes("n_x_l_review") && <div className="text-xs text-amber-800">N × L: {l.conversion.requested}</div>}
           {isSelected && <AttributeChips chips={l.chips} />}
         </div>
@@ -123,10 +149,13 @@ export default function TicketLines({ session, selected, onSelect }: Props) {
           {l.conversion.rounded && <RoundedBadge />}
         </div>
         <div className="tline-check flex flex-wrap content-start items-center gap-1">
-          {session.analyzed && (l.match.sku ? <BandBadge band={l.match.band} score={l.match.match_score} /> : <BandBadge band="LOW" score={null} />)}
-          {session.analyzed && <LineStatusBadge status={l.line_status} />}
-          {session.analyzed && <StockBadge stock={l.stock} />}
-          {l.stock.updated_at && <span className="text-[11px] soft">{t("updated", { time: fmtTime(l.stock.updated_at) })}</span>}
+          {session.analyzed && (l.line_status === "CUSTOMER_ACCEPTED" || attn) && <LineStatusBadge status={l.line_status} />}
+          {session.analyzed && !attn && l.line_status !== "CUSTOMER_ACCEPTED" && (
+            <>
+              <StockBadge stock={l.stock} />
+              {l.match.match_score != null && <span className="text-[11px] text-slate-400">{session.ai_degraded ? t("rule_match") : t("match_score", { score: l.match.match_score.toFixed(2) })}</span>}
+            </>
+          )}
         </div>
         <div className="tline-amount">{amount != null ? fmtMoney(amount, "").trim() : "—"}</div>
       </div>

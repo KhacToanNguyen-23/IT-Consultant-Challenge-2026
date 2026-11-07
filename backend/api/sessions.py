@@ -245,6 +245,25 @@ def patch_line(session_id: str, line_no: int, body: LinePatch, db: Session = Dep
     return session_view(db, s)
 
 
+@router.delete("/sessions/{session_id}/lines/{line_no}")
+def remove_line(session_id: str, line_no: int, db: Session = Depends(get_db)):
+    """The associate drops a line that is not an order line (a title, a greeting, a sentence). Logged; never after Confirm."""
+    s = get_session(db, session_id, for_update=True)
+    ensure_editable(s)
+    ensure_no_quote(db, s)
+    l = get_line(db, s, line_no)
+    if len(lines_of(db, s)) <= 1:
+        raise ApiError(409, "LAST_LINE", t("last_line"))
+    # the removal is recorded against the session (the line row goes away, so its own events go with it)
+    telemetry.event(db, "LINE_REMOVED", s.session_id, None, s.user_id, line_no=line_no, line_status=l.line_status)
+    db.delete(l)
+    db.flush()
+    refresh_status(s, lines_of(db, s))
+    s.last_activity_at = now()
+    db.commit()
+    return session_view(db, s)
+
+
 class AnalyzeBody(StrictBody):
     language_hint: Optional[str] = None
 
@@ -410,6 +429,8 @@ def do_confirm(db: Session, s: OrderSession, client_id: Optional[str], idempoten
     if s.status in ("DRAFT", "PARSED"):
         raise ApiError(400, "NOT_ANALYZED", t("not_analyzed_confirm"))
     quote = db.query(Quote).filter(Quote.session_id == s.session_id).with_for_update().first()
+    if s.input_type == "email" and not quote:
+        raise ApiError(409, "QUOTE_REQUIRED", t("quote_required"))
     if quote:
         from api.quotes import touch_expiry
         touch_expiry(db, quote)
