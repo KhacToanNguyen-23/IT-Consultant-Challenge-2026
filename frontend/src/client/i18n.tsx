@@ -132,6 +132,8 @@ const D = {
   time_target_note: { en: "Round 1 target: under 120 s for 20–35 lines (a target, not benchmarked)", vi: "Mục tiêu Round 1: dưới 120 giây cho 20–35 dòng (là mục tiêu, chưa đo chuẩn)" },
   remove_line: { en: "Remove line (not an order line)", vi: "Bỏ dòng này (không phải dòng hàng)" },
   remove_line_confirm: { en: "Click again to remove this line", vi: "Bấm lần nữa để bỏ dòng này" },
+  rescued_title: { en: "Sales rescued by substitutes", vi: "Doanh số cứu được nhờ hàng thay thế" },
+  rescued_note: { en: "{n} line(s) the customer accepted instead of “out of stock” (list price)", vi: "{n} dòng khách chấp nhận thay vì “hết hàng” (giá niêm yết)" },
   walk_in_short: { en: "Walk-in", vi: "Khách lẻ" },
   walk_in: { en: "Walk-in customer", vi: "Khách lẻ (walk-in)" },
   cannot_confirm: { en: "Resolve {n} line(s) before confirming", vi: "Xử lý {n} dòng trước khi xác nhận" },

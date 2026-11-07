@@ -309,6 +309,9 @@ function ConfirmResult({ s }: { s: SessionView }) {
   const { t } = useI18n();
   const c = s.confirmation;
   const ok = c.order_status === "POS_ACCEPTED";
+  const rescued = s.lines.filter((l) => l.line_status === "CUSTOMER_ACCEPTED");
+  const rescuedTotal = rescued.reduce((sum, l) => sum + (lineAmount(l) ?? 0), 0);
+  const rescuedCurrency = s.lines.find((l) => l.currency)?.currency || "DKK";
   return (
     <div className="receipt">
       <div className="text-center text-base font-semibold">{ok ? t("pos_ok") : t("pos_csv")}</div>
@@ -333,6 +336,13 @@ function ConfirmResult({ s }: { s: SessionView }) {
           <dt className="soft">{t("client")}</dt>
           <dd className="break-all font-semibold">{s.client_id}</dd>
         </div>
+        {rescued.length > 0 && (
+          <div>
+            <dt className="soft">{t("rescued_title")}</dt>
+            <dd className="text-xl font-bold tabular text-[#155d3d]">{fmtMoney(rescuedTotal, rescuedCurrency)}</dd>
+            <dd className="text-xs soft">{t("rescued_note", { n: rescued.length })}</dd>
+          </div>
+        )}
         {c.processing_time_seconds != null && (
           <div>
             <dt className="soft">{t("time_to_confirm")}</dt>
