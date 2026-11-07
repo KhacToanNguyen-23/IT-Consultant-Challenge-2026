@@ -43,7 +43,7 @@ Ghi chú: UI để tiếng English. Tồn kho, giá, khách hàng đều **simul
 ### 5. Customer e-mail (Luồng 2)
 - **Vào:** chọn "E-mail quote" → nút "Customer e-mail" → Read list → Analyze → chấp nhận thay thế → **Save quote**.
 - **Kết quả:** `BG-DK-xxxx` trạng thái Saved, snapshot giá/tồn tại thời điểm lưu, ghi chú "does not reserve items", các nút Record approval/sent, Re-check, Print quote, "Demo: simulate price/stock changes".
-- **Lưu ý:** bỏ câu văn xuôi khỏi mẫu email. Nếu thêm vào, nó thành một dòng không đọc được và **chặn Confirm** mà UI chưa có cách xóa dòng.
+- **Lưu ý:** nếu email có câu văn xuôi hoặc tiêu đề, nó thành một dòng không đọc được và chặn Confirm. Bấm **Remove line (not an order line)** trong khung bên phải (bấm hai lần để xác nhận) để bỏ dòng đó; việc bỏ dòng được ghi lại (`LINE_REMOVED`) và không làm được sau Confirm hay khi đã lưu báo giá.
 
 ### 6. Upload PDF
 - `docs/demo/material-list.pdf` (cùng nội dung ca 1, có dòng chào kèm SĐT/email). Cũng có `docs/demo/material-list.txt`.
@@ -57,7 +57,7 @@ Ghi chú: UI để tiếng English. Tồn kho, giá, khách hàng đều **simul
 `docker compose down -v && docker compose up --build` (xóa dữ liệu demo, nạp lại mô hình ~1–2 phút). Đợi `/api/health` báo `embedding.status = up`, chạy một lần phân tích để làm nóng, rồi quay.
 
 ## Giới hạn đã biết (nên nói thật trong video)
-- Dòng văn xuôi trong email thành dòng không đọc được và chặn Confirm; chưa có thao tác bỏ dòng.
+- Dòng văn xuôi hoặc tiêu đề thành dòng không đọc được và chặn Confirm cho đến khi nhân viên bỏ dòng đó (đã có nút Remove line; không bỏ được dòng cuối cùng).
 - Dòng Partial không có hàng thay thế không chặn Confirm.
 - Cột "Current line" trong màn báo giá còn hiện giá trị nội bộ thô (`direct_pick`, `substituted`).
 - Số đo thời gian trên màn hình chỉ có ý nghĩa cho một đơn trong môi trường mô phỏng.

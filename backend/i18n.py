@@ -80,6 +80,7 @@ M: dict[str, dict[str, str]] = {
     "internal_error": {"en": "Unexpected server error. Nothing was lost; try again or continue manually.",
                        "vi": "Lỗi máy chủ không mong đợi. Không mất dữ liệu; hãy thử lại hoặc tiếp tục thủ công."},
     "no_text": {"en": "Nothing to read", "vi": "Không có nội dung để đọc"},
+    "last_line": {"en": "At least one line must remain on the order", "vi": "Đơn phải còn ít nhất một dòng"},
     "qty_positive": {"en": "Quantity must be > 0", "vi": "Số lượng phải > 0"},
     "unknown_unit": {"en": "Unit '{u}' is not in the dictionary", "vi": "Đơn vị '{u}' chưa có trong từ điển"},
     "no_lines": {"en": "No lines yet — ingest first", "vi": "Chưa có dòng nào — hãy ingest trước"},

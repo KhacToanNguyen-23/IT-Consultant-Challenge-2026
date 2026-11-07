@@ -22,6 +22,7 @@ export default function LinePanel({ session, line, onChange, onClose }: Props) {
   const { t } = useI18n();
   const locked = session.locked;
   const [busy, setBusy] = useState(false);
+  const [armed, setArmed] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   const run: Run = async (fn) => {
@@ -85,6 +86,19 @@ export default function LinePanel({ session, line, onChange, onClose }: Props) {
                   <ParseEditor session={session} line={line} locked={locked} run={run} />
                 </div>
               </details>
+              {session.lines.length > 1 && !session.quote && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="inspector-link !text-red-800"
+                  onClick={() => {
+                    if (!armed) return setArmed(true);
+                    run(() => api(`/sessions/${session.session_id}/lines/${line.line_no}`, { method: "DELETE" }));
+                  }}
+                >
+                  {armed ? t("remove_line_confirm") : t("remove_line")}
+                </button>
+              )}
             </>
           )}
         </>
@@ -133,7 +147,7 @@ function Resolve({ session, line, busy, select }: { session: SessionView; line: 
       )}
 
       {clarify && line.match.candidates.length === 0 && <Notice tone="warn">{t("line_no_candidates")}</Notice>}
-      {(reasons?.matched?.length || reasons?.mismatched?.length || reasons?.missing?.length || reasons?.ambiguous || line.llm_attributes?.length) && (
+      {!!(reasons?.matched?.length || reasons?.mismatched?.length || reasons?.missing?.length || reasons?.ambiguous || line.llm_attributes?.length) && (
         <details className="inspector-details">
           <summary className="cursor-pointer text-xs font-semibold text-slate-600">{t("why_title")}</summary>
           <div className="mt-2 space-y-1 text-xs leading-relaxed">

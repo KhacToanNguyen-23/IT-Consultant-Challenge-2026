@@ -130,6 +130,8 @@ const D = {
   pick_this: { en: "Choose", vi: "Chọn" },
   key_customer_is: { en: "Customer: {name}", vi: "Khách: {name}" },
   time_target_note: { en: "Round 1 target: under 120 s for 20–35 lines (a target, not benchmarked)", vi: "Mục tiêu Round 1: dưới 120 giây cho 20–35 dòng (là mục tiêu, chưa đo chuẩn)" },
+  remove_line: { en: "Remove line (not an order line)", vi: "Bỏ dòng này (không phải dòng hàng)" },
+  remove_line_confirm: { en: "Click again to remove this line", vi: "Bấm lần nữa để bỏ dòng này" },
   walk_in_short: { en: "Walk-in", vi: "Khách lẻ" },
   walk_in: { en: "Walk-in customer", vi: "Khách lẻ (walk-in)" },
   cannot_confirm: { en: "Resolve {n} line(s) before confirming", vi: "Xử lý {n} dòng trước khi xác nhận" },
