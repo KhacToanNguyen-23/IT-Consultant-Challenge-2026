@@ -169,7 +169,7 @@ def sys_page2():
     s += box(590, 150, 235, 330, "Core API", [
         "Parse + PII masking · FR-001/002", "Matcher + hard rules · FR-006 to 009", "Convert, stock, alternatives · FR-011 to 016",
         "Quotes, orders · FR-018 to 028"], fill=BLUE, sub="FastAPI (Python)", lsize=11)
-    for i, (h, b1, b2) in enumerate([("Local AI pipeline", "multilingual-e5-small + hard rules", "no data leaves SiteDesk"),
+    for i, (h, b1, b2) in enumerate([("Local AI pipeline", "multilingual-e5-small + hard rules", "local embeddings stay inside"),
                                       ("AI Gateway", "optional LLM adapter", "on or off by configuration"),
                                       ("Local Connector", "POS calls, order push", "CSV fallback (FR-019)")]):
         y0 = 296 + i * 59
@@ -190,7 +190,7 @@ def sys_page2():
     s += label(872, 350, ["Catalog, stock,", "customers, orders"])
     s += label(872, 406, ["[REST / JSON]"])
     s += note(40, 625, 345, 100, "CONTAINER RULE", ["The AI Gateway and the Local Connector are in-process", "modules of the FastAPI core, not separate containers.", "The vector index lives inside PostgreSQL (pgvector)."])
-    s += note(400, 625, 345, 100, "AI AND PRIVACY", ["Matching runs on local embeddings plus hard rules,", "so the AI path needs no external service.", "The LLM, when enabled, only sees masked text."])
+    s += note(400, 625, 345, 100, "AI AND PRIVACY", ["Matching runs on local embeddings plus hard rules,", "so the AI path needs no external service.", "The LLM, when enabled, sees e-mail/phone-masked text."])
     s += note(760, 625, 345, 100, "FALLBACK", ["POS 503 / timeout: the connector writes a CSV and", "the order is marked NEEDS_MANUAL, not POS_ACCEPTED.", "AI off: rules and manual catalog search continue."])
     s += legend_system()
     return page_svg(s, "SiteDesk MVP: inside the system (containers)", "What is inside the circle of page 1: deployable parts, the data store, and how they talk to each other and to the outside. Run locally with Docker Compose.", 2, 2, "System Diagram")
@@ -322,7 +322,7 @@ def jr_page1():
     f.node("c0", 0, "C", "Hands over the list", "human")
     f.node("a0", 0, "A", "Uploads or pastes it", "human", "FR-001")
     f.node("s0", 0, "M", "Masks e-mail/phone, parses lines", "rules", "FR-002")
-    f.node("s1", 1, "M", "AI available?", "decision", shape="diamond")
+    f.node("s1", 1, "M", "AI pipeline available?", "decision", shape="diamond")
     f.node("s2", 2, "M", "Matches by meaning + hard rules", "ai", "FR-006-009")
     f.node("e2", 2, "E", "Rules-only match", "fallback", "FR-003")
     f.node("s3", 3, "M", "Converts units, checks stock", "rules", "FR-011-014")
@@ -348,7 +348,7 @@ def jr_page1():
     f.edge([f.p("s5", "top"), (cx(5), ROWY["A"]), f.p("a4", "right")])
     f.tag(cx(5) + 6, 350, "No", "start")
     back_half(f, 4)
-    spans = [(0, 3, "Manual re-keying: about 12 min per list"), (4, 5, "Shift-dependent advice, lost sales"), (6, 9, "Fragmented systems: one standard order")]
+    spans = [(0, 3, "Manual re-keying: ~12 min per list (estimate)"), (4, 5, "Shift-dependent advice, lost sales"), (6, 9, "Fragmented systems: one standard order")]
     note = "Amber means an exception or fallback. Confirm stays blocked while any line is unresolved. If the AI is off, a rules-only match runs. If the POS refuses (503 or timeout), a CSV is written and the status is NEEDS_MANUAL, never POS_ACCEPTED."
     return journey_page("User journey 1: at the counter", "The associate serves the customer in person · SRS v2: UC1 to UC4", f, spans, note, 1)
 
@@ -394,7 +394,7 @@ def jr_page2():
     resolve_loop(f, 5, 5, 5)
     back_half(f, 5)
     spans = [(0, 1, "Manual re-keying of e-mails"), (2, 3, "Customers wait for answers"), (4, 6, "Stock changes before pick-up cause wrong picks"), (7, 9, "Fragmented systems: one standard order")]
-    note = "SiteDesk drafts the reply but sends no e-mail. Nothing is reserved between quote and pick-up, so the live re-check decides what can be promised. An e-mail request cannot be confirmed without its quote, and a quote cannot be prepared without a recorded approval."
+    note = "SiteDesk drafts the reply but sends no e-mail. Nothing is reserved between quote and pick-up, so the live re-check decides what can be promised. An e-mail request cannot be confirmed without its quote, and an order cannot be prepared without a recorded customer approval."
     return journey_page("User journey 2: e-mail request to pick-up", "The customer is not at the counter · SRS v2: UC5", f, spans, note, 2)
 
 
