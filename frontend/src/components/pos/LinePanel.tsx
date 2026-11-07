@@ -48,7 +48,7 @@ export default function LinePanel({ session, line, onChange, onClose }: Props) {
           <div className="font-mono text-xs soft">
             {t("source")}: {line.source.text}
           </div>
-          {session.analyzed && (
+          {session.analyzed && session.ai_degraded && (
             <div className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${session.ai_degraded ? "bg-amber-100 text-amber-950" : "bg-blue-50 text-blue-900"}`}>
               <span className={`lamp ${session.ai_degraded ? "lamp--warn" : "lamp--ok"}`} aria-hidden />
               {session.ai_degraded ? t("rules_fallback_mode") : t("ai_match_mode")}
@@ -219,6 +219,7 @@ function ParseEditor({ session, line, locked, run }: { session: SessionView; lin
 function Alternatives({ line, busy, onAccept, onReject }: { line: Line; busy: boolean; onAccept: (sku: string) => void; onReject: (reason: string) => void }) {
   const { t } = useI18n();
   const [reason, setReason] = useState("");
+  const [declining, setDeclining] = useState(false);
   return (
     <div className="space-y-2">
       <Notice tone="bad">
@@ -241,13 +242,21 @@ function Alternatives({ line, busy, onAccept, onReject }: { line: Line; busy: bo
           </li>
         ))}
       </ul>
-      <label className="block font-semibold">
-        {t("reject_reason_ph")}
-        <input value={reason} onChange={(e) => setReason(e.target.value)} className="field mt-1 font-normal" />
-      </label>
-      <PosKey size="sm" tone="void" icon={<X size={16} />} disabled={busy || !reason.trim()} onClick={() => onReject(reason)} className="w-full">
-        {t("customer_rejects")}
-      </PosKey>
+      {declining ? (
+        <>
+          <label className="block font-semibold">
+            {t("reject_reason_ph")}
+            <input autoFocus value={reason} onChange={(e) => setReason(e.target.value)} className="field mt-1 font-normal" />
+          </label>
+          <PosKey size="sm" tone="void" icon={<X size={16} />} disabled={busy || !reason.trim()} onClick={() => onReject(reason)} className="w-full">
+            {t("customer_rejects")}
+          </PosKey>
+        </>
+      ) : (
+        <button type="button" className="text-sm font-semibold text-red-800 underline" onClick={() => setDeclining(true)}>
+          {t("customer_rejects")}…
+        </button>
+      )}
     </div>
   );
 }

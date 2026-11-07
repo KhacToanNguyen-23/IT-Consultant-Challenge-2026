@@ -89,6 +89,7 @@ const D = {
   evidence_csv_exported: { en: "CSV ready for manual entry", vi: "Đã xuất CSV để nhập tay" },
   evidence_semantic: { en: "Semantic match · rules checked", vi: "Khớp ngữ nghĩa · đã kiểm thông số" },
   evidence_fallback: { en: "Rules · manual SKU search", vi: "Quy tắc · tìm SKU thủ công" },
+  evidence_stock_checked: { en: "Stock checked {time} · simulated POS", vi: "Tồn kho kiểm lúc {time} · POS mô phỏng" },
   evidence_llm: { en: "AI tried to clarify {n} line(s)", vi: "AI đã thử làm rõ {n} dòng" },
   t_match: { en: "match", vi: "match" },
   t_stock: { en: "stock", vi: "tồn" },

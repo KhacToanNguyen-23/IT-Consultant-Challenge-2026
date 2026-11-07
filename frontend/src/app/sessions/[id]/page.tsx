@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, ArrowLeftRight, CheckCircle2, Download, FileText, FilePlus2, FileSignature, ListChecks, ScanLine, Search, ShieldCheck, UserRound } from "lucide-react";
-import { api, ApiError, fileUrl, fmtMoney, type Customer, type SessionView } from "@/client/api";
+import { api, ApiError, fileUrl, fmtMoney, fmtTime, type Customer, type SessionView } from "@/client/api";
 import { useI18n } from "@/client/i18n";
 import LinePanel from "@/components/pos/LinePanel";
 import { LoadingTerminal, Notice, PosKey, SoftKeys, Terminal, Vfd } from "@/components/pos/Terminal";
@@ -91,6 +91,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
   const currency = s.lines.find((l) => l.currency)?.currency || "DKK";
   const convertedCount = s.lines.filter((l) => l.conversion.formula && !l.conversion.formula.includes("(1:1)")).length;
   const llmCalls = Number(s.stage_timings_ms.llm_calls || 0);
+  const stockChecked = s.lines.map((l) => l.stock.updated_at).filter(Boolean).sort().pop() || null;
   const posAccepted = s.confirmation.order_status === "POS_ACCEPTED";
   const proofStatus = s.locked
     ? posAccepted ? "evidence_pos_received" : "evidence_csv_exported"
@@ -158,6 +159,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
               {proofStatus === "evidence_review" ? t(proofStatus, { n: s.blockers.length }) : t(proofStatus)}
             </ProofTag>}
             {s.analyzed && <ProofTag>{s.ai_degraded ? t("evidence_fallback") : t("evidence_semantic")}</ProofTag>}
+            {s.analyzed && stockChecked && <ProofTag>{t("evidence_stock_checked", { time: fmtTime(stockChecked) })}</ProofTag>}
             {s.analyzed && llmCalls > 0 && <ProofTag>{t("evidence_llm", { n: llmCalls })}</ProofTag>}
           </div>
 
@@ -257,7 +259,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                   </p>
                 )}
 
-                {!s.quote && (
+                {!s.quote && s.input_type === "email" && (
                   <div className="space-y-1.5">
                     <label className="block font-semibold">
                       {t("valid_until")}
@@ -295,11 +297,11 @@ export default function SessionPage({ params }: { params: { id: string } }) {
               <PosKey key="quote" hotkey="F8" tone="quote" icon={<FileSignature size={17} />} href={`/quotes/${s.quote.quote_id}`}>
                 {t("open_quote")}
               </PosKey>
-            ) : (
+            ) : s.input_type === "email" ? (
               <PosKey key="quote" hotkey="F8" tone="quote" icon={<FileSignature size={17} />} busy={busy === "quote"} disabled={!!busy || !effectiveClient} onClick={saveQuote}>
                 {t("save_quote")}
               </PosKey>
-            ),
+            ) : null,
             s.locked ? null : !s.analyzed ? (
               <PosKey key="analyze" hotkey="F9" tone="nav" icon={<ScanLine size={18} />} busy={busy === "analyze"} disabled={!!busy} onClick={analyze}>
                 {t("analyze")}
