@@ -210,7 +210,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
             sub={s.analyzed ? (unpriced ? `${t("vfd_list_total")}, ${t("vfd_unpriced", { n: unpriced })}` : t("vfd_list_total")) : undefined}
           />
           <div className="pos-screen">
-            {s.analyzed && s.ai_degraded && !line && manualLine != null && (
+            {s.analyzed && !s.locked && s.ai_degraded && !line && manualLine != null && (
               <PosKey tone="nav" icon={<Search size={17} />} onClick={() => setSelected(manualLine)} className="mb-3 w-full">
                 {t("manual_fallback_action")}
               </PosKey>
