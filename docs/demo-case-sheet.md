@@ -1,25 +1,27 @@
-# Các case demo cho video: nhập gì, bấm nút nào, thấy gì, nói gì
+# Kịch bản demo theo đề Round 2: 3 điều MVP phải có + 4 tiêu chí chấm
 
-Mỗi case đáp ứng một yêu cầu của Round 2. Địa chỉ: http://localhost:3001 (UI English, zoom 125%). Giữa các case bấm **New list**.
-**Mẹo:** bấm thẻ mẫu ở màn nhập thì ô nhập tự điền đúng văn bản ghi dưới đây, khỏi phải gõ.
-Yêu cầu của đề: **A** core functionality · **B** main user journeys · **C** value · **D** changes since Round 1. Tiêu chí: Engineering quality, Architecture, AI có người kiểm chứng, Technical reasoning.
+Địa chỉ app: http://localhost:3001 (UI English, zoom 125%). Giữa các mục bấm **New list**. Bấm thẻ mẫu ở màn nhập thì ô nhập tự điền đúng văn bản ghi dưới đây.
 
-| Case | Tên | Đáp ứng | Thời lượng |
+## Bảng tổng: mục của đề → phần demo
+
+| # | Đề yêu cầu | Phần demo | Giờ |
 |---|---|---|---|
-| 1 | Happy case: danh sách đầy đủ → đơn xác nhận | A, B (hành trình 1), C | 1:55 |
-| 2 | Hết hàng → hàng thay thế | B, C | 0:35 |
-| 3 | Dòng mơ hồ: AI không đoán | AI có người kiểm chứng | 0:35 |
-| 4 | POS lỗi → CSV | Engineering quality | 0:35 |
-| 5 | AI lỗi → tìm tay | Engineering quality | 0:40 |
-| 6 | Email → báo giá | B (hành trình 2) | 0:40 |
-| 7 | Ba thị trường | Technical reasoning | 0:15 |
-| 8 | Kiến trúc + thay đổi so với Round 1 | D, Architecture | 0:45 |
+| **M1** | MVP phải *demonstrate the core functionality* | Danh sách 18 dòng → rà soát | 1:00 |
+| **M2** | MVP phải *showcase its main user journeys* | Hành trình 1 tại quầy → Confirm; Hành trình 2 email → báo giá | 1:30 |
+| **M3** | MVP phải *demonstrate the value* | Biên nhận: doanh số cứu, thời gian, dòng không cần sửa | 0:25 |
+| **D** | Nếu MVP đổi so với Round 1, giải thích thay đổi và lý do | Bảng thay đổi | 0:35 |
+| **T1** | Tiêu chí *Engineering quality* (reliable functionality) | POS lỗi → CSV; AI lỗi → tìm tay | 1:15 |
+| **T2** | Tiêu chí *Reasonable architecture* | System Diagram + `/api/health` các thành phần | 0:30 |
+| **T3** | Tiêu chí *Appropriate AI usage* (có người kiểm chứng) | Dòng mơ hồ: AI không đoán, người quyết định | 0:35 |
+| **T4** | Tiêu chí *Clear technical reasoning* (khớp Round 1) | 3 KPI của Round 1 đo được trên MVP | 0:25 |
+
+Tổng khoảng 6:15 cộng mở đầu, kết khoảng 6:45.
 
 ---
 
-## Case 1 · Happy case (A, B, C)
+## M1 · Core functionality
 
-**Nhập** (thẻ mẫu **Full counter list**, hoặc upload `docs/demo/material-list.pdf`):
+**Nhập** (thẻ **Full counter list**, hoặc upload `docs/demo/material-list.pdf`):
 ```
 Hej Lars, her er listen fra Mikkel (tlf +45 31 22 44 66, mikkel@nordbyg.dk)
 120 m konstruktionstræ 45x95 C24
@@ -41,67 +43,26 @@ Hej Lars, her er listen fra Mikkel (tlf +45 31 22 44 66, mikkel@nordbyg.dk)
 12 m2 isolasjon 195 mm
 8 sekker betongblanding 25 kg
 ```
-**Bấm theo thứ tự**
-1. **Upload file** → chọn `material-list.pdf` (hoặc dán văn bản vào ô) → **Read list**.
-2. Mở khung **Source** để cho thấy SĐT/email đã bị che.
-3. **Analyze** (F9).
-4. Chỉ: `120 m → 25 × piece_4.8m`; `60 m² → 21 × pack` + "Rounded up"; nhóm **Needs a look (6)**; thanh `14/18 lines needed no edit`.
-5. Dòng rockwool (đỏ "Only 5 left, need 21") → **Customer accepts**. Dòng vådrum → **Customer accepts**. Dòng `45x120 C24` (hết hàng, đề xuất **C30**) → **Customer accepts**.
-6. **Confirm order to POS** (F9).
+**Bước**
+1. **Upload file** → `material-list.pdf` → **Read list**.
+2. Mở **Source**: SĐT/email đã bị che.
+3. **Analyze** (F9). Dừng, chưa xử lý dòng đỏ.
+4. Chỉ: `120 m → 25 × piece_4.8m`; `60 m² ÷ 2.88 → 21 × pack` + "Rounded up"; "Needs a look (6)" ở đầu bảng; `14/18 lines needed no edit`.
 
-**Kết quả phải thấy:** 18 dòng; `14/18` không cần sửa; 3 dòng đỏ có hàng thay; `POS_ACCEPTED` + mã tham chiếu; **Sales rescued by substitutes: 6.379,10 DKK**; `[T] s` upload → Confirm.
-**Nói:** "A PDF list, contact details masked, eighteen lines checked in a fraction of a second. Three out-of-stock lines each get a safe, priced alternative the customer accepts. One click sends the order to the POS in [T] seconds, with [R] kroner of sales rescued."
+**Phải thấy:** đọc file, che thông tin, khớp SKU, quy đổi đơn vị, làm tròn lên, kiểm tồn.
+**Nói:** "A PDF list, contact details masked first. Eighteen lines read, matched, converted and stock-checked in a fraction of a second."
 
-## Case 2 · Hết hàng → hàng thay thế (B, C)
+## M2 · Main user journeys
 
-**Nhập** (thẻ **Out-of-stock rescue**):
-```
-10 plader gips vådrum 12.5 mm
-40 pakker isolering 95 mm
-200 sække cement 25 kg
-120 m timber 45x95 C24
-```
-**Bấm:** Read list → Analyze → dòng 1 (vådrum) đã mở → **Customer accepts** → **Confirm order to POS**.
-**Phải thấy:** chữ đỏ "Out of stock — safe alternative ready", thẻ `Vådrumsplade Brand B` chênh `+40 DKK`; sau accept SKU gạch ngang SKU cũ, hiện SKU mới; `POS_ACCEPTED`.
-**Lưu ý:** dòng xi măng "Only 80 left, need 200 — check before promising" **không chặn Confirm** (không có hàng thay an toàn). Nói thẳng nếu để ý.
-**Nói:** "Instead of 'sorry, out of stock', the associate offers an equal-spec alternative with the price difference, and the SKU changes only after the customer agrees."
+**Hành trình 1: tại quầy** (tiếp tục phiên của M1)
+1. Dòng rockwool mở sẵn (đỏ "Only 5 left, need 21 — alternative ready") → **Customer accepts**.
+2. Dòng vådrum tự mở → **Customer accepts**.
+3. Dòng `45x120 C24` tự mở (đề xuất **C30**) → **Customer accepts**.
+4. Chỉ nút **Customer: Walk-in** → **Confirm order to POS** (F9).
 
-## Case 3 · Dòng mơ hồ: AI không đoán (AI có người kiểm chứng)
+**Phải thấy:** `POS_ACCEPTED` + mã tham chiếu. SKU chỉ đổi sau khi khách đồng ý.
 
-**Nhập** (thẻ **AI must not be wrong silently**):
-```
-45x95 C18 - 30 stk
-45x95 timber
-10 stk skruer 5x50
-20 m isolering 95 mm
-blahblah ukendt ting
-5 poser cement 25 kg
-```
-**Bấm:** Read list → Analyze. Dòng `45x95 timber` đã mở bên phải ("Ask the customer: which one?", hai thẻ C24/C18). **Không bấm Choose.**
-**Phải thấy (chữ đỏ):** "Not stated: strength grade — not guessed"; `skruer`, `blahblah`: "Not in catalog — no suggestion"; `20 m isolering`: "Unit missing/unknown — not guessed"; nút **Confirm** mờ, "4 line(s) to resolve"; dòng `45x95 C18` ở dưới vẫn là C18.
-**Nói:** "The AI is never allowed to be wrong silently. A missing grade is not guessed, unknown items get no suggestion, C18 stays C18, and Confirm stays blocked until a human decides."
-
-## Case 4 · POS lỗi → CSV (Engineering quality)
-
-**Nhập:** như Case 2 (thẻ **Out-of-stock rescue**).
-**Bấm:** Read list → Analyze → **Customer accepts** → **Demo → POS fail** (bật *sau* Analyze; góc phải ghi "Fallback active") → **Confirm order to POS** → **Download CSV** → **Demo → tắt POS fail**.
-**Phải thấy:** "POS not responding — CSV exported, manual entry needed"; trạng thái "Manual entry needed"; mã `CSV-SD-…`; "Nothing is lost".
-**Nói:** "If the POS is down, the order is not lost. A CSV with the same reference lets the associate finish in the legacy system, and the status says the POS did not accept it."
-
-## Case 5 · AI lỗi → tìm tay (Engineering quality)
-
-**Nhập (gõ tay):**
-```
-12 skivor gips 12.5 mm
-5 poser cement 25 kg
-```
-**Bấm:** **Demo → AI fail** (bật *trước* Analyze) → gõ hai dòng trên → Read list → Analyze → ô tìm bên phải đã điền `gips 12.5 mm`, sửa thành `gips standard 12.5` → **Search** → bấm **Gipsplade standard 12.5mm … SKU-GYP-STD-125** → **Confirm order to POS** → **Demo → tắt AI fail**.
-**Phải thấy:** banner "AI is unavailable. Search the catalog manually to continue", thẻ "Rules · manual SKU search", `POS_ACCEPTED`.
-**Nói:** "With the AI switched off, hard rules and manual search keep the counter running, and the same safety rules apply."
-
-## Case 6 · Email → báo giá (B, hành trình 2)
-
-**Nhập** (nút **E-mail quote**, thẻ **Customer e-mail**):
+**Hành trình 2: email → báo giá** — nút **E-mail quote**, thẻ **Customer e-mail**, hoặc dán:
 ```
 Hej,
 
@@ -115,26 +76,26 @@ Mvh
 Jens Hansen, Nordbyg ApS
 Tlf +45 22 33 44 55 · jens@nordbyg.dk
 ```
-**Bấm:** Read list → Analyze → **Customer accepts** (các dòng thay) → **Save quote** (F8) → **Record sent** → **Record approval** → mở **Demo: simulate price/stock changes**, chọn SKU, nhập **New stock** nhỏ → **Apply** → **Re-check stock & price** → **Reset**.
-**Phải thấy:** `BG-DK-xxxx`, "this quote does not reserve items", trạng thái chuyển Preparing, dòng đổi tồn sau re-check; sau cùng **Pick slip** và **Confirm order to POS**.
-**Nói:** "The same engine serves a second journey. An e-mail request becomes a saved quote; after the customer approves, the associate re-checks live data and sees what changed."
+1. **Read list** → **Analyze** → **Customer accepts** (các dòng thay thế) → **Save quote** (F8).
+2. **Record sent** → **Record approval**.
+3. Mở **Demo: simulate price/stock changes** → chọn SKU, **New stock** nhỏ → **Apply**.
+4. **Re-check stock & price** → chỉ dòng đổi → **Reset**.
 
-## Case 7 · Ba thị trường (Technical reasoning)
+**Phải thấy:** `BG-DK-xxxx`, "this quote does not reserve items", trạng thái Preparing, chênh lệch sau re-check, nút **Pick slip** và **Confirm order to POS**.
+**Nói:** "Journey one: counter, end to end. Journey two: an e-mail becomes a saved quote that is re-checked when the customer arrives."
 
-**Nhập** (thẻ **One tool, three markets**):
-```
-Konstruksjonsvirke 45x95 C24 - 90 meter
-5 säckar cement 25 kg
-tryckimpregnerade terrassebrädor 28x120 20 st
-pressure treated decking 28x145 - 12 pcs
-8 sekker betongblanding 25 kg
-```
-**Bấm:** Read list → Analyze. **Phải thấy:** cả 5 dòng khớp catalog; `90 meter → 19 × piece_4.8m`.
-**Nói:** "Norwegian, Swedish and English wording resolve to the same catalog. The core is shared; local differences live in the connector and dictionary."
+## M3 · Value
 
-## Case 8 · Kiến trúc + thay đổi so với Round 1 (D, Architecture)
+**Không nhập.** Quay lại biên nhận của Hành trình 1. Chỉ lần lượt:
+1. **Sales rescued by substitutes: 6.379,10 DKK** (3 dòng khách chấp nhận thay vì "hết hàng").
+2. **Time from upload → Confirm: `[T] s`** và dòng "Round 1 target … a target, not benchmarked".
+3. Thanh `14/18 lines needed no edit`.
 
-**Không nhập.** Hiện **System Diagram** (trang Container), rồi bảng:
+**Nói:** "Three lines that would have been lost sales, [R] kroner at list price, were rescued. The order took [T] seconds against our twelve-minute estimate. Measured on this simulated MVP, not a real store."
+
+## D · Thay đổi so với Round 1
+
+**Không nhập.** Hiện bảng:
 
 | Round 1 | MVP | Vì sao |
 |---|---|---|
@@ -143,8 +104,58 @@ pressure treated decking 28x145 - 12 pcs
 | "Che PII" | Regex che email/điện thoại, nêu rõ giới hạn | Trung thực, không hứa quá mức |
 | Mục tiêu 12 → <2 phút | Đo thật trên MVP | Round 1 chỉ là giả định |
 
-**Nói:** "A Next.js UI, a FastAPI core with an AI gateway and a connector, PostgreSQL with pgvector, and a simulated POS. Compared with Round 1 we replaced LLM reranking with hard rules and local embeddings, because matching must be deterministic and safe."
+## T1 · Engineering quality (reliable functionality)
+
+**a) POS lỗi.** Nhập thẻ **Out-of-stock rescue**:
+```
+10 plader gips vådrum 12.5 mm
+40 pakker isolering 95 mm
+200 sække cement 25 kg
+120 m timber 45x95 C24
+```
+**Bước:** Read list → Analyze → **Customer accepts** → mở **Demo**, bật **POS fail** → **Confirm order to POS** → **Download CSV** → tắt **POS fail**.
+**Phải thấy:** "POS not responding — CSV exported, manual entry needed", mã `CSV-SD-…`, "Nothing is lost".
+
+**b) AI lỗi.** Mở **Demo**, bật **AI fail** *trước khi phân tích*; gõ:
+```
+12 skivor gips 12.5 mm
+5 poser cement 25 kg
+```
+**Bước:** Read list → Analyze → ô tìm đã điền `gips 12.5 mm`, sửa thành `gips standard 12.5` → **Search** → bấm **Gipsplade standard 12.5mm … SKU-GYP-STD-125** → **Confirm order to POS** → tắt **AI fail**.
+**Phải thấy:** banner "AI is unavailable. Search the catalog manually", `POS_ACCEPTED`.
+**Nói:** "When the POS is down the order is exported, not lost. When the AI is down, rules and manual search keep the counter running."
+
+## T2 · Reasonable architecture
+
+**Không nhập.**
+1. Hiện **System Diagram** (Container): UI → Core API (AI gateway + connector) → PostgreSQL/pgvector; mock-pos; embedding cục bộ.
+2. Mở tab mới: `http://localhost:8000/api/health`. Chỉ các thành phần: `database`, `embedding`, `llm`, `mock_pos`.
+3. Bật **Demo → POS fail**, tải lại tab health: `mock_pos` đổi thành `fail_mode`; tắt lại.
+
+**Nói:** "A UI, a core API with an AI gateway and a connector, a vector database, a local embedding model and a simulated POS. Each component is separate and observable, and failing one does not stop the others."
+
+## T3 · Appropriate AI usage (có người kiểm chứng)
+
+**Nhập** (thẻ **AI must not be wrong silently**):
+```
+45x95 C18 - 30 stk
+45x95 timber
+10 stk skruer 5x50
+20 m isolering 95 mm
+blahblah ukendt ting
+5 poser cement 25 kg
+```
+**Bước:** Read list → Analyze. Dòng `45x95 timber` đã mở với hai thẻ C24/C18; **không bấm Choose**.
+**Phải thấy (chữ đỏ):** "Not stated: strength grade — not guessed"; `skruer`, `blahblah`: "Not in catalog — no suggestion"; `20 m isolering`: "Unit missing/unknown — not guessed"; Confirm mờ, "4 line(s) to resolve"; `45x95 C18` vẫn là C18.
+**Nói:** "The AI suggests, hard rules gate, and a human decides. It never guesses a missing grade, and Confirm stays blocked until a person resolves every line."
+
+## T4 · Clear technical reasoning (khớp Round 1)
+
+**Quan trọng:** số KPI hiện tại **lẫn các phiên chạy thử tự động**. Trước khi quay: `docker compose down -v && docker compose up --build`, rồi chỉ chạy các case thật của video, **sau đó** mới chạy lệnh dưới.
+
+**Bước:** mở terminal, chạy `docker compose exec backend python -m scripts.kpi`. Chỉ 3 dòng: `time_to_serve`, `substitution_acceptance`, `zero_touch`.
+**Nói:** "Round 1 set three go/no-go gates: time to serve, substitution acceptance and zero-touch matching. The MVP measures all three. These figures come only from this demo's sessions on simulated data, so they show the instrumentation works, not store performance."
 
 ---
 
-**Thứ tự quay khuyến nghị:** 1 → 2 → 3 → 6 → 7 → 4 → 5 → 8. Case 4 và 5 đặt gần cuối vì cần bật công tắc rồi tắt lại. Tổng khoảng 6:25; chia nhịp từng giây xem `docs/demo-shotlist.md`.
+**Thứ tự quay khuyến nghị:** M1 → M2 (hành trình 1) → M3 → T3 → M2 (hành trình 2) → T1a → T1b → T2 → T4 → D. Các case bật công tắc đặt cuối để khỏi quên tắt. Chia nhịp từng giây xem `docs/demo-shotlist.md`.
