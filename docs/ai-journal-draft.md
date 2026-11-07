@@ -44,7 +44,7 @@ We rejected several outputs that worked technically but did not fit the business
 We decided when each brainstorm was closed and accepted every phase ourselves. We also decided the scope (no stock reservations or scheduler), what the product may promise (a quote never reserves stock), that the customer and not the associate accepts a substitute, and that unclear lines are never guessed.
 
 **Are there any obstacles when using AI?**
-UI design is the hardest part to delegate: agents build screens quickly but cannot judge clarity, so the person directing them has to understand UI and review every screen. AI is also optimistic: it drafted the evaluation labels and scored itself 100%, so we added human review. With one commanding agent and one coding agent, conflicts were rare and flagged by the commanding agent; we have no automated browser tests yet, so UI acceptance was manual.
+Turning a brainstorm into business rules was the hardest part: the rules we wrote down sometimes stopped matching how the counter really works (for example, when a substitute may be accepted in an e-mail order), and the agents followed them literally, so we had to revisit them as the product took shape. UI design is also hard to delegate: agents build screens quickly but cannot judge clarity, so the person directing them has to understand UI and review every screen. AI is also optimistic: it drafted the evaluation labels and scored itself 100%, so we added human review. With one commanding agent and one coding agent, conflicts were rare, and we have no automated browser tests yet.
 
 ---
 
