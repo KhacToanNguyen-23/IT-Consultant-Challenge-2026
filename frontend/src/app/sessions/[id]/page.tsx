@@ -162,10 +162,13 @@ export default function SessionPage({ params }: { params: { id: string } }) {
             <div className="space-y-2 px-[18px] py-3">
               {emailNeedsQuote && s.analyzed && !s.locked && (
                 <Notice tone="quote">
-                  <span className="flex-1">{t("email_needs_quote")}</span>
-                  <button
-                    type="button"
-                    className="inspector-link flex-none"
+                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                    <span>
+                      <b>{t("email_banner_title")}</b> · {t("email_needs_quote")}
+                    </span>
+                    <button
+                      type="button"
+                      className="flex-none rounded-md border border-[#9bc5e5] bg-white px-3 py-1.5 text-sm font-bold text-[#1769aa] hover:bg-[#f2f8fe]"
                     onClick={() => {
                       navigator.clipboard?.writeText(buildReply(s)).then(() => {
                         setCopied(true);
@@ -173,8 +176,9 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                       });
                     }}
                   >
-                    {copied ? t("reply_copied") : t("copy_reply")}
-                  </button>
+                      {copied ? t("reply_copied") : t("copy_reply")}
+                    </button>
+                  </div>
                 </Notice>
               )}
               {s.ai_degraded && (

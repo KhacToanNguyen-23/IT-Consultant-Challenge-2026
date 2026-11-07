@@ -249,7 +249,6 @@ function Alternatives({ line, busy, emailPending, onAccept, onReject }: { line: 
       <Notice tone="bad">
         <b>{line.stock.status === "PARTIAL" ? t("partial_need", { have: line.stock.on_hand ?? 0, need: line.conversion.selling_quantity ?? "?" }) : t("out_here")}</b>. {t("safe_subs")}
       </Notice>
-      {emailPending && <Notice tone="quote">{t("email_substitute_note")}</Notice>}
       <ul className="space-y-2">
         {line.alternatives.map((a) => (
           <li key={a.sku} className="rounded border border-[#a6aca7] bg-white p-2.5">
@@ -264,6 +263,7 @@ function Alternatives({ line, busy, emailPending, onAccept, onReject }: { line: 
             <PosKey size="sm" tone={emailPending ? "quote" : "go"} icon={<Check size={16} />} disabled={busy} onClick={() => onAccept(a.sku)} className="mt-2 w-full">
               {emailPending ? t("customer_agreed_email") : t("customer_accepts")}
             </PosKey>
+            {emailPending && <p className="mt-1.5 text-xs soft">{t("email_substitute_note")}</p>}
           </li>
         ))}
       </ul>
