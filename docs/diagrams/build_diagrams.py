@@ -220,7 +220,7 @@ def step(col, lane, n, text, tag, role, bh=124):
     fill, stroke = ROLE[role]
     s = f'<rect x="{x}" y="{y}" width="{BW}" height="{bh}" rx="8" fill="{fill}" stroke="{stroke}" stroke-width="1.8"/>'
     s += f'<circle cx="{x + 12}" cy="{y + 12}" r="10" fill="{NAVY}"/>' + tx(x + 12, y + 16, str(n), 11.5, 800, "#fff", "middle")
-    s += tx(x + 8, y + 36, wrapped(text, 15), 11, 500, "#17202c", "start", 13)
+    s += tx(x + 8, y + 38, wrapped(text, 13), 12.5, 600, "#17202c", "start", 15)
     s += tx(x + 8, y + bh - 8, tag, 10.5, 700, "#1f4f86")
     return s, (x, y, BW, bh)
 
@@ -264,68 +264,66 @@ def journey(title, subtitle, steps, spans, alts, strip, page_no):
     wdt = (1085 - (n - 1) * 12) / n
     for i, (head, body) in enumerate(alts):
         x = 20 + i * (wdt + 12)
-        s += f'<rect x="{x}" y="606" width="{wdt}" height="70" rx="8" fill="#fff4e5" stroke="#f0b866"/>'
+        s += f'<rect x="{x}" y="606" width="{wdt}" height="56" rx="8" fill="#fff4e5" stroke="#f0b866"/>'
         s += tx(x + 10, 624, head, 12, 800, "#8a4b00")
         s += tx(x + 10, 641, wrapped(body, int((wdt - 20) / 5.7)), 11, 400, "#3b2a10", "start", 13.4)
-    s += '<rect x="20" y="686" width="1085" height="56" rx="8" fill="#e8f4ec" stroke="#8fc3a0"/>'
-    s += tx(32, 704, strip[0], 12, 800, "#1f6b3f")
-    s += tx(32, 721, wrapped(strip[1], 165), 11, 400, "#1f3a2a", "start", 13.4)
+    s += '<rect x="20" y="676" width="1085" height="48" rx="8" fill="#e8f4ec" stroke="#8fc3a0"/>'
+    s += tx(32, 696, strip[0], 12.5, 800, "#1f6b3f")
+    s += tx(32, 714, wrapped(strip[1], 165), 12, 400, "#1f3a2a", "start", 13.4)
     s += legend_journey()
     return page_svg(s, title, subtitle, page_no, 2, "User Journey")
 
 
 def jr_page1():
     steps = [
-        (0, "Hands over the list (PDF, pasted or e-mail text)", "UC1", "human"),
-        (1, "Uploads or pastes it, then Read list", "FR-001 intake", "human"),
-        (2, "Masks e-mail and phone; reads every line, keeps unreadable ones", "FR-002 masking", "rules"),
-        (2, "Matches SKUs by meaning, converts units, checks live stock", "FR-006-014 match", "ai"),
-        (1, "Reviews exceptions; Confirm blocked until all resolved", "FR-010 gate", "human"),
-        (2, "Short or out of stock: safe alternative with price difference", "FR-015 options", "rules"),
-        (0, "Accepts or declines the alternative", "FR-016 consent", "human"),
-        (1, "Chooses client or walk-in, then Confirm", "FR-017-018 order", "human"),
-        (2, "POS accepts: reference. POS down: CSV, same reference", "FR-019 POS or CSV", "rules"),
+        (0, "Hands over the list", "UC1", "human"),
+        (1, "Uploads or pastes it", "FR-001 intake", "human"),
+        (2, "Masks e-mail and phone, reads every line", "FR-002 masking", "rules"),
+        (2, "Matches SKUs, converts units, checks stock", "FR-006-014 match", "ai"),
+        (1, "Reviews exceptions; Confirm blocked until resolved", "FR-010 gate", "human"),
+        (2, "Offers a safe alternative with price difference", "FR-015 options", "rules"),
+        (0, "Accepts or declines", "FR-016 consent", "human"),
+        (1, "Picks client, then Confirm", "FR-017-018 order", "human"),
+        (2, "POS accepts, or CSV fallback", "FR-019 POS or CSV", "rules"),
     ]
-    spans = [(1, 3, "Manual re-keying: every line typed by hand, about 12 min per list (Round 1 estimate)"),
+    spans = [(1, 3, "Manual re-keying, about 12 min per list"),
              (4, 4, "Shift-dependent advice"),
-             (5, 6, "Lost sales: \"sorry, out of stock\""),
-             (7, 8, "Fragmented systems: one connector, CSV fallback")]
+             (5, 6, "Lost sales on stock-outs"),
+             (7, 8, "Fragmented systems")]
     alts = [
-        ("AI is off", "Hard rules and manual catalog search keep the counter running; suggestions are labelled rule-based (FR-003, 033)."),
-        ("Line is not an order line", "The associate removes it (title, greeting). The last remaining line cannot be removed."),
-        ("Customer declines", "A reason is recorded and the line stays open; the SKU never changes without agreement (FR-016)."),
-        ("POS is down", "CSV export with the same reference; status NEEDS_MANUAL; the associate keys it into the legacy POS."),
+        ("AI is off", "Rules and manual search keep working."),
+        ("Not an order line", "Associate removes it; the last line stays."),
+        ("Customer declines", "Reason recorded; SKU unchanged."),
+        ("POS is down", "CSV with the same reference."),
     ]
-    strip = ("Value shown on the receipt of every order",
-             "Sales rescued by substitutes · time from upload to Confirm. Measured per order on simulated data; Round 1 targets are not claimed as results.")
-    return journey("User journey 1: at the counter, from list to confirmed order", "The associate serves the customer in person. SRS v2: UC1 to UC4, FR-001 to FR-020.", steps, spans, alts, strip, 1)
+    strip = ("Value on every receipt", "Sales rescued by substitutes · time from upload to Confirm (simulated data).")
+    return journey("User journey 1: at the counter", "The associate serves the customer in person · SRS v2: UC1 to UC4", steps, spans, alts, strip, 1)
 
 
 def jr_page2():
     steps = [
-        (0, "Sends the material list by e-mail", "UC5", "human"),
-        (1, "Copies the e-mail text into SiteDesk (E-mail quote)", "FR-022 e-mail", "human"),
-        (2, "Masks, matches, checks stock; short lines get alternatives", "FR-006-015 match", "ai"),
-        (1, "Copy reply to customer; sends it from own mailbox", "no e-mail sent", "human"),
-        (0, "Agrees by e-mail or phone, outside SiteDesk", "FR-039 consent", "human"),
-        (2, "Save quote: price and stock snapshot, not reserved", "FR-023-024 quote", "rules"),
-        (1, "Records the customer's approval on the quote (channel)", "FR-022 approval", "human"),
-        (2, "Pick-up day: re-check live stock and price, show changes", "FR-025 re-check", "rules"),
-        (1, "Customer accepts substitutes; Pick slip; Confirm to POS or CSV", "FR-026-028", "human"),
+        (0, "Sends the list by e-mail", "UC5", "human"),
+        (1, "Pastes the e-mail text", "FR-022 e-mail", "human"),
+        (2, "Masks, matches, checks stock", "FR-006-015 match", "ai"),
+        (1, "Sends a drafted reply from own mailbox", "no e-mail sent", "human"),
+        (0, "Agrees by e-mail or phone", "FR-039 consent", "human"),
+        (2, "Saves quote with price and stock snapshot", "FR-023-024 quote", "rules"),
+        (1, "Records the customer's approval", "FR-022 approval", "human"),
+        (2, "Pick-up day: re-checks stock and price", "FR-025 re-check", "rules"),
+        (1, "Customer accepts substitutes; Confirm", "FR-026-028", "human"),
     ]
-    spans = [(1, 2, "Manual re-keying of e-mailed lists"),
-             (3, 4, "Customers wait for answers; advice depends on the shift"),
-             (5, 7, "Stock changes between order and pick-up cause wrong picks and re-deliveries"),
+    spans = [(1, 2, "Manual re-keying"),
+             (3, 4, "Slow, shift-dependent answers"),
+             (5, 7, "Stock drift causes wrong picks"),
              (8, 8, "Fragmented systems")]
     alts = [
-        ("No quote, no Confirm", "An e-mail request cannot be confirmed without its quote (QUOTE_REQUIRED)."),
-        ("No approval, no Prepare", "Sending the quote is not approval: Prepare is refused until the customer's approval is recorded."),
-        ("Stock changed since the quote", "Short lines are marked; the substitute is accepted now, or an earlier agreement is recorded."),
-        ("Quote expires or is cancelled", "Expiry is evaluated when the quote is opened; an expired or cancelled quote cannot be confirmed."),
+        ("No quote, no Confirm", "QUOTE_REQUIRED blocks the order."),
+        ("No approval, no Prepare", "Sending a quote is not approval."),
+        ("Stock changed", "The re-check flags short lines."),
+        ("Quote expires", "Expired or cancelled: cannot confirm."),
     ]
-    strip = ("Why this journey matters",
-             "Nothing is reserved between the quote and the pick-up, so the live re-check is what keeps promises honest. The yard can prepare with the Pick slip before the customer arrives (Round 1, 07:00 pre-pick).")
-    return journey("User journey 2: e-mail request to pre-order and pick-up", "The customer is not at the counter. SRS v2: UC5, FR-022 to FR-028, FR-039 and FR-040.", steps, spans, alts, strip, 2)
+    strip = ("Why it matters", "Nothing is reserved, so the live re-check keeps promises honest.")
+    return journey("User journey 2: e-mail request to pick-up", "The customer is not at the counter · SRS v2: UC5", steps, spans, alts, strip, 2)
 
 
 if __name__ == "__main__":
