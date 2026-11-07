@@ -277,7 +277,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
             ) : null,
             !s.locked && s.analyzed ? (
               <PosKey key="cust" hotkey="F7" tone={line ? "std" : "on"} icon={<UserRound size={17} />} onClick={() => setSelected(null)}>
-                {t("key_order")}
+                {t("key_customer_is", { name: !effectiveClient || effectiveClient === walkIn ? t("walk_in_short") : effectiveClient })}
               </PosKey>
             ) : null,
             s.locked ? null : !s.analyzed ? null : s.quote ? (
@@ -320,16 +320,10 @@ function ConfirmResult({ s }: { s: SessionView }) {
       )}
       <dl className="space-y-1.5">
         <div>
-          <dt className="soft">{t("order_status")}</dt>
-          <dd className="flex flex-wrap gap-1">
-            <StatePill status={c.order_status || s.status} /> {!ok && <StatePill status="SENT_OR_EXPORTED" />}
-          </dd>
-        </div>
-        <div>
           <dt className="soft">{t("reference")}</dt>
           <dd className="break-all font-semibold">{c.fulfillment_reference}</dd>
         </div>
-        {c.pos_order_ref && (
+        {c.pos_order_ref && c.pos_order_ref !== c.fulfillment_reference && (
           <div>
             <dt className="soft">{t("pos_order_ref")}</dt>
             <dd className="break-all font-semibold">{c.pos_order_ref}</dd>
@@ -342,7 +336,8 @@ function ConfirmResult({ s }: { s: SessionView }) {
         {c.processing_time_seconds != null && (
           <div>
             <dt className="soft">{t("time_to_confirm")}</dt>
-            <dd className="font-semibold tabular">{c.processing_time_seconds} s</dd>
+            <dd className="text-xl font-bold tabular text-[#12304d]">{c.processing_time_seconds} s</dd>
+            <dd className="text-xs soft">{t("time_target_note")}</dd>
           </div>
         )}
       </dl>

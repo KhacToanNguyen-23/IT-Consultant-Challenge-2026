@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
+import { AlertTriangle } from "lucide-react";
 import { fmtMoney, fmtTime, type Line, type SessionView } from "@/client/api";
 import { useI18n, type Key } from "@/client/i18n";
 import { AttributeChips, BandBadge, LineStatusBadge, RoundedBadge, StockBadge } from "@/components/StatusBadge";
@@ -23,6 +24,24 @@ function priority(l: Line): number {
   if (l.stock.status === "OUT_OF_STOCK" || l.stock.status === "PARTIAL") return 2;
   if (l.match.band !== "HIGH") return 3;
   return 4;
+}
+
+/** The one thing the associate must see on an exception line, in plain words (never a guess). */
+function attention(l: Line, t: T): { tone: "stop" | "warn"; text: string } | null {
+  const r = l.match.reasons as { missing?: string[]; ambiguous?: boolean } | undefined;
+  const need = l.conversion.selling_quantity ?? "?";
+  const have = l.stock.on_hand ?? 0;
+  if (l.line_status === "SUBSTITUTE_PROPOSED")
+    return { tone: "stop", text: l.stock.status === "PARTIAL" ? t("attn_partial", { have, need }) : t("attn_out") };
+  if (l.line_status === "NEEDS_CLARIFICATION") {
+    if (!l.match.sku && l.match.candidates.length === 0) return { tone: "stop", text: t("attn_nocand") };
+    if (r?.missing?.length) return { tone: "stop", text: t("attn_missing", { list: r.missing.map((m) => attrLabel(t, m)).join(", ") }) };
+    if (l.conversion.selling_quantity == null && l.conversion.blocked_reason) return { tone: "stop", text: l.conversion.blocked_reason };
+    return r?.ambiguous ? { tone: "warn", text: t("attn_ambiguous") } : { tone: "warn", text: t("attn_decide") };
+  }
+  if (l.line_status !== "CUSTOMER_ACCEPTED" && l.stock.status === "OUT_OF_STOCK") return { tone: "stop", text: t("attn_out_only") };
+  if (l.line_status !== "CUSTOMER_ACCEPTED" && l.stock.status === "PARTIAL") return { tone: "warn", text: t("attn_partial_only", { have, need }) };
+  return null;
 }
 
 function rowTone(l: Line) {
@@ -83,6 +102,7 @@ export default function TicketLines({ session, selected, onSelect }: Props) {
 
   const row = (l: Line, idx: number) => {
     const amount = lineAmount(l);
+    const attn = session.analyzed ? attention(l, t) : null;
     const isSelected = selected === l.line_no;
     return (
       <div
@@ -106,6 +126,11 @@ export default function TicketLines({ session, selected, onSelect }: Props) {
             {l.final_sku ? <span className="font-mono">{l.final_sku}</span> : session.analyzed && <span className="font-semibold text-amber-800">{t("no_sku")}</span>}
             <span className="min-w-0 truncate" title={l.source.text}>“{l.source.text}”</span>
           </div>
+          {attn && (
+            <div className={clsx("line-attn", `line-attn--${attn.tone}`)}>
+              <AlertTriangle size={15} aria-hidden /> {attn.text}
+            </div>
+          )}
           {isSelected && l.parsed.warnings.includes("n_x_l_review") && <div className="text-xs text-amber-800">N × L: {l.conversion.requested}</div>}
           {isSelected && <AttributeChips chips={l.chips} />}
         </div>
@@ -124,9 +149,13 @@ export default function TicketLines({ session, selected, onSelect }: Props) {
           {l.conversion.rounded && <RoundedBadge />}
         </div>
         <div className="tline-check flex flex-wrap content-start items-center gap-1">
-          {session.analyzed && (l.match.sku ? <BandBadge band={l.match.band} score={l.match.match_score} /> : <BandBadge band="LOW" score={null} />)}
-          {session.analyzed && l.line_status !== "MATCHED" && l.line_status !== "UNIT_CONVERTED" && <LineStatusBadge status={l.line_status} />}
-          {session.analyzed && <StockBadge stock={l.stock} />}
+          {session.analyzed && (l.line_status === "CUSTOMER_ACCEPTED" || attn) && <LineStatusBadge status={l.line_status} />}
+          {session.analyzed && !attn && l.line_status !== "CUSTOMER_ACCEPTED" && (
+            <>
+              <StockBadge stock={l.stock} />
+              {l.match.match_score != null && <span className="text-[11px] text-slate-400">{t("match_score", { score: l.match.match_score.toFixed(2) })}</span>}
+            </>
+          )}
         </div>
         <div className="tline-amount">{amount != null ? fmtMoney(amount, "").trim() : "—"}</div>
       </div>

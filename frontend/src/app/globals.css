@@ -415,3 +415,17 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .pos-main { display: flex; min-height: 0; overflow: hidden; flex-direction: column; }
   .pos-terminal { min-height: 0; flex: 1; }
 }
+
+/* Exception line: the one reason to act, readable at video resolution */
+.line-attn { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 14px; font-weight: 750; line-height: 1.3; }
+.line-attn--stop { color: #b42318; }
+.line-attn--warn { color: #9a4a00; }
+/* Suggestions: the candidates lead, the rest is quiet */
+.suggest-title { margin-bottom: 8px; color: #12304d; font-size: 15px; font-weight: 800; }
+.cand { display: grid; width: 100%; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 10px; text-align: left; border: 2px solid #9bc5e5; border-radius: 10px; background: #fff; padding: 10px 12px; cursor: pointer; }
+.cand:hover:not(:disabled) { border-color: #1769aa; background: #f2f8fe; }
+.cand:disabled { opacity: .6; cursor: default; }
+.cand-pick { display: inline-flex; flex: none; align-items: center; gap: 4px; border-radius: 999px; background: #1769aa; padding: 6px 12px; color: #fff; font-size: 13px; font-weight: 750; }
+.inspector-link { display: inline-block; padding: 4px 2px; color: #1769aa; font-size: 14px; font-weight: 700; text-decoration: underline; }
+.cand-name { grid-column: 1 / -1; color: #12304d; font-size: 16px; font-weight: 750; line-height: 1.3; }
+.cand-meta { color: #64748b; font-family: var(--font-paper); font-size: 12px; }

@@ -74,13 +74,13 @@ export default function LinePanel({ session, line, onChange, onClose }: Props) {
           {!locked && (
             <>
               <details className="inspector-details" open={searchOpen}>
-                <summary className="tile font-semibold">{t("manual_search_title")}</summary>
+                <summary className="inspector-link">{t("manual_search_title")}</summary>
                 <div className="pt-3">
                   <CatalogSearch initial={line.parsed.name || line.source.text || ""} busy={busy} onPick={(sku) => select(sku, sku === line.match.sku ? "SKU_KEPT" : "SKU_EDITED")} />
                 </div>
               </details>
               <details className="inspector-details">
-                <summary className="tile font-semibold">{t("tab_edit")}</summary>
+                <summary className="inspector-link">{t("tab_edit")}</summary>
                 <div className="pt-3">
                   <ParseEditor session={session} line={line} locked={locked} run={run} />
                 </div>
@@ -117,16 +117,14 @@ function Resolve({ session, line, busy, select }: { session: SessionView; line: 
 
       {clarify && line.match.candidates.length > 0 && (
         <div>
-          <div className="mb-1.5 font-semibold">{t("candidates_title")}</div>
-          <ul className="space-y-1.5">
+          <div className="suggest-title">{t("ask_which")}</div>
+          <ul className="space-y-2">
             {line.match.candidates.map((c) => (
               <li key={c.sku}>
-                <button type="button" disabled={busy} className="tile" onClick={() => select(c.sku, c.sku === line.match.sku ? "SKU_KEPT" : "SKU_EDITED")}>
-                  <span className="block font-semibold leading-snug">{c.name}</span>
-                  <span className="mt-1 flex flex-wrap items-center gap-2">
-                    <BandBadge band={c.band} score={c.score} />
-                    <span className="font-mono text-xs soft">{c.sku}</span>
-                  </span>
+                <button type="button" disabled={busy} className="cand" onClick={() => select(c.sku, c.sku === line.match.sku ? "SKU_KEPT" : "SKU_EDITED")}>
+                  <span className="cand-name">{c.name}</span>
+                  <span className="cand-meta">{c.sku} · {t("match_score", { score: c.score.toFixed(2) })}</span>
+                  <span className="cand-pick"><Check size={15} aria-hidden /> {t("pick_this")}</span>
                 </button>
               </li>
             ))}
@@ -136,7 +134,7 @@ function Resolve({ session, line, busy, select }: { session: SessionView; line: 
 
       {clarify && line.match.candidates.length === 0 && <Notice tone="warn">{t("line_no_candidates")}</Notice>}
       {(reasons?.matched?.length || reasons?.mismatched?.length || reasons?.missing?.length || reasons?.ambiguous || line.llm_attributes?.length) && (
-        <details className="inspector-details" open={!!(reasons?.mismatched?.length || reasons?.missing?.length || reasons?.ambiguous || line.llm_attributes?.length)}>
+        <details className="inspector-details">
           <summary className="cursor-pointer text-xs font-semibold text-slate-600">{t("why_title")}</summary>
           <div className="mt-2 space-y-1 text-xs leading-relaxed">
             {reasons?.matched?.length ? <div>{t("why_matched", { list: list(reasons.matched) })}</div> : null}
