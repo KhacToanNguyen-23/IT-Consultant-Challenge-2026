@@ -131,13 +131,13 @@ function Resolve({ session, line, busy, select }: { session: SessionView; line: 
 
       {clarify && line.match.candidates.length > 0 && (
         <div>
-          <div className="suggest-title">{t("ask_which")}</div>
+          <div className="suggest-title">{session.ai_degraded ? t("ask_which_rules") : t("ask_which")}</div>
           <ul className="space-y-2">
             {line.match.candidates.map((c) => (
               <li key={c.sku}>
                 <button type="button" disabled={busy} className="cand" onClick={() => select(c.sku, c.sku === line.match.sku ? "SKU_KEPT" : "SKU_EDITED")}>
                   <span className="cand-name">{c.name}</span>
-                  <span className="cand-meta">{c.sku} · {t("match_score", { score: c.score.toFixed(2) })}</span>
+                  <span className="cand-meta">{session.ai_degraded ? c.sku : `${c.sku} · ${t("match_score", { score: c.score.toFixed(2) })}`}</span>
                   <span className="cand-pick"><Check size={15} aria-hidden /> {t("pick_this")}</span>
                 </button>
               </li>

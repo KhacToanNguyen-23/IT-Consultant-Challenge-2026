@@ -127,7 +127,7 @@ Tlf +45 22 33 44 55 · jens@nordbyg.dk
 5 poser cement 25 kg
 ```
 **Bước:** Read list → Analyze → ô tìm đã điền `gips 12.5 mm`, sửa thành `gips standard 12.5` → **Search** → bấm **Gipsplade standard 12.5mm … SKU-GYP-STD-125** → **Confirm order to POS** → tắt **AI fail**.
-**Phải thấy:** banner "AI is unavailable. Search the catalog manually", `POS_ACCEPTED`.
+**Phải thấy:** banner "AI is unavailable. Search the catalog manually"; các gợi ý mang nhãn **"Rule-based guess (AI off), verify"** và không có điểm khớp (đó là luật dự phòng, không phải AI); `POS_ACCEPTED`.
 **Nói:** "When the POS is down the order is exported, not lost. When the AI is down, rules and manual search keep the counter running."
 
 ## T2 · Reasonable architecture

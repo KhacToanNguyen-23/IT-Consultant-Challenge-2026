@@ -120,7 +120,7 @@ export default function TicketLines({ session, selected, onSelect }: Props) {
         <div className="tline-no tabular">{l.line_no}</div>
         <div className="min-w-0">
           {l.line_status === "CUSTOMER_ACCEPTED" && <div className="font-mono text-xs soft line-through">{l.match.sku}</div>}
-          {session.analyzed && l.line_status === "NEEDS_CLARIFICATION" && l.final_sku && <div className="line-match-label">{t("suggested_unconfirmed")}</div>}
+          {session.analyzed && l.line_status === "NEEDS_CLARIFICATION" && l.final_sku && <div className="line-match-label">{session.ai_degraded ? t("suggested_rules") : t("suggested_unconfirmed")}</div>}
           <div className={clsx("text-[17px] font-bold leading-snug", session.analyzed && l.line_status === "NEEDS_CLARIFICATION" ? "text-slate-500" : "text-[#12304d]")}>{l.final_name || l.parsed.name || <i className="text-red-800">{t("unreadable")}</i>}</div>
           <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 text-[12.5px] text-slate-500">
             {l.final_sku ? <span className="font-mono">{l.final_sku}</span> : session.analyzed && <span className="font-semibold text-amber-800">{t("no_sku")}</span>}
@@ -153,7 +153,7 @@ export default function TicketLines({ session, selected, onSelect }: Props) {
           {session.analyzed && !attn && l.line_status !== "CUSTOMER_ACCEPTED" && (
             <>
               <StockBadge stock={l.stock} />
-              {l.match.match_score != null && <span className="text-[11px] text-slate-400">{t("match_score", { score: l.match.match_score.toFixed(2) })}</span>}
+              {l.match.match_score != null && <span className="text-[11px] text-slate-400">{session.ai_degraded ? t("rule_match") : t("match_score", { score: l.match.match_score.toFixed(2) })}</span>}
             </>
           )}
         </div>
