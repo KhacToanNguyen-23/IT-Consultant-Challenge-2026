@@ -6,7 +6,7 @@ import { api, ApiError, fmtMoney, fmtTime, UNITS, type Line, type SessionView } 
 import { useI18n } from "@/client/i18n";
 import { BandBadge } from "@/components/StatusBadge";
 import { Notice, PosKey } from "./Terminal";
-import { attrLabel, unitLabel } from "./TicketLines";
+import { attention, attrLabel, unitLabel } from "./TicketLines";
 
 type Run = (fn: () => Promise<SessionView>) => Promise<void>;
 
@@ -23,6 +23,7 @@ export default function LinePanel({ session, line, onChange, onClose }: Props) {
   const locked = session.locked;
   const [busy, setBusy] = useState(false);
   const [armed, setArmed] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   const run: Run = async (fn) => {
@@ -39,7 +40,10 @@ export default function LinePanel({ session, line, onChange, onClose }: Props) {
   const select = (sku: string, decision: string, reason?: string) =>
     run(() => api(`/sessions/${session.session_id}/lines/${line.line_no}/selection`, { method: "PUT", json: { sku, decision, reason: reason ?? null } }));
 
-  const searchOpen = session.ai_degraded || (line.line_status === "NEEDS_CLARIFICATION" && line.match.candidates.length === 0);
+  // A line with nothing to resolve is read-only; the edit tools appear only for exceptions or on an explicit request.
+  const issue = session.analyzed ? attention(line, t) : null;
+  const showTools = !locked && (!session.analyzed || !!issue || editing);
+  const searchOpen = (session.ai_degraded && !!issue) || (line.line_status === "NEEDS_CLARIFICATION" && line.match.candidates.length === 0);
 
   return (
     <div className="space-y-3">
@@ -72,7 +76,15 @@ export default function LinePanel({ session, line, onChange, onClose }: Props) {
       ) : (
         <>
           <Resolve session={session} line={line} busy={busy} select={select} />
-          {!locked && (
+          {!locked && !issue && !editing && (
+            <>
+              {line.line_status !== "CUSTOMER_ACCEPTED" && <Notice tone={line.stock.status === "UNKNOWN" ? "warn" : "good"}>{line.stock.status === "UNKNOWN" ? t("line_ok_stock_unknown") : t("line_ok")}</Notice>}
+              <button type="button" className="inspector-link" onClick={() => setEditing(true)}>
+                {t("change_line")}
+              </button>
+            </>
+          )}
+          {showTools && (
             <>
               <details className="inspector-details" open={searchOpen}>
                 <summary className="inspector-link">{t("manual_search_title")}</summary>

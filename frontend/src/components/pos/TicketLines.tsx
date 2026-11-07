@@ -27,7 +27,7 @@ function priority(l: Line): number {
 }
 
 /** The one thing the associate must see on an exception line, in plain words (never a guess). */
-function attention(l: Line, t: T): { tone: "stop" | "warn"; text: string } | null {
+export function attention(l: Line, t: T): { tone: "stop" | "warn"; text: string } | null {
   const r = l.match.reasons as { missing?: string[]; ambiguous?: boolean } | undefined;
   const need = l.conversion.selling_quantity ?? "?";
   const have = l.stock.on_hand ?? 0;
