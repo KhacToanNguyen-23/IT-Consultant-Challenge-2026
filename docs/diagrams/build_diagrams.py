@@ -166,15 +166,17 @@ def sys_page2():
     s += '<rect x="280" y="108" width="570" height="486" rx="16" fill="#f1f6fc" stroke="#7aa6d6" stroke-width="2" stroke-dasharray="9 6"/>'
     s += tx(298, 132, "SiteDesk · containers", 13, 700, NAVY)
     s += box(305, 160, 180, 120, "Web UI", ["Intake, review by exception,", "quotes, print, demo toggles"], fill=BLUE, sub="Next.js 14", lsize=11)
-    s += box(590, 150, 235, 320, "Core API", [
+    s += box(590, 150, 235, 330, "Core API", [
         "Parse + PII masking · FR-001/002", "Matcher + hard rules · FR-006 to 009", "Convert, stock, alternatives · FR-011 to 016",
-        "Quotes, orders, idempotency · FR-018 to 028", "CSV when the POS is down · FR-019", "Telemetry, KPI queries · FR-029 to 031", "",
-        "In-process modules:", "AI Gateway · Local Connector"], fill=BLUE, sub="FastAPI (Python)", lsize=11)
-    s += '<rect x="606" y="396" width="203" height="58" rx="8" fill="#e9f3ff" stroke="#9bc5e5" stroke-width="2"/>'
-    s += tx(707, 418, "Local embedding model", 12, 700, NAVY, "middle")
-    s += tx(707, 436, "multilingual-e5-small · no data leaves", 11, 400, "#244a6e", "middle")
+        "Quotes, orders · FR-018 to 028"], fill=BLUE, sub="FastAPI (Python)", lsize=11)
+    for i, (h, b1, b2) in enumerate([("Local AI pipeline", "multilingual-e5-small + hard rules", "no data leaves SiteDesk"),
+                                      ("AI Gateway", "optional LLM adapter", "disabled in this demo"),
+                                      ("Local Connector", "POS calls, order push", "CSV fallback (FR-019)")]):
+        y0 = 296 + i * 59
+        s += f'<rect x="604" y="{y0}" width="207" height="52" rx="8" fill="#e9f3ff" stroke="#9bc5e5" stroke-width="2"/>'
+        s += tx(707, y0 + 18, h, 12, 700, NAVY, "middle") + tx(707, y0 + 32, b1, 11, 400, "#244a6e", "middle") + tx(707, y0 + 45, b2, 11, 400, "#244a6e", "middle")
     s += box(305, 340, 180, 160, "SiteDesk DB", ["Catalog + vectors,", "sessions, quotes,", "decisions, audit"], fill=GREEN, sub="PostgreSQL 15 + pgvector", lsize=11)
-    s += box(920, 150, 185, 100, "LLM API", ["Optional, masked", "text only"], fill="#eef0f3", stroke=GREY, dash=True, tcolor="#374151", sub="External · optional")
+    s += box(920, 150, 185, 100, "LLM API", ["Optional; disabled", "in this demo"], fill="#eef0f3", stroke=GREY, dash=True, tcolor="#374151", sub="External · optional")
     s += box(920, 320, 185, 115, "mock-pos", ["Simulated catalog,", "stock, customers,", "order receipt"], fill=GREY, sub="External · simulated")
     s += arrow([(225, 225), (305, 225)])
     s += label(265, 203, ["Browser", "[HTTP]"])
@@ -194,136 +196,206 @@ def sys_page2():
     return page_svg(s, "SiteDesk MVP: inside the system (containers)", "What is inside the circle of page 1: deployable parts, the data store, and how they talk to each other and to the outside. Run locally with Docker Compose.", 2, 2, "System Diagram")
 
 
-# ============================================================ USER JOURNEY
-LANES = [("Customer", 98), ("Counter associate", 240), ("SiteDesk", 382)]
-LANE_H = 142
-X0, BW, GAP = 60, 104, 13
-ROLE = {"human": ("#e8f4ec", "#8fc3a0"), "rules": ("#dbe9f9", "#6f9ad0"), "ai": ("#ede7fb", "#9b87d8")}
+# ============================================================ USER JOURNEY (swimlane flowcharts)
+NW, NH, DW, DH, EW, EH = 88, 64, 90, 76, 104, 70
+PITCH, XB = 105, 100
+LANEBOX = [("Customer", 92, 120), ("Counter associate", 212, 140), ("SiteDesk", 352, 230)]
+ROWY = {"C": 152, "A": 282, "M": 432, "E": 532}
+ROLE = {"human": ("#e8f4ec", "#8fc3a0"), "rules": ("#dbe9f9", "#6f9ad0"), "ai": ("#ede7fb", "#9b87d8"),
+        "fallback": ("#fff1dc", "#e0a040"), "decision": ("#fff8e1", "#d9b44a"), "done": ("#d3eddc", "#2d8a5a")}
+AMBER_LINE = "#c8741a"
 
 
-def colx(c):
-    return X0 + c * (BW + GAP)
+def cx(col):
+    return XB + col * PITCH
 
 
-def lanes():
+def gx(c1, c2):
+    return (cx(c1) + cx(c2)) / 2
+
+
+class Flow:
+    def __init__(self):
+        self.nodes, self.body = {}, ""
+
+    def node(self, nid, col, row, text, role, fr=None, shape="box"):
+        x, y = cx(col), ROWY[row]
+        w, h = {"box": (NW, NH), "diamond": (DW, DH), "ellipse": (EW, EH)}[shape]
+        self.nodes[nid] = (x, y, w, h)
+        fill, stroke = ROLE[role]
+        if shape == "box":
+            self.body += f'<rect x="{x - w / 2}" y="{y - h / 2}" width="{w}" height="{h}" rx="8" fill="{fill}" stroke="{stroke}" stroke-width="1.8"/>'
+        elif shape == "diamond":
+            pts = f"{x},{y - h / 2} {x + w / 2},{y} {x},{y + h / 2} {x - w / 2},{y}"
+            self.body += f'<polygon points="{pts}" fill="{fill}" stroke="{stroke}" stroke-width="1.8"/>'
+        else:
+            self.body += f'<ellipse cx="{x}" cy="{y}" rx="{w / 2}" ry="{h / 2}" fill="{fill}" stroke="{stroke}" stroke-width="2"/>'
+        lines = wrapped(text, {"box": 14, "diamond": 10, "ellipse": 12}[shape])
+        n = len(lines) + (1 if fr else 0)
+        y0 = y - (n - 1) * 13 / 2 + 4
+        self.body += tx(x, y0, lines, 11, 600, "#17202c", "middle", 13)
+        if fr:
+            self.body += tx(x, y0 + len(lines) * 13, fr, 10.7, 700, "#1f4f86", "middle")
+
+    def p(self, nid, side, dx=0, dy=0):
+        x, y, w, h = self.nodes[nid]
+        return {"top": (x + dx, y - h / 2 + dy), "bottom": (x + dx, y + h / 2 + dy), "left": (x - w / 2 + dx, y + dy), "right": (x + w / 2 + dx, y + dy)}[side]
+
+    def edge(self, pts, color="#5b6b7e", dash=False):
+        self.body += arrow(pts, dash=dash, color=color)
+
+    def tag(self, x, y, text, anchor="middle"):
+        wd = len(text) * 6.2 + 8
+        x0 = x - wd / 2 if anchor == "middle" else (x - wd + 2 if anchor == "end" else x - 2)
+        self.body += f'<rect x="{x0}" y="{y - 11}" width="{wd}" height="15" rx="3" fill="#fff" opacity="0.92"/>' + tx(x, y, text, 11, 700, "#334155", anchor)
+
+
+def lanes_svg():
     s = ""
-    for i, (name, y) in enumerate(LANES):
-        s += f'<rect x="20" y="{y}" width="1085" height="{LANE_H}" fill="{"#f8fafd" if i % 2 == 0 else "#f1f5fb"}" stroke="#d3deec"/>'
-        s += f'<rect x="20" y="{y}" width="30" height="{LANE_H}" fill="{NAVY}"/>'
-        s += f'<text transform="translate(41,{y + LANE_H / 2}) rotate(-90)" font-size="12.5" font-weight="700" fill="#fff" text-anchor="middle">{esc(name)}</text>'
+    for i, (name, y, h) in enumerate(LANEBOX):
+        s += f'<rect x="20" y="{y}" width="1085" height="{h}" fill="{"#f8fafd" if i % 2 == 0 else "#f1f5fb"}" stroke="#d3deec"/>'
+        s += f'<rect x="20" y="{y}" width="30" height="{h}" fill="{NAVY}"/>'
+        s += f'<text transform="translate(41,{y + h / 2}) rotate(-90)" font-size="12.5" font-weight="700" fill="#fff" text-anchor="middle">{esc(name)}</text>'
     return s
 
 
-def step(col, lane, n, text, tag, role, bh=124):
-    x = colx(col)
-    y = LANES[lane][1] + (LANE_H - bh) / 2
-    fill, stroke = ROLE[role]
-    s = f'<rect x="{x}" y="{y}" width="{BW}" height="{bh}" rx="8" fill="{fill}" stroke="{stroke}" stroke-width="1.8"/>'
-    s += f'<circle cx="{x + 12}" cy="{y + 12}" r="10" fill="{NAVY}"/>' + tx(x + 12, y + 16, str(n), 11.5, 800, "#fff", "middle")
-    s += tx(x + 8, y + 38, wrapped(text, 13), 12.5, 600, "#17202c", "start", 15)
-    s += tx(x + 8, y + bh - 8, tag, 10.5, 700, "#1f4f86")
-    return s, (x, y, BW, bh)
-
-
-def connect(a, b):
-    xa, ya, wa, ha = a
-    xb, yb, wb, hb = b
-    x1, y1 = xa + wa, ya + ha / 2
-    x2, y2 = xb, yb + hb / 2
-    if abs(y1 - y2) < 1:
-        return arrow([(x1, y1), (x2, y2)])
-    mid = x1 + GAP / 2
-    return arrow([(x1, y1), (mid, y1), (mid, y2), (x2, y2)])
-
-
-def r1_band(spans):
-    y, h = 536, 40
+def r1_band2(spans):
+    y, h = 596, 40
     s = f'<rect x="20" y="{y}" width="1085" height="{h}" fill="#fff8ec" stroke="#f0d3a0"/>'
     s += f'<rect x="20" y="{y}" width="30" height="{h}" fill="#e8a64a"/>' + tx(35, y + 25, "R1", 12, 800, "#fff", "middle")
     for c1, c2, text in spans:
-        x = colx(c1)
-        w = colx(c2) + BW - x
-        s += f'<rect x="{x}" y="{y + 5}" width="{w}" height="{h - 10}" rx="6" fill="#fde7c7" stroke="#e8a64a"/>'
-        lines = wrapped(text, int((w - 12) / 5.6))[:2]
-        s += tx(x + w / 2, y + 19 if len(lines) == 1 else y + 16, lines, 10.5, 600, "#7a4300", "middle", 11.5)
+        x1, x2 = cx(c1) - 46, cx(c2) + 46
+        s += f'<rect x="{x1}" y="{y + 5}" width="{x2 - x1}" height="{h - 10}" rx="6" fill="#fde7c7" stroke="#e8a64a"/>'
+        lines = wrapped(text, int((x2 - x1 - 12) / 5.8))[:2]
+        s += tx((x1 + x2) / 2, y + 19 if len(lines) == 1 else y + 16, lines, 11, 600, "#7a4300", "middle", 11.5)
     return s
 
 
-def journey(title, subtitle, steps, spans, alts, strip, page_no):
-    s = lanes()
-    rects = []
-    for col, (lane, text, tag, role) in enumerate(steps):
-        frag, r = step(col, lane, col + 1, text, tag, role)
-        s += frag
-        rects.append(r)
-    for i in range(len(rects) - 1):
-        s += connect(rects[i], rects[i + 1])
-    s += r1_band(spans)
-    s += tx(20, 598, "Alternative paths and guardrails", 13, 800, AMBER)
-    n = len(alts)
-    wdt = (1085 - (n - 1) * 12) / n
-    for i, (head, body) in enumerate(alts):
-        x = 20 + i * (wdt + 12)
-        s += f'<rect x="{x}" y="606" width="{wdt}" height="56" rx="8" fill="#fff4e5" stroke="#f0b866"/>'
-        s += tx(x + 10, 624, head, 12, 800, "#8a4b00")
-        s += tx(x + 10, 641, wrapped(body, int((wdt - 20) / 5.7)), 11, 400, "#3b2a10", "start", 13.4)
-    s += '<rect x="20" y="676" width="1085" height="48" rx="8" fill="#e8f4ec" stroke="#8fc3a0"/>'
-    s += tx(32, 696, strip[0], 12.5, 800, "#1f6b3f")
-    s += tx(32, 714, wrapped(strip[1], 165), 12, 400, "#1f3a2a", "start", 13.4)
-    s += legend_journey()
+def back_half(f, first_resolve_col):
+    """Shared tail: all lines resolved? -> pick client + Confirm -> POS accepts? -> reference, or CSV."""
+    f.node("a6", 6, "A", "Picks client, then Confirm", "human", "FR-017-018")
+    f.node("s7", 7, "M", "POS accepts?", "decision", shape="diamond")
+    f.node("e7", 7, "E", "Writes CSV, manual entry", "fallback", "FR-019")
+    f.node("a8", 8, "A", "Downloads CSV, keys it in", "fallback")
+    f.node("s9", 9, "M", "POS_ACCEPTED + reference", "done", "FR-019", "ellipse")
+    f.node("c9", 9, "C", "Receives the order reference", "human")
+    x6, x7 = cx(6), cx(7)
+    f.edge([f.p("s5", "right"), (x6, ROWY["M"]), (x6, f.p("a6", "bottom")[1])])
+    f.tag(cx(5) + 34, 409, "Yes")
+    f.edge([f.p("a6", "right"), (x7, ROWY["A"]), f.p("s7", "top")])
+    f.edge([f.p("s7", "right"), f.p("s9", "left")])
+    f.tag(cx(7) + 34, 409, "Yes")
+    f.edge([f.p("s7", "bottom"), f.p("e7", "top")], color=AMBER_LINE)
+    f.tag(x7 + 14, 490, "No", "start")
+    f.edge([f.p("e7", "right"), (cx(8), ROWY["E"]), f.p("a8", "bottom")], color=AMBER_LINE)
+    f.edge([f.p("s9", "top"), f.p("c9", "bottom")])
+
+
+def resolve_loop(f, col_a, col_c, col_s):
+    """Associate resolves lines with the customer; SiteDesk re-checks and the gate is evaluated again."""
+    xa = cx(col_a)
+    f.edge([f.p("a%d" % col_a, "top", -12), f.p("c%d" % col_c, "bottom", -12)])
+    f.tag(xa - 18, 232, "asks", "end")
+    f.edge([f.p("c%d" % col_c, "bottom", 12), f.p("a%d" % col_a, "top", 12)])
+    f.tag(xa + 18, 232, "decides", "start")
+
+
+def journey_page(title, subtitle, f, spans, note_text, page_no):
+    s = lanes_svg() + f.body + r1_band2(spans)
+    s += f'<rect x="20" y="650" width="1085" height="62" rx="8" fill="#fff8e1" stroke="#e0c35a"/>'
+    s += tx(32, 670, "READING THE FLOW", 12, 800, "#7a5a00") + tx(32, 688, wrapped(note_text, 175), 11.5, 400, "#3b3320", "start", 14)
+    s += legend_journey2()
     return page_svg(s, title, subtitle, page_no, 2, "User Journey")
 
 
+def legend_journey2():
+    y = 757
+    out = chip(40, y, "#ede7fb", "AI-assisted", stroke="#9b87d8", w=13) + chip(150, y, "#dbe9f9", "Hard rules", stroke="#6f9ad0", w=13)
+    out += chip(250, y, "#e8f4ec", "Human", stroke="#8fc3a0", w=13) + chip(330, y, "#fff1dc", "Exception or fallback", stroke="#e0a040", w=13)
+    out += chip(500, y, "#fff8e1", "Decision (diamond)", stroke="#d9b44a", w=13) + chip(655, y, "#fde7c7", "R1 = Round 1 problem", stroke="#e8a64a", w=13)
+    out += tx(1083, y, "FR = requirement in the team's SRS v2", 11, 500, "#334155", "end")
+    return out
+
+
 def jr_page1():
-    steps = [
-        (0, "Hands over the list", "UC1", "human"),
-        (1, "Uploads or pastes it", "FR-001 intake", "human"),
-        (2, "Masks e-mail and phone, reads every line", "FR-002 masking", "rules"),
-        (2, "Matches SKUs, converts units, checks stock", "FR-006-014 match", "ai"),
-        (1, "Reviews exceptions; Confirm blocked until resolved", "FR-010 gate", "human"),
-        (2, "Offers a safe alternative with price difference", "FR-015 options", "rules"),
-        (0, "Accepts or declines", "FR-016 consent", "human"),
-        (1, "Picks client, then Confirm", "FR-017-018 order", "human"),
-        (2, "POS accepts, or CSV fallback", "FR-019 POS or CSV", "rules"),
-    ]
-    spans = [(1, 3, "Manual re-keying, about 12 min per list"),
-             (4, 4, "Shift-dependent advice"),
-             (5, 6, "Lost sales on stock-outs"),
-             (7, 8, "Fragmented systems")]
-    alts = [
-        ("AI is off", "Rules and manual search keep working."),
-        ("Not an order line", "Associate removes it; the last line stays."),
-        ("Customer declines", "Reason recorded; SKU unchanged."),
-        ("POS is down", "CSV with the same reference."),
-    ]
-    strip = ("Value on every receipt", "Sales rescued by substitutes · time from upload to Confirm (simulated data).")
-    return journey("User journey 1: at the counter", "The associate serves the customer in person · SRS v2: UC1 to UC4", steps, spans, alts, strip, 1)
+    f = Flow()
+    f.node("c0", 0, "C", "Hands over the list", "human")
+    f.node("a0", 0, "A", "Uploads or pastes it", "human", "FR-001")
+    f.node("s0", 0, "M", "Masks e-mail/phone, parses lines", "rules", "FR-002")
+    f.node("s1", 1, "M", "AI available?", "decision", shape="diamond")
+    f.node("s2", 2, "M", "Matches by meaning + hard rules", "ai", "FR-006-009")
+    f.node("e2", 2, "E", "Rules-only match", "fallback", "FR-003")
+    f.node("s3", 3, "M", "Converts units, checks stock", "rules", "FR-011-014")
+    f.node("s4", 4, "M", "Flags exceptions first", "rules", "FR-010")
+    f.node("a4", 4, "A", "Resolves lines with the customer", "human", "FR-015-016")
+    f.node("c4", 4, "C", "Accepts or declines substitutes", "human", "FR-016")
+    f.node("s5", 5, "M", "All lines resolved?", "decision", shape="diamond")
+    f.edge([f.p("c0", "bottom"), f.p("a0", "top")])
+    f.edge([f.p("a0", "bottom"), f.p("s0", "top")])
+    f.edge([f.p("s0", "right"), f.p("s1", "left")])
+    f.edge([f.p("s1", "right"), f.p("s2", "left")])
+    f.tag(cx(1) + 34, 409, "Yes")
+    f.edge([f.p("s1", "bottom"), (cx(1), ROWY["E"]), f.p("e2", "left")], color=AMBER_LINE)
+    f.tag(cx(1) + 8, 496, "No", "start")
+    f.edge([f.p("s2", "right"), f.p("s3", "left")])
+    f.edge([f.p("e2", "right"), (cx(3), ROWY["E"]), f.p("s3", "bottom")], color=AMBER_LINE)
+    f.edge([f.p("s3", "right"), f.p("s4", "left")])
+    f.edge([f.p("s4", "top", -12), f.p("a4", "bottom", -12)])
+    f.edge([f.p("a4", "bottom", 12), f.p("s4", "top", 12)])
+    f.tag(cx(4) + 20, 366, "re-check", "start")
+    resolve_loop(f, 4, 4, 4)
+    f.edge([f.p("s4", "right"), f.p("s5", "left")])
+    f.edge([f.p("s5", "top"), (cx(5), ROWY["A"]), f.p("a4", "right")])
+    f.tag(cx(5) + 6, 350, "No", "start")
+    back_half(f, 4)
+    spans = [(0, 3, "Manual re-keying: about 12 min per list"), (4, 5, "Shift-dependent advice, lost sales"), (6, 9, "Fragmented systems: one standard order")]
+    note = "Amber means an exception or fallback. Confirm stays blocked while any line is unresolved. If the AI is off, a rules-only match runs. If the POS refuses (503 or timeout), a CSV is written and the status is NEEDS_MANUAL, never POS_ACCEPTED."
+    return journey_page("User journey 1: at the counter", "The associate serves the customer in person · SRS v2: UC1 to UC4", f, spans, note, 1)
 
 
 def jr_page2():
-    steps = [
-        (0, "Sends the list by e-mail", "UC5", "human"),
-        (1, "Pastes the e-mail text", "FR-022 e-mail", "human"),
-        (2, "Masks, matches, checks stock", "FR-006-015 match", "ai"),
-        (1, "Sends a drafted reply from own mailbox", "no e-mail sent", "human"),
-        (0, "Agrees by e-mail or phone", "FR-039 consent", "human"),
-        (2, "Saves quote with price and stock snapshot", "FR-023-024 quote", "rules"),
-        (1, "Records the customer's approval", "FR-022 approval", "human"),
-        (2, "Pick-up day: re-checks stock and price", "FR-025 re-check", "rules"),
-        (1, "Customer accepts substitutes; Confirm", "FR-026-028", "human"),
-    ]
-    spans = [(1, 2, "Manual re-keying"),
-             (3, 4, "Slow, shift-dependent answers"),
-             (5, 7, "Stock drift causes wrong picks"),
-             (8, 8, "Fragmented systems")]
-    alts = [
-        ("No quote, no Confirm", "QUOTE_REQUIRED blocks the order."),
-        ("No approval, no Prepare", "Sending a quote is not approval."),
-        ("Stock changed", "The re-check flags short lines."),
-        ("Quote expires", "Expired or cancelled: cannot confirm."),
-    ]
-    strip = ("Why it matters", "Nothing is reserved, so the live re-check keeps promises honest.")
-    return journey("User journey 2: e-mail request to pick-up", "The customer is not at the counter · SRS v2: UC5", steps, spans, alts, strip, 2)
+    f = Flow()
+    f.node("c0", 0, "C", "Sends the list by e-mail", "human", "UC5")
+    f.node("a0", 0, "A", "Pastes the e-mail text", "human", "FR-022")
+    f.node("s0", 0, "M", "Masks, matches, checks stock", "ai", "FR-006-015")
+    f.node("a1", 1, "A", "Reviews lines, saves the quote", "human")
+    f.node("s1", 1, "M", "Stores quote: price and stock snapshot", "rules", "FR-023-024")
+    f.node("a2", 2, "A", "Sends reply and quote from own mailbox", "human")
+    f.node("c2", 2, "C", "Approves outside SiteDesk", "human", "FR-039")
+    f.node("a3", 3, "A", "Records approval on the quote", "human", "FR-022")
+    f.node("s3", 3, "M", "Approved, not expired?", "decision", shape="diamond")
+    f.node("e3", 3, "E", "Blocked: cannot prepare or confirm", "fallback")
+    f.node("c4", 4, "C", "Returns on pick-up day", "human")
+    f.node("a4", 4, "A", "Reopens the quote", "human")
+    f.node("s4", 4, "M", "Re-checks live stock and price", "rules", "FR-025")
+    f.node("a5", 5, "A", "Resolves lines with the customer", "human", "FR-016")
+    f.node("c5", 5, "C", "Accepts substitutes", "human", "FR-039")
+    f.node("s5", 5, "M", "All lines resolved?", "decision", shape="diamond")
+    f.edge([f.p("c0", "bottom"), f.p("a0", "top")])
+    f.edge([f.p("a0", "bottom"), f.p("s0", "top")])
+    f.edge([f.p("s0", "right"), (gx(0, 1), ROWY["M"]), (gx(0, 1), ROWY["A"]), f.p("a1", "left")])
+    f.edge([f.p("a1", "bottom"), f.p("s1", "top")])
+    f.edge([f.p("s1", "right"), (gx(1, 2), ROWY["M"]), (gx(1, 2), ROWY["A"]), f.p("a2", "left")])
+    f.edge([f.p("a2", "top"), f.p("c2", "bottom")])
+    f.tag(cx(2) + 8, 232, "waits", "start")
+    f.edge([f.p("c2", "right"), (gx(2, 3), ROWY["C"]), (gx(2, 3), ROWY["A"]), f.p("a3", "left")])
+    f.edge([f.p("a3", "bottom"), f.p("s3", "top")])
+    f.edge([f.p("s3", "right"), (gx(3, 4), ROWY["M"]), (gx(3, 4), ROWY["C"]), f.p("c4", "left")])
+    f.tag(gx(3, 4) + 4, 392, "Yes", "start")
+    f.edge([f.p("s3", "bottom"), f.p("e3", "top")], color=AMBER_LINE)
+    f.tag(cx(3) + 14, 490, "No", "start")
+    f.edge([f.p("c4", "bottom"), f.p("a4", "top")])
+    f.edge([f.p("a4", "bottom"), f.p("s4", "top")])
+    f.edge([f.p("s4", "right"), f.p("s5", "left")])
+    f.edge([f.p("s5", "top", -14, 4), f.p("a5", "bottom", -14)])
+    f.tag(cx(5) - 18, 366, "No", "end")
+    f.edge([f.p("a5", "bottom", 14), f.p("s5", "top", 14, 8)])
+    f.tag(cx(5) + 22, 366, "re-check", "start")
+    resolve_loop(f, 5, 5, 5)
+    back_half(f, 5)
+    spans = [(0, 1, "Manual re-keying of e-mails"), (2, 3, "Customers wait for answers"), (4, 6, "Stock changes before pick-up cause wrong picks"), (7, 9, "Fragmented systems: one standard order")]
+    note = "SiteDesk drafts the reply but sends no e-mail. Nothing is reserved between quote and pick-up, so the live re-check decides what can be promised. An e-mail request cannot be confirmed without its quote, and a quote cannot be prepared without a recorded approval."
+    return journey_page("User journey 2: e-mail request to pick-up", "The customer is not at the counter · SRS v2: UC5", f, spans, note, 2)
 
 
 if __name__ == "__main__":
