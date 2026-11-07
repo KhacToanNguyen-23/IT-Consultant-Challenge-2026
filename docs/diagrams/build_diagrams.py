@@ -131,7 +131,7 @@ def sys_page1():
     # external entities = squares
     s += box(60, 330, 200, 160, "Counter associate", ["Person · uses SiteDesk", "reads, reviews,", "decides, confirms"], fill=NAVY, r=2, sub="External entity")
     s += box(461, 100, 200, 90, "Customer", ["Person · outside SiteDesk"], fill=NAVY, r=2, sub="External entity", lsize=11)
-    s += box(880, 200, 200, 130, "LLM API provider", ["Optional; off in this demo"], fill="#eef0f3", stroke=GREY, dash=True, tcolor="#374151", r=2, sub="External entity")
+    s += box(880, 200, 200, 130, "LLM API provider", ["Optional, masked text only;", "on or off by configuration"], fill="#eef0f3", stroke=GREY, dash=True, tcolor="#374151", r=2, sub="External entity")
     s += box(880, 380, 200, 140, "mock-pos", ["Simulated POS/ERP:", "catalog, price, stock,", "customers, orders"], fill=GREY, r=2, sub="External entity · simulated")
     s += box(880, 560, 200, 90, "Legacy POS", ["Manual entry from the CSV"], fill="#eef0f3", stroke=GREY, dash=True, tcolor="#374151", r=2, sub="External entity · manual", lsize=11)
     # data flows
@@ -170,13 +170,13 @@ def sys_page2():
         "Parse + PII masking · FR-001/002", "Matcher + hard rules · FR-006 to 009", "Convert, stock, alternatives · FR-011 to 016",
         "Quotes, orders · FR-018 to 028"], fill=BLUE, sub="FastAPI (Python)", lsize=11)
     for i, (h, b1, b2) in enumerate([("Local AI pipeline", "multilingual-e5-small + hard rules", "no data leaves SiteDesk"),
-                                      ("AI Gateway", "optional LLM adapter", "disabled in this demo"),
+                                      ("AI Gateway", "optional LLM adapter", "on or off by configuration"),
                                       ("Local Connector", "POS calls, order push", "CSV fallback (FR-019)")]):
         y0 = 296 + i * 59
         s += f'<rect x="604" y="{y0}" width="207" height="52" rx="8" fill="#e9f3ff" stroke="#9bc5e5" stroke-width="2"/>'
         s += tx(707, y0 + 18, h, 12, 700, NAVY, "middle") + tx(707, y0 + 32, b1, 11, 400, "#244a6e", "middle") + tx(707, y0 + 45, b2, 11, 400, "#244a6e", "middle")
     s += box(305, 340, 180, 160, "SiteDesk DB", ["Catalog + vectors,", "sessions, quotes,", "decisions, audit"], fill=GREEN, sub="PostgreSQL 15 + pgvector", lsize=11)
-    s += box(920, 150, 185, 100, "LLM API", ["Optional; disabled", "in this demo"], fill="#eef0f3", stroke=GREY, dash=True, tcolor="#374151", sub="External · optional")
+    s += box(920, 150, 185, 100, "LLM API", ["Optional; on or off", "by configuration"], fill="#eef0f3", stroke=GREY, dash=True, tcolor="#374151", sub="External · optional")
     s += box(920, 320, 185, 115, "mock-pos", ["Simulated catalog,", "stock, customers,", "order receipt"], fill=GREY, sub="External · simulated")
     s += arrow([(225, 225), (305, 225)])
     s += label(265, 203, ["Browser", "[HTTP]"])
