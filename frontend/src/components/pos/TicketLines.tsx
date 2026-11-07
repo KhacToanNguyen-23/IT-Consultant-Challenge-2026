@@ -102,8 +102,8 @@ export default function TicketLines({ session, selected, onSelect }: Props) {
           {l.line_status === "CUSTOMER_ACCEPTED" && <div className="font-mono text-xs soft line-through">{l.match.sku}</div>}
           <div className="line-source-label">{t("customer_wrote")}</div>
           <div className="line-source-text" title={l.source.text}>{l.source.text}</div>
-          <div className="line-match-label">{t("matched_product")}</div>
-          <div className="text-[15px] font-semibold leading-snug">{l.final_name || l.parsed.name || <i className="text-red-800">{t("unreadable")}</i>}</div>
+          <div className="line-match-label">{session.analyzed && l.line_status === "NEEDS_CLARIFICATION" && l.final_sku ? t("suggested_unconfirmed") : t("matched_product")}</div>
+          <div className={clsx("text-[15px] font-semibold leading-snug", session.analyzed && l.line_status === "NEEDS_CLARIFICATION" && "text-slate-500")}>{l.final_name || l.parsed.name || <i className="text-red-800">{t("unreadable")}</i>}</div>
           {l.final_sku ? <div className="font-mono text-xs soft">SKU {l.final_sku}</div> : session.analyzed && <div className="text-xs font-semibold text-amber-800">{t("no_sku")}</div>}
           {isSelected && l.parsed.warnings.includes("n_x_l_review") && <div className="text-xs text-amber-800">N × L: {l.conversion.requested}</div>}
           {isSelected && <AttributeChips chips={l.chips} />}

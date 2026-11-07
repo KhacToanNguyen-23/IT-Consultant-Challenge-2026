@@ -135,8 +135,8 @@ function Resolve({ session, line, busy, select }: { session: SessionView; line: 
       )}
 
       {clarify && line.match.candidates.length === 0 && <Notice tone="warn">{t("line_no_candidates")}</Notice>}
-      {line.match.sku && (reasons?.matched?.length || reasons?.mismatched?.length || reasons?.missing?.length || reasons?.ambiguous || line.llm_attributes?.length) && (
-        <details className="inspector-details">
+      {(reasons?.matched?.length || reasons?.mismatched?.length || reasons?.missing?.length || reasons?.ambiguous || line.llm_attributes?.length) && (
+        <details className="inspector-details" open={!!(reasons?.mismatched?.length || reasons?.missing?.length || reasons?.ambiguous || line.llm_attributes?.length)}>
           <summary className="cursor-pointer text-xs font-semibold text-slate-600">{t("why_title")}</summary>
           <div className="mt-2 space-y-1 text-xs leading-relaxed">
             {reasons?.matched?.length ? <div>{t("why_matched", { list: list(reasons.matched) })}</div> : null}

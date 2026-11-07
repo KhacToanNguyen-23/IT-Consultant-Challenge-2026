@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, Download, FileText, FilePlus2, FileSignature, ListChecks, ScanLine, Search, UserRound } from "lucide-react";
+import { AlertTriangle, ArrowLeftRight, CheckCircle2, Download, FileText, FilePlus2, FileSignature, ListChecks, ScanLine, Search, ShieldCheck, UserRound } from "lucide-react";
 import { api, ApiError, fileUrl, fmtMoney, type Customer, type SessionView } from "@/client/api";
 import { useI18n } from "@/client/i18n";
 import LinePanel from "@/components/pos/LinePanel";
@@ -10,6 +10,8 @@ import { LoadingTerminal, Notice, PosKey, SoftKeys, Terminal, Vfd } from "@/comp
 import TicketLines, { lineAmount } from "@/components/pos/TicketLines";
 import ListPagination from "@/components/pos/ListPagination";
 import { StatePill } from "@/components/StatusBadge";
+import ImpactStrip from "@/components/story/ImpactStrip";
+import ResultStory from "@/components/story/ResultStory";
 
 
 
@@ -87,6 +89,15 @@ export default function SessionPage({ params }: { params: { id: string } }) {
   const total = amounts.reduce<number>((sum, a) => sum + (a ?? 0), 0);
   const unpriced = amounts.filter((a) => a == null).length;
   const currency = s.lines.find((l) => l.currency)?.currency || "DKK";
+  const convertedCount = s.lines.filter((l) => l.conversion.formula && !l.conversion.formula.includes("(1:1)")).length;
+  const llmCalls = Number(s.stage_timings_ms.llm_calls || 0);
+  const posAccepted = s.confirmation.order_status === "POS_ACCEPTED";
+  const proofStatus = s.locked
+    ? posAccepted ? "evidence_pos_received" : "evidence_csv_exported"
+    : s.blockers.length ? "evidence_review" : "evidence_ready";
+  const proofTone = s.locked
+    ? posAccepted ? "good" : "warn"
+    : s.blockers.length ? "warn" : "good";
   const manualLine = s.blockers[0]?.line_no ?? s.lines.find((l) => !l.final_sku)?.line_no ?? s.lines[0]?.line_no ?? null;
 
   // A resolved line hands over to the next one, so the associate never hunts for what is left.
@@ -139,7 +150,22 @@ export default function SessionPage({ params }: { params: { id: string } }) {
             </div>
           </div>
 
+          <div className="operation-proof" role="group" aria-label={t("evidence_title")}>
+            <ProofTag tone="good" icon={<ShieldCheck size={14} aria-hidden />}>{t("evidence_masked")}</ProofTag>
+            <ProofTag icon={<FileText size={14} aria-hidden />}>{t(s.analyzed ? "evidence_analyzed" : "evidence_read", { n: s.read_line_count })}</ProofTag>
+            {s.analyzed && convertedCount > 0 && <ProofTag icon={<ArrowLeftRight size={14} aria-hidden />}>{t("evidence_converted", { n: convertedCount })}</ProofTag>}
+            {s.analyzed && <ProofTag tone={proofTone} icon={proofTone === "warn" ? <AlertTriangle size={14} aria-hidden /> : <CheckCircle2 size={14} aria-hidden />}>
+              {proofStatus === "evidence_review" ? t(proofStatus, { n: s.blockers.length }) : t(proofStatus)}
+            </ProofTag>}
+            {s.analyzed && <ProofTag>{s.ai_degraded ? t("evidence_fallback") : t("evidence_semantic")}</ProofTag>}
+            {s.analyzed && llmCalls > 0 && <ProofTag>{t("evidence_llm", { n: llmCalls })}</ProofTag>}
+          </div>
 
+          {s.analyzed && (
+            <div className="px-[18px] pt-2">
+              <ImpactStrip session={s} />
+            </div>
+          )}
 
           {(s.ai_degraded || s.lines.some((l) => l.stock.status === "UNKNOWN") || error) && (
             <div className="space-y-2 px-[18px] py-3">
@@ -265,13 +291,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                 {t("key_order")}
               </PosKey>
             ) : null,
-            s.locked ? (
-              s.confirmation.csv_download_url ? (
-                <PosKey key="csv" hotkey="F8" tone="hold" icon={<Download size={17} />} href={fileUrl(s.confirmation.csv_download_url)} external>
-                  {t("download_csv_short")}
-                </PosKey>
-              ) : null
-            ) : !s.analyzed ? null : s.quote ? (
+            s.locked ? null : !s.analyzed ? null : s.quote ? (
               <PosKey key="quote" hotkey="F8" tone="quote" icon={<FileSignature size={17} />} href={`/quotes/${s.quote.quote_id}`}>
                 {t("open_quote")}
               </PosKey>
@@ -304,6 +324,11 @@ function ConfirmResult({ s }: { s: SessionView }) {
     <div className="receipt">
       <div className="text-center text-base font-semibold">{ok ? t("pos_ok") : t("pos_csv")}</div>
       <div className="my-2 border-t-2 border-dashed border-[var(--rule)]" />
+      {!ok && c.csv_download_url && (
+        <PosKey hotkey="F8" size="sm" tone="hold" icon={<Download size={16} />} href={fileUrl(c.csv_download_url)} external className="mb-3 w-full">
+          {t("download_csv_short")}
+        </PosKey>
+      )}
       <dl className="space-y-1.5">
         <div>
           <dt className="soft">{t("order_status")}</dt>
@@ -317,7 +342,7 @@ function ConfirmResult({ s }: { s: SessionView }) {
         </div>
         {c.pos_order_ref && (
           <div>
-            <dt className="soft">POS order ref</dt>
+            <dt className="soft">{t("pos_order_ref")}</dt>
             <dd className="break-all font-semibold">{c.pos_order_ref}</dd>
           </div>
         )}
@@ -333,6 +358,11 @@ function ConfirmResult({ s }: { s: SessionView }) {
         )}
       </dl>
       <div className="my-2 border-t-2 border-dashed border-[var(--rule)]" />
+      <ResultStory session={s} />
     </div>
   );
+}
+
+function ProofTag({ children, icon, tone = "neutral" }: { children: React.ReactNode; icon?: React.ReactNode; tone?: "neutral" | "good" | "warn" }) {
+  return <span className={`proof-tag proof-tag--${tone}`}>{icon}{children}</span>;
 }

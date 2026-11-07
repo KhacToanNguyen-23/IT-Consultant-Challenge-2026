@@ -31,9 +31,7 @@ export default function ImpactStrip({ session }: { session: SessionView }) {
 
   const analysed = Number(session.stage_timings_ms.total_ms);
   const cells: { value: string; label: string; testid: string }[] = [
-    { value: String(session.read_line_count), label: t("impact_read"), testid: "impact-read" },
     { value: Number.isFinite(analysed) && analysed > 0 ? `${Math.round(analysed)} ms` : "—", label: t("impact_analysed"), testid: "impact-analysed" },
-    { value: String(convertedLines(session.lines)), label: t("impact_converted"), testid: "impact-converted" },
     { value: `${zeroTouchLines(session.lines)}/${session.lines.length}`, label: t("impact_zero"), testid: "impact-zero" },
     { value: mmss(seconds), label: `${t("impact_time")} · ${t("impact_target")}`, testid: "impact-time" },
   ];

@@ -134,7 +134,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .pos-screen, .vfd { min-width: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .pos-ticket::before, .paper-tear { display: none; }
 .pos-feed { min-height: 0; flex: 1; overflow: auto; padding: 0; scrollbar-color: #c3ceda transparent; }
-.paper { min-height: 100%; background: var(--surface); color: var(--ink); font-size: 14px; }
+.paper { container-type: inline-size; min-height: 100%; background: var(--surface); color: var(--ink); font-size: 14px; }
 .paper--quotes { display: flex; flex-direction: column; }
 .paper--quotes > ul { flex: 1; }
 .paper-head { padding: 16px 20px 12px; border-bottom: 1px solid var(--line); }
@@ -146,7 +146,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .line-match-label { margin-top: 5px; color: #266b9c; font-size: 9px; font-weight: 750; letter-spacing: .07em; text-transform: uppercase; }
 
 /* Review table */
-.tline, .tline-head { gap: 6px 12px; padding-inline: 18px; }
+.tline, .tline-head { display: grid; grid-template-columns: 1.75rem minmax(0, 2.3fr) minmax(0, 1.1fr) minmax(0, 1.5fr) 6.5rem; align-items: start; gap: 6px 14px; padding-inline: 18px; }
 .tline-head { position: sticky; top: 0; z-index: 1; border-bottom: 1px solid var(--line); background: #f8fafc; padding-block: 10px; color: #526174; font-size: 12px; font-weight: 700; letter-spacing: .025em; text-transform: uppercase; }
 .tline { position: relative; cursor: pointer; border-bottom: 1px solid #edf1f5; border-left: 3px solid transparent; padding-block: 11px; padding-left: 15px; outline-offset: -3px; transition: background-color 100ms ease; }
 .tline:hover { background: #f7faff; }
@@ -215,6 +215,15 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .source-limits { color: #526174; font-size: 11px; }
 .source-limits summary { width: fit-content; cursor: pointer; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
 .source-limits p { max-width: 62ch; line-height: 1.45; }
+.intake-proof { border: 1px solid #d5e4ef; border-radius: 6px; background: #f4f9fd; padding: 9px 10px; color: #214c6b; }
+.intake-proof-main { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; line-height: 1.35; }
+.intake-proof details { margin: 5px 0 0 23px; color: #64748b; font-size: 11px; }
+.intake-proof summary { width: fit-content; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.intake-proof details p { max-width: 42ch; margin-top: 4px; line-height: 1.45; }
+.operation-proof { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 11px 18px 0; }
+.proof-tag { display: inline-flex; min-height: 26px; align-items: center; gap: 5px; border: 1px solid #d7e0e8; border-radius: 5px; background: #f8fafc; padding: 4px 8px; color: #43566b; font-size: 11px; font-weight: 650; line-height: 1.25; }
+.proof-tag--good { border-color: #b6dbc7; background: #f0f8f3; color: #185d3d; }
+.proof-tag--warn { border-color: #e8cc8b; background: #fff8e9; color: #744b00; }
 .receipt { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 16px; color: var(--ink); font-family: var(--font-sans); font-size: 13px; box-shadow: 0 2px 8px rgb(23 37 56 / 6%); animation: receipt-feed 350ms ease both; }
 @keyframes receipt-feed { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -370,7 +379,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .story-quick-sample { display: inline-flex; min-height: 30px; align-items: center; gap: 5px; border: 1px solid #9bc5e5; border-radius: 6px; background: #edf6ff; padding: 4px 8px; color: #174d79; font-size: 10px; font-weight: 700; cursor: pointer; }
 .story-quick-sample:hover { border-color: #5f9dce; background: #e2f0fc; }
 .story-sim { margin: 0; font-size: 11.5px; color: var(--ink-soft); }
-.story-impact { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.story-impact { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
 .story-impact > div { display: flex; min-width: 0; flex-direction: column; gap: 2px; border: 1px solid #dbe4ed; border-radius: 9px; background: #fbfcfe; padding: 8px 10px; }
 .story-impact strong { font-size: 17px; font-weight: 750; line-height: 1.1; color: #183b5c; }
 .story-impact span { font-size: 11px; font-weight: 600; line-height: 1.25; color: #64748b; }
