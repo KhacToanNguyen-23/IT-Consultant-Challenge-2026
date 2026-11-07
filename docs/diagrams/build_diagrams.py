@@ -235,7 +235,7 @@ def jr_page1():
         ("POS is down", "CSV export with the same reference; status NEEDS_MANUAL; the associate keys it into the legacy POS."),
     ]
     strip = ("Value shown on the receipt of every order",
-             "Sales rescued by substitutes · time from upload to Confirm · lines that needed no edit. Measured per order on simulated data; Round 1 targets are not claimed as results.")
+             "Sales rescued by substitutes · time from upload to Confirm. Measured per order on simulated data; Round 1 targets are not claimed as results.")
     return journey("User journey 1: at the counter, from list to confirmed order", "The associate serves the customer in person. SRS v2: UC1 to UC4, FR-001 to FR-020.", steps, alts, strip, 1)
 
 
