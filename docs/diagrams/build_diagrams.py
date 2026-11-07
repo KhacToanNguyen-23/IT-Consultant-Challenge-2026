@@ -136,15 +136,15 @@ def sys_page1():
     s += box(880, 560, 200, 90, "Legacy POS", ["Manual entry from the CSV"], fill="#eef0f3", stroke=GREY, dash=True, tcolor="#374151", r=2, sub="External entity · manual", lsize=11)
     # data flows
     s += arrow([(260, 375), (427, 375)])
-    s += label(343, 355, ["List · edits", "decisions · Confirm"])
+    s += label(343, 355, ["List · edits", "decisions · confirmation"])
     s += arrow([(434, 440), (260, 440)])
-    s += label(343, 462, ["Review table · options", "receipt · CSV · quote"])
+    s += label(343, 462, ["Review table · options", "order ref · CSV · quote"])
     s += arrow([(520, 190), (520, 266)], dash=True)
     s += label(405, 222, ["List · agreement", "(via the associate)"])
     s += arrow([(602, 266), (602, 190)], dash=True)
     s += label(614, 222, ["Quote · pick slip · reply", "(via the associate)"], anchor="start")
     s += arrow([(623, 275), (880, 275)], dash=True)
-    s += label(752, 262, ["Masked text only"])
+    s += label(752, 262, ["E-mail/phone-masked text"])
     s += arrow([(880, 310), (666, 310)], dash=True)
     s += label(773, 333, ["Extracted attributes"])
     s += arrow([(694, 415), (880, 415)])
@@ -273,7 +273,7 @@ def r1_band2(spans):
 
 def back_half(f, first_resolve_col):
     """Shared tail: all lines resolved? -> pick client + Confirm -> POS accepts? -> reference, or CSV."""
-    f.node("a6", 6, "A", "Picks client, then Confirm", "human", "FR-017-018")
+    f.node("a6", 6, "A", "Confirms the quote to the POS", "human", "FR-028")
     f.node("s7", 7, "M", "POS accepts?", "decision", shape="diamond")
     f.node("e7", 7, "E", "Writes CSV, manual entry", "fallback", "FR-019")
     f.node("a8", 8, "A", "Downloads CSV, keys it in", "fallback")
@@ -361,7 +361,7 @@ def jr_page2():
     f.node("a1", 1, "A", "Reviews lines, saves the quote", "human")
     f.node("s1", 1, "M", "Stores quote: price and stock snapshot", "rules", "FR-023-024")
     f.node("a2", 2, "A", "Sends reply and quote from own mailbox", "human")
-    f.node("c2", 2, "C", "Approves outside SiteDesk", "human", "FR-039")
+    f.node("c2", 2, "C", "Approves quote outside SiteDesk", "human", "FR-022")
     f.node("a3", 3, "A", "Records approval on the quote", "human", "FR-022")
     f.node("s3", 3, "M", "Approved, not expired?", "decision", shape="diamond")
     f.node("e3", 3, "E", "Blocked: cannot prepare or confirm", "fallback")
