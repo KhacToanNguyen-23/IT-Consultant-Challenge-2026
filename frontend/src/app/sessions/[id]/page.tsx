@@ -35,6 +35,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
   const [sourceOpen, setSourceOpen] = useState<boolean | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [blockerPage, setBlockerPage] = useState(0);
+  const [copied, setCopied] = useState(false);
   const opened = useRef(false);
 
   const load = useCallback(async () => {
@@ -159,7 +160,23 @@ export default function SessionPage({ params }: { params: { id: string } }) {
 
           {(s.ai_degraded || s.lines.some((l) => l.stock.status === "UNKNOWN") || error || (emailNeedsQuote && s.analyzed && !s.locked)) && (
             <div className="space-y-2 px-[18px] py-3">
-              {emailNeedsQuote && s.analyzed && !s.locked && <Notice tone="quote">{t("email_needs_quote")}</Notice>}
+              {emailNeedsQuote && s.analyzed && !s.locked && (
+                <Notice tone="quote">
+                  <span className="flex-1">{t("email_needs_quote")}</span>
+                  <button
+                    type="button"
+                    className="inspector-link flex-none"
+                    onClick={() => {
+                      navigator.clipboard?.writeText(buildReply(s)).then(() => {
+                        setCopied(true);
+                        window.setTimeout(() => setCopied(false), 2500);
+                      });
+                    }}
+                  >
+                    {copied ? t("reply_copied") : t("copy_reply")}
+                  </button>
+                </Notice>
+              )}
               {s.ai_degraded && (
                 <Notice tone="warn" icon={<AlertTriangle size={16} />}>
                   {t("ai_degraded_banner")}
@@ -361,4 +378,45 @@ function ConfirmResult({ s }: { s: SessionView }) {
 
 function ProofTag({ children, icon, tone = "neutral" }: { children: React.ReactNode; icon?: React.ReactNode; tone?: "neutral" | "good" | "warn" }) {
   return <span className={`proof-tag proof-tag--${tone}`}>{icon}{children}</span>;
+}
+
+
+/** Plain-text reply the associate sends from their own mail client (SiteDesk never sends e-mail). */
+function buildReply(s: SessionView): string {
+  const lines = [...s.lines].sort((a, b) => a.line_no - b.line_no);
+  const currency = lines.find((l) => l.currency)?.currency || "DKK";
+  const money = (n: number) => fmtMoney(n, currency).trim();
+  const say = (n: number | null | undefined, unit: string | null | undefined) => {
+    if (n == null || !unit) return "";
+    if (unit.startsWith("piece_")) return `${n} lengths of ${unit.slice(6)}`;
+    return `${n} ${unit}${n === 1 ? "" : "s"}`;
+  };
+  const qty = (l: SessionView["lines"][number]) => say(l.conversion.selling_quantity, l.conversion.selling_unit);
+  const name = (l: SessionView["lines"][number]) => l.final_name || l.parsed.name || l.source.text;
+  const short = (l: SessionView["lines"][number]) => l.line_status !== "CUSTOMER_ACCEPTED" && (l.stock.status === "OUT_OF_STOCK" || l.stock.status === "PARTIAL");
+  const unclear = lines.filter((l) => l.line_status === "NEEDS_CLARIFICATION");
+  const shortLines = lines.filter((l) => l.line_status !== "NEEDS_CLARIFICATION" && short(l));
+  const ok = lines.filter((l) => l.line_status !== "NEEDS_CLARIFICATION" && !short(l));
+  const out: string[] = ["Subject: Re: your material list", "", "Hi,", "", "Thanks for your list. Prices and stock are indicative; nothing is reserved until you confirm.", ""];
+  if (ok.length) {
+    out.push("Available:");
+    ok.forEach((l) => out.push(`- ${name(l)}: ${qty(l)}${lineAmount(l) != null ? `, ${money(lineAmount(l) as number)}` : ""}`));
+    out.push("");
+  }
+  if (shortLines.length) {
+    out.push("Short on stock, with a proposed alternative:");
+    shortLines.forEach((l) => {
+      const alt = l.alternatives?.[0];
+      const why = l.stock.status === "PARTIAL" ? `only ${l.stock.on_hand ?? 0} left` : "out of stock";
+      out.push(alt ? `- ${name(l)}: ${why}. Proposed: ${alt.name}, ${say(alt.needed_quantity, alt.selling_unit)} (${alt.total_price_delta >= 0 ? "+" : ""}${money(alt.total_price_delta)})` : `- ${name(l)}: ${why}, no safe alternative. Please advise.`);
+    });
+    out.push("");
+  }
+  if (unclear.length) {
+    out.push("Please clarify:");
+    unclear.forEach((l) => out.push(`- "${l.source.text}"`));
+    out.push("");
+  }
+  out.push("Please reply to confirm the quote and the alternatives.", "", "Best regards,", `${s.user_id} · ${s.store_id}`);
+  return out.join("\n");
 }

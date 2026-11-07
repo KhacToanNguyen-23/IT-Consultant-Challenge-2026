@@ -62,32 +62,25 @@ Hej Lars, her er listen fra Mikkel (tlf +45 31 22 44 66, mikkel@nordbyg.dk)
 
 **Phải thấy:** `POS_ACCEPTED` + mã tham chiếu. SKU chỉ đổi sau khi khách đồng ý.
 
-**Hành trình 2: email → báo giá** — nút **E-mail quote**, thẻ **Customer e-mail**, hoặc dán:
-```
-Hej,
+**Hành trình 2: email → báo giá** (dùng hộp thư giả để cảnh này khác hẳn luồng tại quầy)
 
-120 m konstruktionstræ 45x95 C24
-60 m2 rockwool 95 mm
-10 plader vådrum gips 12.5 mm
-6 sække cement 25 kg
-20 stk terrassebræt 28x120 trykimp. 4.2m
+**Chuẩn bị:** mở 2 tab cạnh nhau.
+- **Tab A (hộp thư giả):** `file:///D:/Project/Personal/IT-Consultant-Challenge-2026/docs/demo/mailbox.html`. Đạo cụ demo, ghi rõ "simulated", không gửi gì thật.
+- **Tab B:** SiteDesk, chế độ **E-mail quote**.
 
-Mvh
-Jens Hansen, Nordbyg ApS
-Tlf +45 22 33 44 55 · jens@nordbyg.dk
-```
-**Khách không có mặt ở bước phân tích, nên KHÔNG bấm Customer accepts lúc này.** Hàng thay thế chỉ được khách chấp nhận khi họ đến lấy hàng.
-1. **Read list** → **Analyze**. Các dòng thay thế vẫn ở trạng thái "đề xuất" (đỏ). Giao diện hiện banner tím "E-mail request: save the quote first…", nút Confirm bị khóa, và nút ở khung bên phải ghi **"Record customer agreement"** (chỉ dùng khi khách đã đồng ý sẵn qua email/điện thoại; **bỏ qua** trong demo).
-2. **Save quote** (F8). Báo giá `BG-DK-xxxx` lưu được dù còn dòng thay thế chưa chấp nhận.
-3. **Record sent** → **Record approval** (kênh E-mail): khách đã duyệt báo giá *bên ngoài* hệ thống.
-4. *(tùy chọn)* Mở **Demo: simulate price/stock changes** → chọn SKU → **New stock** nhỏ → **Apply**.
-5. **Re-check stock & price**. Trạng thái chuyển sang **Preparing**, hiện dòng đỏ "Not enough stock → substitute/backorder" và nút **Resolve 2 short line(s)**. Nút **Confirm** chưa có.
-6. Bấm **Resolve 2 short line(s)** (là liên kết, sang màn rà soát). Khách đã đến quầy nên nút trở lại là **Customer accepts**: bấm cho từng dòng.
-7. Bấm **Confirm order to POS**. Cuối cùng bấm **Reset** trong khung Demo để trả dữ liệu.
+**Các bước**
+1. Tab A: mở email của Jens "Materialer til fredag" → bấm **Copy email text**.
+2. Tab B: bấm **E-mail quote**, nhấp vào ô nhập, **Ctrl+V** → **Read list** → **Analyze**. **Không** bấm Record customer agreement (khách chưa trả lời).
+3. Chỉ banner tím "E-mail request: save the quote first…", hai dòng đỏ thiếu hàng kèm đề xuất (rockwool, vådrum).
+4. Bấm **Copy reply to customer** (trong banner tím). Thư soạn sẵn liệt kê hàng có sẵn, hàng thiếu kèm đề xuất thay và chênh giá.
+5. Tab A: **Reply** → **Ctrl+V** → **Send**. Sau 1,5 giây khách trả lời "Det er fint. Vi tager alternativerne…".
+6. Tab B: **Save quote** (F8) → **Record sent** (báo giá đã gửi) → **Record approval** (kênh E-mail, khách đã đồng ý) .
+7. *(tùy chọn)* mở **Demo: simulate price/stock changes** → chọn SKU → **New stock** nhỏ → **Apply**.
+8. **Re-check stock & price** → bấm **Resolve 2 short line(s)** → khách đến lấy hàng: **Customer accepts** từng dòng → **Confirm order to POS** → **Reset** trong khung Demo.
 
-**Phải thấy:** báo giá lưu không chặn bởi hàng thay thế; chữ "this quote does not reserve items"; sau Re-check mới biết dòng nào thiếu; SKU chỉ đổi khi khách chấp nhận lúc nhận hàng; `Sales rescued` ghi nhận ở biên nhận.
-**Đừng đọc số thời gian của luồng này:** đồng hồ tính từ lúc upload đến Confirm, gồm cả khoảng chờ giữa các bước.
-**Nói:** "Journey one: counter, end to end. Journey two: an e-mail becomes a saved quote, the customer approves it outside the system, and the substitutes are only accepted when the customer arrives, after a live re-check."
+**Phải thấy:** một chuỗi thật: email khách → SiteDesk đọc, che, kiểm tồn → thư báo lại có đề xuất → khách trả lời → báo giá → kiểm lại khi nhận hàng → đơn. SiteDesk **không gửi email**: nhân viên gửi từ hộp thư của họ.
+**Đừng đọc số thời gian của luồng này** (đồng hồ gồm cả khoảng chờ).
+**Nói:** "Journey one: counter, end to end. Journey two: a customer e-mail arrives. SiteDesk reads it, finds two short lines and drafts a reply with alternatives. The associate sends it, the customer agrees, and the substitutes are only accepted when the customer arrives, after a live re-check."
 
 ## M3 · Value
 

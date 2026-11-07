@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Counter inbox (demo, simulated)</title>
+<style>
+  :root { --line:#dde3ea; --ink:#18212b; --soft:#64748b; --blue:#1769aa; --bg:#f3f6f9; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 "Segoe UI", system-ui, sans-serif; color:var(--ink); background:var(--bg); }
+  header { display:flex; align-items:center; gap:12px; padding:12px 20px; background:#fff; border-bottom:1px solid var(--line); }
+  header b { font-size:17px; }
+  header .tag { margin-left:auto; font-size:12px; font-weight:700; color:#8a5a00; background:#fff4d6; border:1px solid #f0d190; border-radius:999px; padding:3px 10px; }
+  main { display:grid; grid-template-columns:340px 1fr; height:calc(100vh - 53px); }
+  nav { border-right:1px solid var(--line); background:#fff; overflow:auto; }
+  .item { padding:12px 18px; border-bottom:1px solid var(--line); cursor:pointer; }
+  .item:hover { background:#f6f9fc; }
+  .item.active { background:#e8f2fb; box-shadow:inset 3px 0 0 var(--blue); }
+  .item .from { font-weight:700; }
+  .item.unread .from, .item.unread .subj { font-weight:800; }
+  .item .subj { color:var(--ink); }
+  .item .snip { color:var(--soft); font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  section { padding:24px 32px; overflow:auto; }
+  .meta { color:var(--soft); font-size:13px; margin-bottom:4px; }
+  h1 { font-size:20px; margin:0 0 6px; }
+  pre { margin:16px 0; padding:16px 18px; background:#fff; border:1px solid var(--line); border-radius:10px; font:14px/1.6 Consolas, "Courier New", monospace; white-space:pre-wrap; }
+  button { font:inherit; font-weight:700; padding:9px 16px; border-radius:8px; border:1px solid #9bc5e5; background:#fff; color:var(--blue); cursor:pointer; }
+  button.primary { background:var(--blue); border-color:var(--blue); color:#fff; }
+  button:hover { filter:brightness(.97); }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .ok { color:#157347; font-weight:700; }
+  textarea { width:100%; min-height:260px; padding:14px; border:1px solid var(--line); border-radius:10px; font:14px/1.6 Consolas, monospace; }
+  input { width:100%; padding:9px 12px; border:1px solid var(--line); border-radius:8px; font:inherit; margin-bottom:8px; }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<header>
+  <b>Counter inbox</b><span style="color:var(--soft)">counter.dk-cph-04@store.example</span>
+  <span class="tag">DEMO MAILBOX · SIMULATED · nothing is really sent</span>
+</header>
+<main>
+  <nav id="list"></nav>
+  <section id="view"></section>
+</main>
+
+<script>
+const customerEmail = [
+  "Hej,",
+  "",
+  "120 m konstruktionstræ 45x95 C24",
+  "60 m2 rockwool 95 mm",
+  "10 plader vådrum gips 12.5 mm",
+  "6 sække cement 25 kg",
+  "20 stk terrassebræt 28x120 trykimp. 4.2m",
+  "",
+  "Mvh",
+  "Jens Hansen, Nordbyg ApS",
+  "Tlf +45 22 33 44 55 · jens@nordbyg.dk"
+].join("\n");
+
+const mails = [
+  { id: 1, from: "Jens Hansen", addr: "jens@nordbyg.dk", subj: "Materialer til fredag", time: "07:02", unread: true, body: customerEmail, kind: "request" }
+];
+let current = 1;
+
+function esc(s) { return s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
+
+function renderList() {
+  document.getElementById("list").innerHTML = mails.slice().reverse().map(m =>
+    `<div class="item ${m.id === current ? "active" : ""} ${m.unread ? "unread" : ""}" onclick="openMail(${m.id})">
+       <div class="from">${esc(m.from)} <span style="float:right;color:var(--soft);font-weight:400;font-size:12px">${m.time}</span></div>
+       <div class="subj">${esc(m.subj)}</div>
+       <div class="snip">${esc(m.body.replace(/\n+/g, " "))}</div></div>`).join("");
+}
+
+function openMail(id) {
+  current = id;
+  const m = mails.find(x => x.id === id);
+  m.unread = false;
+  renderList();
+  const view = document.getElementById("view");
+  if (m.kind === "request") {
+    view.innerHTML = `<div class="meta">From: ${esc(m.from)} &lt;${esc(m.addr)}&gt; · ${m.time}</div>
+      <h1>${esc(m.subj)}</h1>
+      <pre id="body">${esc(m.body)}</pre>
+      <div class="row">
+        <button class="primary" onclick="copyBody()">Copy email text</button>
+        <button onclick="startReply()">Reply</button>
+        <span id="msg" class="ok"></span>
+      </div>
+      <div id="compose" class="hidden" style="margin-top:22px">
+        <div class="meta">To: ${esc(m.addr)}</div>
+        <input id="subject" value="Re: ${esc(m.subj)}">
+        <textarea id="replybody" placeholder="Paste the reply drafted by SiteDesk here"></textarea>
+        <div class="row" style="margin-top:10px"><button class="primary" onclick="sendReply()">Send</button><span id="sent" class="ok"></span></div>
+      </div>`;
+  } else {
+    view.innerHTML = `<div class="meta">From: ${esc(m.from)} &lt;${esc(m.addr)}&gt; · ${m.time}</div><h1>${esc(m.subj)}</h1><pre>${esc(m.body)}</pre>`;
+  }
+}
+
+function copyBody() {
+  navigator.clipboard.writeText(mails[0].body).then(() => { document.getElementById("msg").textContent = "Copied. Paste it into SiteDesk."; });
+}
+function startReply() { document.getElementById("compose").classList.remove("hidden"); document.getElementById("replybody").focus(); }
+function sendReply() {
+  const txt = document.getElementById("replybody").value.trim();
+  if (!txt) { document.getElementById("sent").textContent = "Nothing to send."; return; }
+  document.getElementById("sent").textContent = "Sent to jens@nordbyg.dk (simulated).";
+  setTimeout(() => {
+    mails.push({ id: 2, from: "Jens Hansen", addr: "jens@nordbyg.dk", subj: "Re: Re: Materialer til fredag", time: "07:41", unread: true, kind: "reply",
+      body: "Hej,\n\nDet er fint. Vi tager alternativerne og henter fredag kl. 07:00.\n\nMvh\nJens" });
+    renderList();
+  }, 1500);
+}
+
+renderList(); openMail(1);
+</script>
+</body>
+</html>

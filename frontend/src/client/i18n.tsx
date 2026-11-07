@@ -143,6 +143,8 @@ const D = {
   customer_agreed_email: { en: "Record customer agreement", vi: "Ghi nhận khách đã đồng ý" },
   email_substitute_note: { en: "The customer is not at the counter. Record this only if they already agreed by e-mail or phone; otherwise accept it at pick-up.", vi: "Khách chưa có mặt. Chỉ ghi nhận nếu khách đã đồng ý qua email hoặc điện thoại; nếu chưa, chấp nhận khi họ đến lấy hàng." },
   email_needs_quote: { en: "E-mail request: save the quote first. The customer approves it outside SiteDesk, then you confirm at pick-up.", vi: "Yêu cầu qua email: lưu báo giá trước. Khách duyệt ngoài SiteDesk, rồi bạn Confirm khi họ đến lấy hàng." },
+  copy_reply: { en: "Copy reply to customer", vi: "Sao chép thư báo lại khách" },
+  reply_copied: { en: "Reply copied", vi: "Đã sao chép thư" },
   walk_in_short: { en: "Walk-in", vi: "Khách lẻ" },
   walk_in: { en: "Walk-in customer", vi: "Khách lẻ (walk-in)" },
   cannot_confirm: { en: "Resolve {n} line(s) before confirming", vi: "Xử lý {n} dòng trước khi xác nhận" },

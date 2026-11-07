@@ -161,7 +161,7 @@ function Resolve({ session, line, busy, select }: { session: SessionView; line: 
       {clarify && line.match.candidates.length === 0 && <Notice tone="warn">{t("line_no_candidates")}</Notice>}
       {!!(reasons?.matched?.length || reasons?.mismatched?.length || reasons?.missing?.length || reasons?.ambiguous || line.llm_attributes?.length) && (
         <details className="inspector-details">
-          <summary className="cursor-pointer text-xs font-semibold text-slate-600">{t("why_title")}</summary>
+          <summary className="inspector-link">{t("why_title")}</summary>
           <div className="mt-2 space-y-1 text-xs leading-relaxed">
             {reasons?.matched?.length ? <div>{t("why_matched", { list: list(reasons.matched) })}</div> : null}
             {reasons?.mismatched?.length ? <div className="text-red-800">{t("why_mismatched", { list: list(reasons.mismatched) })}</div> : null}
@@ -247,7 +247,7 @@ function Alternatives({ line, busy, emailPending, onAccept, onReject }: { line: 
   return (
     <div className="space-y-2">
       <Notice tone="bad">
-        <b>{line.stock.status === "PARTIAL" ? t("partial_need", { have: line.stock.on_hand ?? 0, need: line.conversion.selling_quantity ?? "?" }) : t("out_here")}</b> {t("safe_subs")}
+        <b>{line.stock.status === "PARTIAL" ? t("partial_need", { have: line.stock.on_hand ?? 0, need: line.conversion.selling_quantity ?? "?" }) : t("out_here")}</b>. {t("safe_subs")}
       </Notice>
       {emailPending && <Notice tone="quote">{t("email_substitute_note")}</Notice>}
       <ul className="space-y-2">
@@ -261,7 +261,7 @@ function Alternatives({ line, busy, emailPending, onAccept, onReject }: { line: 
               {fmtMoney(a.total_price_delta, a.currency)}
             </div>
             <div className="mt-0.5 text-xs soft">{a.reasons.join(", ")}</div>
-            <PosKey size="sm" tone="go" icon={<Check size={16} />} disabled={busy} onClick={() => onAccept(a.sku)} className="mt-2 w-full">
+            <PosKey size="sm" tone={emailPending ? "quote" : "go"} icon={<Check size={16} />} disabled={busy} onClick={() => onAccept(a.sku)} className="mt-2 w-full">
               {emailPending ? t("customer_agreed_email") : t("customer_accepts")}
             </PosKey>
           </li>
