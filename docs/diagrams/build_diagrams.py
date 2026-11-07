@@ -85,6 +85,30 @@ def document(title, pages):
     return f"<!doctype html><html lang='en'><head><meta charset='utf-8'><title>{title}</title><style>{css}</style></head><body>{''.join(pages)}</body></html>"
 
 
+
+def chip(x, y, color, text, stroke=None, dash=False, w=11):
+    d = ' stroke-dasharray="3 2"' if dash else ""
+    return f'<rect x="{x}" y="{y - 10}" width="{w}" height="{w}" rx="3" fill="{color}" stroke="{stroke or color}" stroke-width="1.5"{d}/>' + tx(x + w + 6, y, text, 11, 500, "#334155")
+
+
+def legend_system():
+    y = 757
+    s = chip(40, y, NAVY, "Person") + chip(105, y, BLUE, "SiteDesk part") + chip(205, y, GREEN, "Data store") + chip(285, y, GREY, "External, simulated")
+    s += chip(425, y, "#eef0f3", "External, optional or manual", stroke=GREY, dash=True)
+    s += tx(1083, y, "FR = requirement in the team's SRS v2", 11, 500, "#334155", "end")
+    return s
+
+
+def legend_journey():
+    y = 757
+    s = chip(40, y, "#ede7fb", "AI-assisted (local embeddings)", stroke="#9b87d8", w=13)
+    s += chip(300, y, "#dbe9f9", "Hard rules (deterministic)", stroke="#6f9ad0", w=13)
+    s += chip(480, y, "#e8f4ec", "Human decision or action", stroke="#8fc3a0", w=13)
+    s += chip(650, y, "#fde7c7", "R1 = Round 1 problem", stroke="#e8a64a", w=13)
+    s += tx(1083, y, "FR = requirement in the team's SRS v2", 11, 500, "#334155", "end")
+    return s
+
+
 # ============================================================ SYSTEM DIAGRAM
 def sys_page1():
     s = ""
@@ -117,6 +141,7 @@ def sys_page1():
     s += note(40, 625, 345, 100, "MVP SCOPE", ["Sign-in is simulated inside SiteDesk (not SSO).", "Embeddings run locally; the LLM is optional.", "Prices, stock and customers come from mock-pos."])
     s += note(400, 625, 345, 100, "DATA LIMIT", ["A regex masks e-mail addresses and phone numbers", "before any AI call. Names, addresses and other", "personal data in free text are not guaranteed removed."])
     s += note(760, 625, 345, 100, "OUTCOME", ["POS accepts: POS_ACCEPTED + reference.", "POS 503 / timeout: CSV, NEEDS_MANUAL; the POS", "has not accepted the order."])
+    s += legend_system()
     return page_svg(s, "SiteDesk MVP: system context (C4 level 1)", "Who uses SiteDesk, which systems sit outside it, and what is exchanged. SRS v2 §3, §7.", 1, 2, "System Diagram")
 
 
@@ -127,8 +152,8 @@ def sys_page2():
     s += tx(298, 132, "SiteDesk · containers", 13, 700, NAVY)
     s += box(305, 160, 180, 120, "Web UI", ["Intake, review by exception,", "quotes, print, demo toggles"], fill=BLUE, sub="Next.js 14", lsize=11)
     s += box(590, 150, 235, 320, "Core API", [
-        "Parsing and PII masking", "Hybrid matcher + hard rules", "Unit conversion, stock, alternatives",
-        "Quotes, orders, idempotency", "CSV export when the POS is down", "Telemetry and KPI queries", "",
+        "Parse + PII masking · FR-001/002", "Matcher + hard rules · FR-006 to 009", "Convert, stock, alternatives · FR-011 to 016",
+        "Quotes, orders, idempotency · FR-018 to 028", "CSV when the POS is down · FR-019", "Telemetry, KPI queries · FR-029 to 031", "",
         "In-process modules:", "AI Gateway · Local Connector"], fill=BLUE, sub="FastAPI (Python)", lsize=11)
     s += '<rect x="606" y="396" width="203" height="58" rx="8" fill="#e9f3ff" stroke="#9bc5e5" stroke-width="2"/>'
     s += tx(707, 418, "Local embedding model", 12, 700, NAVY, "middle")
@@ -150,38 +175,42 @@ def sys_page2():
     s += note(40, 625, 345, 100, "CONTAINER RULE", ["The AI Gateway and the Local Connector are in-process", "modules of the FastAPI core, not separate containers.", "The vector index lives inside PostgreSQL (pgvector)."])
     s += note(400, 625, 345, 100, "AI AND PRIVACY", ["Matching runs on local embeddings plus hard rules,", "so the AI path needs no external service.", "The LLM, when enabled, only sees masked text."])
     s += note(760, 625, 345, 100, "FALLBACK", ["POS 503 / timeout: the connector writes a CSV and", "the order is marked NEEDS_MANUAL, not POS_ACCEPTED.", "AI off: rules and manual catalog search continue."])
+    s += legend_system()
     return page_svg(s, "SiteDesk MVP: containers (C4 level 2)", "Deployable parts and the data store, and how they talk to each other and to the outside. Run locally with Docker Compose.", 2, 2, "System Diagram")
 
 
 # ============================================================ USER JOURNEY
-LANES = [("Customer", 104), ("Counter associate", 262), ("SiteDesk", 420)]
-LANE_H = 158
+LANES = [("Customer", 98), ("Counter associate", 240), ("SiteDesk", 382)]
+LANE_H = 142
 X0, BW, GAP = 60, 104, 13
+ROLE = {"human": ("#e8f4ec", "#8fc3a0"), "rules": ("#dbe9f9", "#6f9ad0"), "ai": ("#ede7fb", "#9b87d8")}
+
+
+def colx(c):
+    return X0 + c * (BW + GAP)
 
 
 def lanes():
     s = ""
     for i, (name, y) in enumerate(LANES):
-        s += f'<rect x="20" y="{y}" width="1085" height="{LANE_H}" fill="{"#f6f9fd" if i % 2 == 0 else "#eef4fb"}" stroke="#d3deec"/>'
+        s += f'<rect x="20" y="{y}" width="1085" height="{LANE_H}" fill="{"#f8fafd" if i % 2 == 0 else "#f1f5fb"}" stroke="#d3deec"/>'
         s += f'<rect x="20" y="{y}" width="30" height="{LANE_H}" fill="{NAVY}"/>'
         s += f'<text transform="translate(41,{y + LANE_H / 2}) rotate(-90)" font-size="12.5" font-weight="700" fill="#fff" text-anchor="middle">{esc(name)}</text>'
     return s
 
 
-def step(col, lane, n, text, tag, kind="sys", bh=136):
-    x = X0 + col * (BW + GAP)
+def step(col, lane, n, text, tag, role, bh=124):
+    x = colx(col)
     y = LANES[lane][1] + (LANE_H - bh) / 2
-    fill = {"cust": "#e8f4ec", "assoc": "#e6effa", "sys": "#dbe9f9"}[kind]
-    stroke = {"cust": "#8fc3a0", "assoc": "#8fb3dd", "sys": "#6f9ad0"}[kind]
-    s = f'<rect x="{x}" y="{y}" width="{BW}" height="{bh}" rx="8" fill="{fill}" stroke="{stroke}" stroke-width="1.6"/>'
+    fill, stroke = ROLE[role]
+    s = f'<rect x="{x}" y="{y}" width="{BW}" height="{bh}" rx="8" fill="{fill}" stroke="{stroke}" stroke-width="1.8"/>'
     s += f'<circle cx="{x + 12}" cy="{y + 12}" r="10" fill="{NAVY}"/>' + tx(x + 12, y + 16, str(n), 11.5, 800, "#fff", "middle")
-    s += tx(x + 8, y + 38, wrapped(text, 15), 11, 500, "#17202c", "start", 13.2)
-    tl = wrapped(tag, 17)[:2]
-    s += tx(x + 8, y + bh - 8 - (len(tl) - 1) * 11.5, tl, 10.5, 700, "#1f5f9c", "start", 11.5)
+    s += tx(x + 8, y + 36, wrapped(text, 15), 11, 500, "#17202c", "start", 13)
+    s += tx(x + 8, y + bh - 8, tag, 10.5, 700, "#1f4f86")
     return s, (x, y, BW, bh)
 
 
-def connect(a, b, col_a, col_b):
+def connect(a, b):
     xa, ya, wa, ha = a
     xb, yb, wb, hb = b
     x1, y1 = xa + wa, ya + ha / 2
@@ -192,42 +221,60 @@ def connect(a, b, col_a, col_b):
     return arrow([(x1, y1), (mid, y1), (mid, y2), (x2, y2)])
 
 
-def journey(title, subtitle, steps, alts, strip, page_no):
+def r1_band(spans):
+    y, h = 536, 40
+    s = f'<rect x="20" y="{y}" width="1085" height="{h}" fill="#fff8ec" stroke="#f0d3a0"/>'
+    s += f'<rect x="20" y="{y}" width="30" height="{h}" fill="#e8a64a"/>' + tx(35, y + 25, "R1", 12, 800, "#fff", "middle")
+    for c1, c2, text in spans:
+        x = colx(c1)
+        w = colx(c2) + BW - x
+        s += f'<rect x="{x}" y="{y + 5}" width="{w}" height="{h - 10}" rx="6" fill="#fde7c7" stroke="#e8a64a"/>'
+        lines = wrapped(text, int((w - 12) / 5.6))[:2]
+        s += tx(x + w / 2, y + 19 if len(lines) == 1 else y + 16, lines, 10.5, 600, "#7a4300", "middle", 11.5)
+    return s
+
+
+def journey(title, subtitle, steps, spans, alts, strip, page_no):
     s = lanes()
     rects = []
-    for col, (lane, text, tag, kind) in enumerate(steps):
-        frag, r = step(col, lane, col + 1, text, tag, kind)
+    for col, (lane, text, tag, role) in enumerate(steps):
+        frag, r = step(col, lane, col + 1, text, tag, role)
         s += frag
         rects.append(r)
     for i in range(len(rects) - 1):
-        s += connect(rects[i], rects[i + 1], i, i + 1)
-    # alternative paths
+        s += connect(rects[i], rects[i + 1])
+    s += r1_band(spans)
     s += tx(20, 598, "Alternative paths and guardrails", 13, 800, AMBER)
     n = len(alts)
     wdt = (1085 - (n - 1) * 12) / n
     for i, (head, body) in enumerate(alts):
         x = 20 + i * (wdt + 12)
-        s += f'<rect x="{x}" y="608" width="{wdt}" height="72" rx="8" fill="#fff4e5" stroke="#f0b866"/>'
-        s += tx(x + 10, 626, head, 12, 800, "#8a4b00")
-        s += tx(x + 10, 643, wrapped(body, int((wdt - 20) / 5.7)), 11, 400, "#3b2a10", "start", 13.6)
-    s += f'<rect x="20" y="690" width="1085" height="58" rx="8" fill="#e8f4ec" stroke="#8fc3a0"/>'
-    s += tx(32, 708, strip[0], 12, 800, "#1f6b3f")
-    s += tx(32, 725, wrapped(strip[1], 165), 11, 400, "#1f3a2a", "start", 13.4)
+        s += f'<rect x="{x}" y="606" width="{wdt}" height="70" rx="8" fill="#fff4e5" stroke="#f0b866"/>'
+        s += tx(x + 10, 624, head, 12, 800, "#8a4b00")
+        s += tx(x + 10, 641, wrapped(body, int((wdt - 20) / 5.7)), 11, 400, "#3b2a10", "start", 13.4)
+    s += '<rect x="20" y="686" width="1085" height="56" rx="8" fill="#e8f4ec" stroke="#8fc3a0"/>'
+    s += tx(32, 704, strip[0], 12, 800, "#1f6b3f")
+    s += tx(32, 721, wrapped(strip[1], 165), 11, 400, "#1f3a2a", "start", 13.4)
+    s += legend_journey()
     return page_svg(s, title, subtitle, page_no, 2, "User Journey")
 
 
 def jr_page1():
     steps = [
-        (0, "Hands over the list (PDF, pasted text or e-mail text)", "UC1", "cust"),
-        (1, "Uploads or pastes it, then Read list", "FR-001", "assoc"),
-        (2, "Masks e-mail and phone; reads every line, keeps unreadable ones", "FR-002 · 005", "sys"),
-        (2, "Matches SKUs, converts units, checks live stock", "FR-006 to 014", "sys"),
-        (1, "Reviews exceptions first; Confirm blocked until all are resolved", "FR-010", "assoc"),
-        (2, "Short or out of stock: safe alternative with price difference", "FR-015", "sys"),
-        (0, "Accepts or declines the alternative", "FR-016", "cust"),
-        (1, "Chooses client or walk-in, then Confirm", "FR-017 · 018", "assoc"),
-        (2, "POS accepts: reference. POS down: CSV, same reference", "FR-019 · 037", "sys"),
+        (0, "Hands over the list (PDF, pasted or e-mail text)", "UC1", "human"),
+        (1, "Uploads or pastes it, then Read list", "FR-001 intake", "human"),
+        (2, "Masks e-mail and phone; reads every line, keeps unreadable ones", "FR-002 masking", "rules"),
+        (2, "Matches SKUs by meaning, converts units, checks live stock", "FR-006-014 match", "ai"),
+        (1, "Reviews exceptions; Confirm blocked until all resolved", "FR-010 gate", "human"),
+        (2, "Short or out of stock: safe alternative with price difference", "FR-015 options", "rules"),
+        (0, "Accepts or declines the alternative", "FR-016 consent", "human"),
+        (1, "Chooses client or walk-in, then Confirm", "FR-017-018 order", "human"),
+        (2, "POS accepts: reference. POS down: CSV, same reference", "FR-019 POS or CSV", "rules"),
     ]
+    spans = [(1, 3, "Manual re-keying: every line typed by hand, about 12 min per list (Round 1 estimate)"),
+             (4, 4, "Shift-dependent advice"),
+             (5, 6, "Lost sales: \"sorry, out of stock\""),
+             (7, 8, "Fragmented systems: one connector, CSV fallback")]
     alts = [
         ("AI is off", "Hard rules and manual catalog search keep the counter running; suggestions are labelled rule-based (FR-003, 033)."),
         ("Line is not an order line", "The associate removes it (title, greeting). Confirm is refused when the last line would go."),
@@ -236,21 +283,25 @@ def jr_page1():
     ]
     strip = ("Value shown on the receipt of every order",
              "Sales rescued by substitutes · time from upload to Confirm. Measured per order on simulated data; Round 1 targets are not claimed as results.")
-    return journey("User journey 1: at the counter, from list to confirmed order", "The associate serves the customer in person. SRS v2: UC1 to UC4, FR-001 to FR-020.", steps, alts, strip, 1)
+    return journey("User journey 1: at the counter, from list to confirmed order", "The associate serves the customer in person. SRS v2: UC1 to UC4, FR-001 to FR-020.", steps, spans, alts, strip, 1)
 
 
 def jr_page2():
     steps = [
-        (0, "Sends the material list by e-mail", "UC5", "cust"),
-        (1, "Copies the e-mail text into SiteDesk (E-mail quote)", "FR-022", "assoc"),
-        (2, "Masks, matches, checks stock; short lines get alternatives", "FR-006 to 015", "sys"),
-        (1, "Copy reply to customer; sends it from own mailbox", "SiteDesk sends no e-mail", "assoc"),
-        (0, "Agrees by e-mail or phone, outside SiteDesk", "FR-039", "cust"),
-        (2, "Save quote: price and stock snapshot, not reserved", "FR-023 · 024 · 040", "sys"),
-        (1, "Record sent, then Record approval (channel)", "FR-022", "assoc"),
-        (2, "At pick-up: re-check live stock and price, show changes", "FR-025", "sys"),
-        (1, "Customer accepts substitutes; Pick slip; Confirm to POS or CSV", "FR-026 · 028", "assoc"),
+        (0, "Sends the material list by e-mail", "UC5", "human"),
+        (1, "Copies the e-mail text into SiteDesk (E-mail quote)", "FR-022 e-mail", "human"),
+        (2, "Masks, matches, checks stock; short lines get alternatives", "FR-006-015 match", "ai"),
+        (1, "Copy reply to customer; sends it from own mailbox", "no e-mail sent", "human"),
+        (0, "Agrees by e-mail or phone, outside SiteDesk", "FR-039 consent", "human"),
+        (2, "Save quote: price and stock snapshot, not reserved", "FR-023-024 quote", "rules"),
+        (1, "Record sent, then Record approval (channel)", "FR-022 approval", "human"),
+        (2, "At pick-up: re-check live stock and price, show changes", "FR-025 re-check", "rules"),
+        (1, "Customer accepts substitutes; Pick slip; Confirm to POS or CSV", "FR-026-028", "human"),
     ]
+    spans = [(1, 2, "Manual re-keying of e-mailed lists"),
+             (3, 4, "Customers wait for answers; advice depends on the shift"),
+             (5, 7, "Stock changes between order and pick-up cause wrong picks and re-deliveries"),
+             (8, 8, "Fragmented systems")]
     alts = [
         ("No quote, no Confirm", "An e-mail request cannot be confirmed without its quote (QUOTE_REQUIRED)."),
         ("No approval, no Prepare", "Sending the quote is not approval: Prepare is refused until the customer's approval is recorded."),
@@ -259,7 +310,7 @@ def jr_page2():
     ]
     strip = ("Why this journey matters",
              "Nothing is reserved between the quote and the pick-up, so the live re-check is what keeps promises honest. The yard can prepare with the Pick slip before the customer arrives (Round 1, 07:00 pre-pick).")
-    return journey("User journey 2: e-mail request to pre-order and pick-up", "The customer is not at the counter. SRS v2: UC5, FR-022 to FR-028, FR-039 and FR-040.", steps, alts, strip, 2)
+    return journey("User journey 2: e-mail request to pre-order and pick-up", "The customer is not at the counter. SRS v2: UC5, FR-022 to FR-028, FR-039 and FR-040.", steps, spans, alts, strip, 2)
 
 
 if __name__ == "__main__":
