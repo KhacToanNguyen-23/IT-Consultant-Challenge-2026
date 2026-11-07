@@ -81,6 +81,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
   const walkIn = customers.find((c) => c.customer_type === "B2C_WalkIn")?.client_id;
   const effectiveClient = clientId || walkIn || "";
   const canConfirmQuote = !s.quote || s.quote.status === "PREPARING";
+  const emailNeedsQuote = s.input_type === "email" && !s.quote;
   const line = s.lines.find((l) => l.line_no === selected) || null;
   const blockerNos = s.blockers.map((b) => b.line_no);
   const showSource = sourceOpen ?? !s.analyzed;
@@ -156,8 +157,9 @@ export default function SessionPage({ params }: { params: { id: string } }) {
             </div>
           )}
 
-          {(s.ai_degraded || s.lines.some((l) => l.stock.status === "UNKNOWN") || error) && (
+          {(s.ai_degraded || s.lines.some((l) => l.stock.status === "UNKNOWN") || error || (emailNeedsQuote && s.analyzed && !s.locked)) && (
             <div className="space-y-2 px-[18px] py-3">
+              {emailNeedsQuote && s.analyzed && !s.locked && <Notice tone="quote">{t("email_needs_quote")}</Notice>}
               {s.ai_degraded && (
                 <Notice tone="warn" icon={<AlertTriangle size={16} />}>
                   {t("ai_degraded_banner")}
@@ -294,7 +296,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                 {t("analyze")}
               </PosKey>
             ) : (
-              <PosKey key="confirm" hotkey="F9" tone="go" icon={<CheckCircle2 size={18} />} busy={busy === "confirm"} disabled={!!busy || s.blockers.length > 0 || !canConfirmQuote || !effectiveClient} onClick={confirm}>
+              <PosKey key="confirm" hotkey="F9" tone="go" icon={<CheckCircle2 size={18} />} busy={busy === "confirm"} disabled={!!busy || s.blockers.length > 0 || !canConfirmQuote || emailNeedsQuote || !effectiveClient} onClick={confirm}>
                 {t("confirm_send")}
               </PosKey>
             ),

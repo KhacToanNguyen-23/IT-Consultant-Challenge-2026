@@ -130,7 +130,7 @@ function Resolve({ session, line, busy, select }: { session: SessionView; line: 
 
   return (
     <div className="space-y-3">
-      {substitute && <Alternatives line={line} busy={busy} onAccept={(sku) => select(sku, "SUBSTITUTION_ACCEPTED")} onReject={(reason) => select(line.match.sku!, "SUBSTITUTION_REJECTED", reason)} />}
+      {substitute && <Alternatives line={line} busy={busy} emailPending={session.input_type === "email" && session.quote?.status !== "PREPARING"} onAccept={(sku) => select(sku, "SUBSTITUTION_ACCEPTED")} onReject={(reason) => select(line.match.sku!, "SUBSTITUTION_REJECTED", reason)} />}
 
       {accepted && (
         <Notice tone="good">
@@ -240,7 +240,7 @@ function ParseEditor({ session, line, locked, run }: { session: SessionView; lin
   );
 }
 
-function Alternatives({ line, busy, onAccept, onReject }: { line: Line; busy: boolean; onAccept: (sku: string) => void; onReject: (reason: string) => void }) {
+function Alternatives({ line, busy, emailPending, onAccept, onReject }: { line: Line; busy: boolean; emailPending: boolean; onAccept: (sku: string) => void; onReject: (reason: string) => void }) {
   const { t } = useI18n();
   const [reason, setReason] = useState("");
   const [declining, setDeclining] = useState(false);
@@ -249,6 +249,7 @@ function Alternatives({ line, busy, onAccept, onReject }: { line: Line; busy: bo
       <Notice tone="bad">
         <b>{line.stock.status === "PARTIAL" ? t("partial_need", { have: line.stock.on_hand ?? 0, need: line.conversion.selling_quantity ?? "?" }) : t("out_here")}</b> {t("safe_subs")}
       </Notice>
+      {emailPending && <Notice tone="quote">{t("email_substitute_note")}</Notice>}
       <ul className="space-y-2">
         {line.alternatives.map((a) => (
           <li key={a.sku} className="rounded border border-[#a6aca7] bg-white p-2.5">
@@ -261,7 +262,7 @@ function Alternatives({ line, busy, onAccept, onReject }: { line: Line; busy: bo
             </div>
             <div className="mt-0.5 text-xs soft">{a.reasons.join(", ")}</div>
             <PosKey size="sm" tone="go" icon={<Check size={16} />} disabled={busy} onClick={() => onAccept(a.sku)} className="mt-2 w-full">
-              {t("customer_accepts")}
+              {emailPending ? t("customer_agreed_email") : t("customer_accepts")}
             </PosKey>
           </li>
         ))}

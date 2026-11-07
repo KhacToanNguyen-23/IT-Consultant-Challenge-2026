@@ -77,12 +77,12 @@ Jens Hansen, Nordbyg ApS
 Tlf +45 22 33 44 55 · jens@nordbyg.dk
 ```
 **Khách không có mặt ở bước phân tích, nên KHÔNG bấm Customer accepts lúc này.** Hàng thay thế chỉ được khách chấp nhận khi họ đến lấy hàng.
-1. **Read list** → **Analyze**. Các dòng thay thế vẫn ở trạng thái "đề xuất" (đỏ).
+1. **Read list** → **Analyze**. Các dòng thay thế vẫn ở trạng thái "đề xuất" (đỏ). Giao diện hiện banner tím "E-mail request: save the quote first…", nút Confirm bị khóa, và nút ở khung bên phải ghi **"Record customer agreement"** (chỉ dùng khi khách đã đồng ý sẵn qua email/điện thoại; **bỏ qua** trong demo).
 2. **Save quote** (F8). Báo giá `BG-DK-xxxx` lưu được dù còn dòng thay thế chưa chấp nhận.
 3. **Record sent** → **Record approval** (kênh E-mail): khách đã duyệt báo giá *bên ngoài* hệ thống.
 4. *(tùy chọn)* Mở **Demo: simulate price/stock changes** → chọn SKU → **New stock** nhỏ → **Apply**.
 5. **Re-check stock & price**. Trạng thái chuyển sang **Preparing**, hiện dòng đỏ "Not enough stock → substitute/backorder" và nút **Resolve 2 short line(s)**. Nút **Confirm** chưa có.
-6. Bấm **Resolve 2 short line(s)** (sang màn rà soát). Khách đã đến quầy: bấm **Customer accepts** cho từng dòng.
+6. Bấm **Resolve 2 short line(s)** (là liên kết, sang màn rà soát). Khách đã đến quầy nên nút trở lại là **Customer accepts**: bấm cho từng dòng.
 7. Bấm **Confirm order to POS**. Cuối cùng bấm **Reset** trong khung Demo để trả dữ liệu.
 
 **Phải thấy:** báo giá lưu không chặn bởi hàng thay thế; chữ "this quote does not reserve items"; sau Re-check mới biết dòng nào thiếu; SKU chỉ đổi khi khách chấp nhận lúc nhận hàng; `Sales rescued` ghi nhận ở biên nhận.
