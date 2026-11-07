@@ -21,7 +21,8 @@ ROOT = Path(__file__).resolve().parents[2]
 JSONL = ROOT / "backend" / "seeds" / "evaluation.jsonl"
 CATALOG = ROOT / "mock-pos" / "seeds" / "catalog.json"
 SHEET = ROOT / "docs" / "label-review-sheet.csv"
-COLUMNS = ["id", "language", "kind", "customer_text", "expected_skus", "expected_products", "must_clarify", "note", "verdict", "correct_skus", "reviewer_comment"]
+COLUMNS = ["id", "language", "kind", "customer_text", "expected_skus", "expected_products", "must_clarify", "note", "ai_precheck", "priority", "verdict", "correct_skus", "reviewer_comment"]
+KEYS = ["cross_section_mm", "strength_grade", "thickness_mm", "board_type", "length_m", "bag_weight_kg", "treatment", "product_type"]
 
 
 def load_cases():
@@ -34,18 +35,63 @@ def names():
     return {i["sku"]: i["name"] for i in items}
 
 
+def _norm(v):
+    try:
+        return round(float(v), 2)
+    except (TypeError, ValueError):
+        return str(v).strip().lower()
+
+
+def precheck(case, catalog):
+    """AI aid, NOT human validation: does the label agree with what the project's own parser reads from the text?"""
+    sys.path.insert(0, str(ROOT / "backend"))
+    from services.parser import extract_attributes, parse_line
+
+    skus = case.get("expected_skus") or []
+    if not skus:
+        return "READ CAREFULLY: no product may be auto-matched"
+    p = parse_line(case["text"])
+    a = extract_attributes(p.item_text or case["text"], p.length_m)
+    issues = []
+    for sku in skus:
+        item = catalog.get(sku)
+        if item is None:
+            return "FLAG: expected SKU is not in the catalog"
+        if a.get("category") and a["category"] != item["category"]:
+            issues.append(f"category {a['category']} vs {item['category']}")
+        spec = item.get("technical_specs", {})
+        for k in KEYS:
+            va, vs = a.get(k), spec.get(k)
+            if va is None or vs is None:
+                continue
+            same = (set(map(str, va)) <= set(map(str, vs))) if isinstance(va, list) and isinstance(vs, list) else _norm(va) == _norm(vs)
+            if not same:
+                issues.append(f"{k}: text {va} vs label {vs}")
+    return "FLAG: " + "; ".join(issues) if issues else "consistent with the text"
+
+
 def export():
     nm = names()
+    data = json.loads(CATALOG.read_text(encoding="utf-8"))
+    catalog = {i["sku"]: i for i in (data if isinstance(data, list) else data.get("items", []))}
     rows = load_cases()
     with SHEET.open("w", encoding="utf-8-sig", newline="") as f:
         w = csv.writer(f)
         w.writerow(COLUMNS)
+        rest = 0
         for c in rows:
             skus = c.get("expected_skus") or []
+            pre = precheck(c, catalog)
+            if pre.startswith(("READ", "FLAG")):
+                prio = "1 must read"
+            else:
+                rest += 1
+                prio = "2 sample" if rest % 4 == 0 else "3 optional"
             products = " | ".join(nm.get(s, "?") for s in skus) if skus else "(none: must NOT be auto-matched)"
             w.writerow([c["id"], c["language"], c["kind"], c["text"], ", ".join(skus) if skus else "NONE", products,
-                        "yes" if c.get("must_clarify") else "no", c.get("note", ""), "", "", ""])
-    print(f"wrote {SHEET} ({len(rows)} rows). Fill the 'verdict' column with OK or FIX, save as CSV, then run: apply")
+                        "yes" if c.get("must_clarify") else "no", c.get("note", ""), pre, prio, "", "", ""])
+    print(f"wrote {SHEET} ({len(rows)} rows).")
+    print("Fill the 'verdict' column with OK or FIX (start with priority 1, then 2), save as CSV, then run: apply")
 
 
 def apply():
