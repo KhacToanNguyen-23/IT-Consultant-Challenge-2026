@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertTriangle, ArrowLeftRight, CheckCircle2, Download, FileText, FilePlus2, FileSignature, ListChecks, ScanLine, Search, ShieldCheck, UserRound } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, FileText, FilePlus2, FileSignature, ListChecks, ScanLine, Search, ShieldCheck, UserRound } from "lucide-react";
 import { api, ApiError, fileUrl, fmtMoney, fmtTime, type Customer, type SessionView } from "@/client/api";
 import { useI18n } from "@/client/i18n";
 import LinePanel from "@/components/pos/LinePanel";
@@ -89,16 +89,8 @@ export default function SessionPage({ params }: { params: { id: string } }) {
   const total = amounts.reduce<number>((sum, a) => sum + (a ?? 0), 0);
   const unpriced = amounts.filter((a) => a == null).length;
   const currency = s.lines.find((l) => l.currency)?.currency || "DKK";
-  const convertedCount = s.lines.filter((l) => l.conversion.formula && !l.conversion.formula.includes("(1:1)")).length;
   const llmCalls = Number(s.stage_timings_ms.llm_calls || 0);
   const stockChecked = s.lines.map((l) => l.stock.updated_at).filter(Boolean).sort().pop() || null;
-  const posAccepted = s.confirmation.order_status === "POS_ACCEPTED";
-  const proofStatus = s.locked
-    ? posAccepted ? "evidence_pos_received" : "evidence_csv_exported"
-    : s.blockers.length ? "evidence_review" : "evidence_ready";
-  const proofTone = s.locked
-    ? posAccepted ? "good" : "warn"
-    : s.blockers.length ? "warn" : "good";
   const manualLine = s.blockers[0]?.line_no ?? s.lines.find((l) => !l.final_sku)?.line_no ?? s.lines[0]?.line_no ?? null;
 
   // A resolved line hands over to the next one, so the associate never hunts for what is left.
@@ -153,11 +145,6 @@ export default function SessionPage({ params }: { params: { id: string } }) {
 
           <div className="operation-proof" role="group" aria-label={t("evidence_title")}>
             <ProofTag tone="good" icon={<ShieldCheck size={14} aria-hidden />}>{t("evidence_masked")}</ProofTag>
-            <ProofTag icon={<FileText size={14} aria-hidden />}>{t(s.analyzed ? "evidence_analyzed" : "evidence_read", { n: s.read_line_count })}</ProofTag>
-            {s.analyzed && convertedCount > 0 && <ProofTag icon={<ArrowLeftRight size={14} aria-hidden />}>{t("evidence_converted", { n: convertedCount })}</ProofTag>}
-            {s.analyzed && <ProofTag tone={proofTone} icon={proofTone === "warn" ? <AlertTriangle size={14} aria-hidden /> : <CheckCircle2 size={14} aria-hidden />}>
-              {proofStatus === "evidence_review" ? t(proofStatus, { n: s.blockers.length }) : t(proofStatus)}
-            </ProofTag>}
             {s.analyzed && <ProofTag>{s.ai_degraded ? t("evidence_fallback") : t("evidence_semantic")}</ProofTag>}
             {s.analyzed && stockChecked && <ProofTag>{t("evidence_stock_checked", { time: fmtTime(stockChecked) })}</ProofTag>}
             {s.analyzed && llmCalls > 0 && <ProofTag>{t("evidence_llm", { n: llmCalls })}</ProofTag>}

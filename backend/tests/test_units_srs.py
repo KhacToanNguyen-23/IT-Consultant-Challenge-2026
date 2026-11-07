@@ -61,3 +61,21 @@ def test_sheet_conversion_accepts_both_canonical_and_legacy_names(selling_unit):
 def test_pallet_is_recognised_but_never_converted_by_guessing():
     out = conversion.convert(2, "pallet", _sku("bag"))
     assert out["selling_qty"] is None and out["blocked_reason"]
+
+
+@pytest.mark.parametrize("text,qty,unit,length", [
+    ("15 stk 48x98 C24 4.8m", 15, "piece", 4.8),
+    ("30 stk lægte 45x45 C18 3,6 m", 30, "piece", 3.6),
+    ("20 stk terrassebræt 28x145 trykimp. 4.2m", 20, "piece", 4.2),
+])
+def test_leading_count_with_trailing_length_is_quantity_and_piece_length(text, qty, unit, length):
+    """A leading '15 stk' is the quantity; a trailing '4.8m' is the piece length, never the quantity (silent 15 -> 1 error)."""
+    from services.parser import parse_line
+    row = parse_line(text)
+    assert (row.quantity, row.unit, row.length_m) == (qty, unit, length)
+
+
+def test_trailing_metres_stay_the_quantity_when_there_is_no_leading_count():
+    from services.parser import parse_line
+    row = parse_line("timber 45x95 - 120 m")
+    assert (row.quantity, row.unit, row.length_m) == (120, "linear_metre", None)

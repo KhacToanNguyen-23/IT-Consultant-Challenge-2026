@@ -117,6 +117,13 @@ def parse_line(text: str, line_no: int = 1, start: int = 0) -> ParsedRow:
         row.unit = "piece"
         row.warnings.append("n_x_l_review")
         body = (body[:nxl.start()] + body[nxl.end():]).strip(" -–:,")
+    elif (cl := re.match(rf"^({NUM})\s*({UNIT_TOKEN})\s+(.+?)[\s,;\-–:]+({NUM})\s*m\.?\s*$", body, re.I))             and normalize_unit(cl.group(2)) in {"piece", "pack", "bag", "sheet", "pallet"}:
+        # "15 stk 48x98 C24 4.8m": the leading count is the quantity, the trailing metres are the piece length
+        row.quantity = _num(cl.group(1))
+        row.unit_raw = cl.group(2)
+        row.unit = normalize_unit(cl.group(2))
+        row.length_m = _num(cl.group(4))
+        body = cl.group(3)
     else:
         # trailing quantity: "... - 120 m", "...: 15 pk", "..., 30 stk"
         m = re.search(rf"(?:^|[\s\-–:,(])({NUM})\s*({UNIT_TOKEN})?\s*\)?\s*$", body)
