@@ -78,7 +78,7 @@ Nếu trễ giờ: cắt Case 5 trước, rồi rút Case 6. **Không cắt** Ca
 
 ### Case 5 — Hành trình email → báo giá · B. Main user journey #2 (3:15–3:50)
 - **Thẻ:** `CASE 5 · Main user journey: e-mail pre-order`
-- **Thao tác:** **New list** → **E-mail quote** → thẻ **Customer e-mail** → Read → Analyze → **Customer accepts** các dòng thay thế → **Save quote** (F8). Trang `BG-DK-xxxx`: chỉ vào "this quote does not reserve items", snapshot giá. Bấm **Record sent** → **Record approval** (mặc định kênh E-mail) → mở **Demo: simulate price/stock changes**, chọn SKU, nhập **New stock** nhỏ → **Apply** → **Re-check stock & price** (đã chạy thử, trạng thái chuyển sang Preparing, hiện **Pick slip** và **Confirm order to POS**). Cuối cùng bấm **Reset** để trả dữ liệu.
+- **Thao tác:** **New list** → **E-mail quote** → thẻ **Customer e-mail** → Read → Analyze (**không** bấm Customer accepts: khách chưa có mặt) → **Save quote** → **Record sent** → **Record approval** → *(tùy chọn)* Demo Apply → **Re-check stock & price** → **Resolve 2 short line(s)** → **Customer accepts** (khách đã đến lấy hàng) → **Confirm order to POS** → **Reset**.
 - **Nói:** "The same engine serves a second journey. An e-mail request becomes a saved quote with a price and stock snapshot. On arrival the associate re-checks live data and sees what changed."
 - **Nếu bước cuối lỗi:** dừng ở Save quote và nói một câu về re-check; hoặc thay bằng slide "Phase 2".
 - **Slide R1:** 6 (07:00 Pre-pick). **SRS:** FR-022–028.

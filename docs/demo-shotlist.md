@@ -80,20 +80,20 @@ Nghĩa là: thao tác chỉ chiếm khoảng 1 phút, lời thoại khoảng 3 p
 | 2:50 | **Chỉ** nút Confirm mờ và "4 line(s) to resolve" | "Confirm stays blocked until a human decides." |
 | 2:55 | Cuộn xuống, **chỉ** `45x95 C18` vẫn là C18 | "And C18 never becomes C24." |
 
-## Case 5 · Main user journey #2, e-mail quote (3:00–3:40)
+## Case 5 · Main user journey #2, e-mail quote (3:00–3:50)
 
 | Giờ | Thao tác | Nói |
 |---|---|---|
 | 3:00 | Thẻ `CASE 5 · Main user journey: e-mail pre-order` | — |
-| 3:02 | **New list** → **E-mail quote** → thẻ **Customer e-mail** → **Read list** → **Analyze** → **Customer accepts** (các dòng thay thế) | "The same engine serves a second journey." |
-| 3:12 | Bấm **Save quote** (F8). Trang `BG-DK-xxxx` mở | "An e-mail request becomes a saved quote with a price and stock snapshot." |
-| 3:18 | **Chỉ** "this quote does not reserve items" | — |
-| 3:21 | Bấm **Record sent**, rồi chọn **E-mail**, bấm **Record approval** | "The customer approves outside the system." |
-| 3:28 | Mở **Demo: simulate price/stock changes** → chọn một SKU → nhập **New stock** nhỏ → **Apply** | "Now stock changes while the quote waits." |
-| 3:33 | Bấm **Re-check stock & price** → **chỉ** dòng đổi | "On arrival the associate re-checks live data and sees what changed." |
-| 3:38 | Bấm **Reset** trong khung Demo để trả dữ liệu | — |
+| 3:02 | **New list** → **E-mail quote** → thẻ **Customer e-mail** → **Read list** → **Analyze** (**không** bấm Customer accepts) | "The customer is not at the counter, so substitutes stay proposed." |
+| 3:12 | Bấm **Save quote** (F8). Trang `BG-DK-xxxx` mở. **Chỉ** "this quote does not reserve items" | "An e-mail request becomes a saved quote with a price and stock snapshot." |
+| 3:20 | Bấm **Record sent** → **Record approval** | "The customer approves the quote outside the system." |
+| 3:27 | *(tùy chọn)* Mở **Demo** → chọn SKU → **New stock** nhỏ → **Apply** | "Meanwhile the stock changes." |
+| 3:32 | Bấm **Re-check stock & price**. **Chỉ** dòng đỏ "Not enough stock" và nút **Resolve 2 short line(s)** | "On pick-up the live re-check shows what is short." |
+| 3:38 | Bấm **Resolve 2 short line(s)** → **Customer accepts** từng dòng | "Only now does the customer accept the substitutes." |
+| 3:45 | Bấm **Confirm order to POS** → bấm **Reset** trong khung Demo | — |
 
-*Nếu không đủ giờ: dừng ở 3:21 và cắt phần Demo.*
+*Nếu không đủ giờ: dừng ở 3:32 và cắt bước chấp nhận.*
 
 ## Case 6 · One core, three markets (3:40–3:55)
 
