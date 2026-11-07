@@ -110,39 +110,54 @@ def legend_journey():
 
 
 # ============================================================ SYSTEM DIAGRAM
+def legend_dfd():
+    y = 757
+    out = f'<rect x="40" y="{y - 10}" width="12" height="12" fill="{NAVY}"/>' + tx(58, y, "External entity (square)", 11, 500, "#334155")
+    out += f'<circle cx="236" cy="{y - 4}" r="7" fill="{BLUE}" stroke="{NAVY}" stroke-width="1.5"/>' + tx(249, y, "System (circle)", 11, 500, "#334155")
+    out += f'<path d="M370,{y - 4} L398,{y - 4}" stroke="#5b6b7e" stroke-width="2" marker-end="url(#ah)"/>' + tx(408, y, "Data flow, named by the data it carries", 11, 500, "#334155")
+    out += f'<path d="M640,{y - 4} L668,{y - 4}" stroke="#5b6b7e" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#ah)"/>' + tx(678, y, "Optional or indirect flow", 11, 500, "#334155")
+    out += tx(1083, y, "FR = requirement in the team's SRS v2", 11, 500, "#334155", "end")
+    return out
+
+
 def sys_page1():
     s = ""
-    s += box(50, 160, 210, 100, "Customer", ["B2B contractor or walk-in;", "gives the list, agrees or", "declines substitutes"], fill=NAVY, sub="Person")
-    s += box(50, 410, 210, 100, "Counter associate", ["Reads, reviews and confirms;", "asks the customer to decide"], fill=NAVY, sub="Person")
-    s += arrow([(155, 260), (155, 410)])
-    s += label(166, 340, ["List · decisions", "[in person / e-mail]"], anchor="start")
-    s += '<rect x="430" y="118" width="350" height="402" rx="16" fill="#f1f6fc" stroke="#7aa6d6" stroke-width="2" stroke-dasharray="9 6"/>'
-    s += tx(448, 142, "SiteDesk MVP · system boundary", 13, 700, NAVY)
-    s += box(448, 205, 314, 250, "SiteDesk", [
-        "AI-assisted second screen for the counter", "",
-        "Intake and masking of e-mail/phone  (FR-001, 002)",
-        "Hybrid SKU matching, hard rules  (FR-006 to 009)",
-        "Unit conversion, stock, alternatives  (FR-011 to 016)",
-        "Quotes and pre-orders  (FR-022 to 028)",
-        "Order export, CSV fallback  (FR-018 to 020)",
-        "Decision log and KPI queries  (FR-029 to 031)"], fill=BLUE, sub="Software system", lsize=11)
-    s += arrow([(260, 470), (345, 470), (345, 330), (448, 330)])
-    s += label(268, 498, ["Pastes or", "uploads the list;", "reviews; confirms", "[browser, HTTP]"], anchor="start")
-    s += box(900, 150, 205, 100, "LLM API provider", ["Optional: clarifies unusual", "wording. Off in this demo."], fill="#eef0f3", stroke=GREY, dash=True, tcolor="#374151", sub="External · optional")
-    s += box(900, 300, 205, 120, "mock-pos", ["Simulated POS/ERP: catalog,", "price, stock, customers,", "order receipt"], fill=GREY, sub="External · simulated")
-    s += box(900, 480, 205, 105, "Legacy POS (manual)", ["Associate keys the order", "in by hand from the CSV"], fill="#eef0f3", stroke=GREY, dash=True, tcolor="#374151", sub="External · outside MVP")
-    s += arrow([(762, 230), (900, 230)], dash=True)
-    s += label(831, 212, ["Masked text only", "[HTTPS / JSON]"])
-    s += arrow([(762, 360), (900, 360)])
-    s += label(831, 330, ["Catalog · stock", "customers · orders"])
-    s += label(831, 392, ["[REST / JSON]"])
-    s += arrow([(620, 455), (620, 540), (900, 540)], dash=True)
-    s += label(760, 566, ["CSV when the POS is down", "[file download]"])
-    s += note(40, 625, 345, 100, "MVP SCOPE", ["Sign-in is simulated inside SiteDesk (not SSO).", "Embeddings run locally; the LLM is optional.", "Prices, stock and customers come from mock-pos."])
-    s += note(400, 625, 345, 100, "DATA LIMIT", ["A regex masks e-mail addresses and phone numbers", "before any AI call. Names, addresses and other", "personal data in free text are not guaranteed removed."])
-    s += note(760, 625, 345, 100, "OUTCOME", ["POS accepts: POS_ACCEPTED + reference.", "POS 503 / timeout: CSV, NEEDS_MANUAL; the POS", "has not accepted the order."])
-    s += legend_system()
-    return page_svg(s, "SiteDesk MVP: system context (C4 level 1)", "Who uses SiteDesk, which systems sit outside it, and what is exchanged. SRS v2 §3, §7.", 1, 2, "System Diagram")
+    cx, cy, r = 561, 395, 135
+    # system = one circle
+    s += f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="{BLUE}" stroke="{NAVY}" stroke-width="3"/>'
+    s += tx(cx, cy - 62, "SiteDesk", 22, 800, "#fff", "middle")
+    s += tx(cx, cy - 42, "process 0 · AI-assisted counter screen", 11, 400, "#dbeafe", "middle")
+    s += tx(cx, cy - 12, ["Intake and masking  (FR-001, 002)", "Matching, hard rules  (FR-006 to 009)", "Conversion, stock, alternatives", "(FR-011 to 016)", "Quotes, order export, CSV", "(FR-018 to 028)"], 11.5, 500, "#fff", "middle", 15.5)
+    # external entities = squares
+    s += box(60, 330, 200, 160, "Counter associate", ["Person · uses SiteDesk", "reads, reviews,", "decides, confirms"], fill=NAVY, r=2, sub="External entity")
+    s += box(461, 100, 200, 90, "Customer", ["Person · outside SiteDesk"], fill=NAVY, r=2, sub="External entity", lsize=11)
+    s += box(880, 200, 200, 130, "LLM API provider", ["Optional; off in this demo"], fill="#eef0f3", stroke=GREY, dash=True, tcolor="#374151", r=2, sub="External entity")
+    s += box(880, 380, 200, 140, "mock-pos", ["Simulated POS/ERP:", "catalog, price, stock,", "customers, orders"], fill=GREY, r=2, sub="External entity · simulated")
+    s += box(880, 560, 200, 90, "Legacy POS", ["Manual entry from the CSV"], fill="#eef0f3", stroke=GREY, dash=True, tcolor="#374151", r=2, sub="External entity · manual", lsize=11)
+    # data flows
+    s += arrow([(260, 375), (427, 375)])
+    s += label(343, 355, ["List · edits", "decisions · Confirm"])
+    s += arrow([(434, 440), (260, 440)])
+    s += label(343, 462, ["Review table · options", "receipt · CSV · quote"])
+    s += arrow([(520, 190), (520, 266)], dash=True)
+    s += label(405, 222, ["List · agreement", "(via the associate)"])
+    s += arrow([(602, 266), (602, 190)], dash=True)
+    s += label(614, 222, ["Quote · pick slip · reply", "(via the associate)"], anchor="start")
+    s += arrow([(623, 275), (880, 275)], dash=True)
+    s += label(752, 262, ["Masked text only"])
+    s += arrow([(880, 310), (666, 310)], dash=True)
+    s += label(773, 333, ["Extracted attributes"])
+    s += arrow([(694, 415), (880, 415)])
+    s += label(787, 396, ["Order payload", "stock queries"])
+    s += arrow([(880, 480), (666, 480)])
+    s += label(773, 504, ["Catalog · price · stock", "POS reference or error"])
+    s += arrow([(620, 516), (620, 605), (880, 605)], dash=True)
+    s += label(750, 590, ["CSV order export", "(keyed in by hand)"])
+    s += note(40, 660, 345, 74, "MVP SCOPE", ["Sign-in is simulated (not SSO). Embeddings run locally;", "the LLM is optional. Prices and stock come from mock-pos."])
+    s += note(400, 660, 345, 74, "DATA LIMIT", ["A regex masks e-mail and phone before any AI call.", "Names and addresses in free text are not guaranteed removed."])
+    s += note(760, 660, 345, 74, "OUTCOME", ["POS accepts: POS_ACCEPTED + reference. POS 503 or timeout:", "CSV and NEEDS_MANUAL; the POS has not accepted the order."])
+    s += legend_dfd()
+    return page_svg(s, "SiteDesk MVP: context diagram (system and data flows)", "The system as one process, the external entities around it, and the data that flows in and out. Container view on page 2. SRS v2 §3, §7.", 1, 2, "System Diagram")
 
 
 def sys_page2():
@@ -176,7 +191,7 @@ def sys_page2():
     s += note(400, 625, 345, 100, "AI AND PRIVACY", ["Matching runs on local embeddings plus hard rules,", "so the AI path needs no external service.", "The LLM, when enabled, only sees masked text."])
     s += note(760, 625, 345, 100, "FALLBACK", ["POS 503 / timeout: the connector writes a CSV and", "the order is marked NEEDS_MANUAL, not POS_ACCEPTED.", "AI off: rules and manual catalog search continue."])
     s += legend_system()
-    return page_svg(s, "SiteDesk MVP: containers (C4 level 2)", "Deployable parts and the data store, and how they talk to each other and to the outside. Run locally with Docker Compose.", 2, 2, "System Diagram")
+    return page_svg(s, "SiteDesk MVP: inside the system (containers)", "What is inside the circle of page 1: deployable parts, the data store, and how they talk to each other and to the outside. Run locally with Docker Compose.", 2, 2, "System Diagram")
 
 
 # ============================================================ USER JOURNEY
@@ -277,7 +292,7 @@ def jr_page1():
              (7, 8, "Fragmented systems: one connector, CSV fallback")]
     alts = [
         ("AI is off", "Hard rules and manual catalog search keep the counter running; suggestions are labelled rule-based (FR-003, 033)."),
-        ("Line is not an order line", "The associate removes it (title, greeting). Confirm is refused when the last line would go."),
+        ("Line is not an order line", "The associate removes it (title, greeting). The last remaining line cannot be removed."),
         ("Customer declines", "A reason is recorded and the line stays open; the SKU never changes without agreement (FR-016)."),
         ("POS is down", "CSV export with the same reference; status NEEDS_MANUAL; the associate keys it into the legacy POS."),
     ]
@@ -294,8 +309,8 @@ def jr_page2():
         (1, "Copy reply to customer; sends it from own mailbox", "no e-mail sent", "human"),
         (0, "Agrees by e-mail or phone, outside SiteDesk", "FR-039 consent", "human"),
         (2, "Save quote: price and stock snapshot, not reserved", "FR-023-024 quote", "rules"),
-        (1, "Record sent, then Record approval (channel)", "FR-022 approval", "human"),
-        (2, "At pick-up: re-check live stock and price, show changes", "FR-025 re-check", "rules"),
+        (1, "Records the customer's approval on the quote (channel)", "FR-022 approval", "human"),
+        (2, "Pick-up day: re-check live stock and price, show changes", "FR-025 re-check", "rules"),
         (1, "Customer accepts substitutes; Pick slip; Confirm to POS or CSV", "FR-026-028", "human"),
     ]
     spans = [(1, 2, "Manual re-keying of e-mailed lists"),
@@ -305,7 +320,7 @@ def jr_page2():
     alts = [
         ("No quote, no Confirm", "An e-mail request cannot be confirmed without its quote (QUOTE_REQUIRED)."),
         ("No approval, no Prepare", "Sending the quote is not approval: Prepare is refused until the customer's approval is recorded."),
-        ("Stock changed since the quote", "The re-check marks short lines; the substitute is accepted only now, when the customer is there."),
+        ("Stock changed since the quote", "Short lines are marked; the substitute is accepted now, or an earlier agreement is recorded."),
         ("Quote expires or is cancelled", "Expiry is evaluated when the quote is opened; an expired or cancelled quote cannot be confirmed."),
     ]
     strip = ("Why this journey matters",
