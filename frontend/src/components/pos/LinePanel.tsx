@@ -7,7 +7,6 @@ import { useI18n } from "@/client/i18n";
 import { BandBadge } from "@/components/StatusBadge";
 import { Notice, PosKey } from "./Terminal";
 import { attention, attrLabel, unitLabel } from "./TicketLines";
-import { Input } from "@/components/ui/input";
 
 type Run = (fn: () => Promise<SessionView>) => Promise<void>;
 
@@ -207,14 +206,14 @@ function ParseEditor({ session, line, locked, run }: { session: SessionView; lin
     >
       <label className="block font-semibold">
         {t("item_name")}
-        <Input disabled={locked} value={name} onChange={(e) => setName(e.target.value)} className="mt-1 font-normal" />
+        <input disabled={locked} value={name} onChange={(e) => setName(e.target.value)} className="field mt-1 font-normal" />
       </label>
 
       <div className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] gap-3">
         <div>
           <label className="block font-semibold">
             {t("quantity")}
-            <Input disabled={locked} inputMode="decimal" value={qty} onChange={(e) => setQty(e.target.value)} className="mt-1 text-right font-mono text-lg font-semibold tabular" />
+            <input disabled={locked} inputMode="decimal" value={qty} onChange={(e) => setQty(e.target.value)} className="field font-mono mt-1 text-right text-lg font-semibold tabular" />
           </label>
         </div>
         <label className="block font-semibold">
@@ -272,7 +271,7 @@ function Alternatives({ line, busy, emailPending, onAccept, onReject }: { line: 
         <>
           <label className="block font-semibold">
             {t("reject_reason_ph")}
-          <Input autoFocus value={reason} onChange={(e) => setReason(e.target.value)} className="mt-1 font-normal" />
+            <input autoFocus value={reason} onChange={(e) => setReason(e.target.value)} className="field mt-1 font-normal" />
           </label>
           <PosKey size="sm" tone="void" icon={<X size={16} />} disabled={busy || !reason.trim()} onClick={() => onReject(reason)} className="w-full">
             {t("customer_rejects")}
@@ -315,7 +314,7 @@ function CatalogSearch({ initial, busy, onPick }: { initial: string; busy: boole
           search();
         }}
       >
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search_ph")} aria-label={t("manual_search_title")} className="min-w-0 flex-1" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search_ph")} aria-label={t("manual_search_title")} className="field min-w-0 flex-1" />
         <button type="submit" className="key key--nav key--sm flex-none !flex-row !items-center gap-1.5">
           {loading ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Search size={16} aria-hidden />} {t("search")}
         </button>

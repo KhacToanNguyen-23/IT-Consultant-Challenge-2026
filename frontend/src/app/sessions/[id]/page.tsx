@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertTriangle, Building2, CheckCircle2, ChevronDown, Download, FileText, FilePlus2, FileSignature, ListChecks, ScanLine, Search, ShieldCheck, Store, UserRound } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, FileText, FilePlus2, FileSignature, ListChecks, ScanLine, Search, ShieldCheck, UserRound } from "lucide-react";
 import { api, ApiError, fileUrl, fmtMoney, fmtTime, type Customer, type SessionView } from "@/client/api";
 import { useI18n } from "@/client/i18n";
 import LinePanel from "@/components/pos/LinePanel";
@@ -12,10 +12,6 @@ import ListPagination from "@/components/pos/ListPagination";
 import { StatePill } from "@/components/StatusBadge";
 import ImpactStrip from "@/components/story/ImpactStrip";
 import ResultStory from "@/components/story/ResultStory";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 
 
 
@@ -40,7 +36,6 @@ export default function SessionPage({ params }: { params: { id: string } }) {
   const [selected, setSelected] = useState<number | null>(null);
   const [blockerPage, setBlockerPage] = useState(0);
   const [copied, setCopied] = useState(false);
-  const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
   const opened = useRef(false);
 
   const load = useCallback(async () => {
@@ -86,12 +81,6 @@ export default function SessionPage({ params }: { params: { id: string } }) {
 
   const walkIn = customers.find((c) => c.customer_type === "B2C_WalkIn")?.client_id;
   const effectiveClient = clientId || walkIn || "";
-  const selectedCustomer = customers.find((c) => c.client_id === effectiveClient);
-  const selectedTradeAccount = selectedCustomer?.customer_type === "B2B";
-  const isWalkInCustomer = selectedCustomer?.customer_type === "B2C_WalkIn" || effectiveClient.endsWith("-WALKIN");
-  const customerLabel = selectedTradeAccount ? t("customer_trade_account") : isWalkInCustomer || !effectiveClient ? t("customer_walkin") : effectiveClient;
-  const tierNumber = selectedCustomer?.discount_tier.match(/^TRADE_(\d+)$/)?.[1];
-  const customerTierLabel = selectedCustomer && tierNumber ? t("customer_tier", { n: tierNumber }) : selectedCustomer?.discount_tier;
   const canConfirmQuote = !s.quote || s.quote.status === "PREPARING";
   const emailNeedsQuote = s.input_type === "email" && !s.quote;
   const line = s.lines.find((l) => l.line_no === selected) || null;
@@ -140,9 +129,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
     });
 
   const visibleBlockers = s.blockers.slice(blockerPage * BLOCKER_PAGE_SIZE, (blockerPage + 1) * BLOCKER_PAGE_SIZE);
-  const vfdTop = s.locked
-    ? s.confirmation.order_status === "POS_ACCEPTED" ? t("pos_ok") : s.confirmation.order_status === "NEEDS_MANUAL" ? t("evidence_csv_exported") : s.status
-    : !s.analyzed ? t("vfd_review", { n: s.read_line_count }) : s.blockers.length ? t("vfd_blocked", { n: s.blockers.length }) : t("vfd_clear");
+  const vfdTop = s.locked ? s.confirmation.order_status || s.status : !s.analyzed ? t("vfd_review", { n: s.read_line_count }) : s.blockers.length ? t("vfd_blocked", { n: s.blockers.length }) : t("vfd_clear");
 
   return (
     <Terminal
@@ -160,17 +147,16 @@ export default function SessionPage({ params }: { params: { id: string } }) {
 
           <div className="operation-proof" role="group" aria-label={t("evidence_title")}>
             <ProofTag tone="good" icon={<ShieldCheck size={14} aria-hidden />}>{t("evidence_masked")}</ProofTag>
-            {s.analyzed && (
-              <details className="proof-details">
-                <summary>{t("evidence_title")} <ChevronDown size={14} aria-hidden /></summary>
-                <div className="proof-details-panel">
-                  <ProofTag>{s.ai_degraded ? t("evidence_fallback") : t("evidence_semantic")}</ProofTag>
-                  {stockChecked && <ProofTag>{t("evidence_stock_checked", { time: fmtTime(stockChecked) })}</ProofTag>}
-                  {llmCalls > 0 && <ProofTag>{t("evidence_llm", { n: llmCalls })}</ProofTag>}
-                </div>
-              </details>
-            )}
+            {s.analyzed && <ProofTag>{s.ai_degraded ? t("evidence_fallback") : t("evidence_semantic")}</ProofTag>}
+            {s.analyzed && stockChecked && <ProofTag>{t("evidence_stock_checked", { time: fmtTime(stockChecked) })}</ProofTag>}
+            {s.analyzed && llmCalls > 0 && <ProofTag>{t("evidence_llm", { n: llmCalls })}</ProofTag>}
           </div>
+
+          {s.analyzed && (
+            <div className="px-[18px] pt-2">
+              <ImpactStrip session={s} />
+            </div>
+          )}
 
           {(s.ai_degraded || s.lines.some((l) => l.stock.status === "UNKNOWN") || error || (emailNeedsQuote && s.analyzed && !s.locked)) && (
             <div className="space-y-2 px-[18px] py-3">
@@ -180,19 +166,18 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                     <span>
                       <b>{t("email_banner_title")}</b> · {t("email_needs_quote")}
                     </span>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="flex-none"
-                      onClick={() => {
-                        navigator.clipboard?.writeText(buildReply(s)).then(() => {
-                          setCopied(true);
-                          window.setTimeout(() => setCopied(false), 2500);
-                        });
-                      }}
-                    >
+                    <button
+                      type="button"
+                      className="flex-none rounded-md border border-[#9bc5e5] bg-white px-3 py-1.5 text-sm font-bold text-[#1769aa] hover:bg-[#f2f8fe]"
+                    onClick={() => {
+                      navigator.clipboard?.writeText(buildReply(s)).then(() => {
+                        setCopied(true);
+                        window.setTimeout(() => setCopied(false), 2500);
+                      });
+                    }}
+                  >
                       {copied ? t("reply_copied") : t("copy_reply")}
-                    </Button>
+                    </button>
                   </div>
                 </Notice>
               )}
@@ -235,7 +220,6 @@ export default function SessionPage({ params }: { params: { id: string } }) {
             main={s.analyzed ? fmtMoney(total, "").trim() : s.read_line_count}
             unit={s.analyzed ? currency : undefined}
             sub={s.analyzed ? (unpriced ? `${t("vfd_list_total")}, ${t("vfd_unpriced", { n: unpriced })}` : t("vfd_list_total")) : undefined}
-            accessory={s.analyzed ? <ImpactStrip session={s} /> : undefined}
           />
           <div className="pos-screen">
             {s.analyzed && !s.locked && s.ai_degraded && !line && manualLine != null && (
@@ -250,72 +234,17 @@ export default function SessionPage({ params }: { params: { id: string } }) {
             ) : s.analyzed ? (
               <div className="space-y-3">
                 {s.quote && <h2 className="screen-title">{t("quote_ref", { id: s.quote.quote_id })}</h2>}
-                <Card role="group" aria-label={t("customer_title")} className="overflow-hidden">
-                  <CardHeader className="flex-row items-center justify-between gap-3 px-4 py-3">
-                    <CardTitle className="text-sm">{t("customer_title")}</CardTitle>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={!!s.quote || customers.length === 0}
-                      aria-expanded={customerPickerOpen}
-                      aria-controls="customer-account-options"
-                      onClick={() => setCustomerPickerOpen((open) => !open)}
-                      className="min-h-8 px-2 text-[var(--primary)]"
-                    >
-                      {customerPickerOpen ? t("customer_done") : t("customer_change")}
-                      <ChevronDown size={14} className={customerPickerOpen ? "rotate-180" : ""} aria-hidden />
-                    </Button>
-                  </CardHeader>
-                  <CardContent className="p-4">
-                    <div className="customer-current">
-                      <span className={`customer-current-icon ${selectedTradeAccount ? "customer-current-icon--trade" : ""}`} aria-hidden>
-                        {selectedTradeAccount ? <Building2 size={18} /> : <Store size={18} />}
-                      </span>
-                      <span className="customer-current-copy">
-                        <strong>{customerLabel}</strong>
-                        <small>{selectedTradeAccount ? t("customer_account_id", { id: effectiveClient }) : t("customer_walkin_hint")}</small>
-                      </span>
-                      {selectedTradeAccount && customerTierLabel && <Badge variant="info">{customerTierLabel}</Badge>}
-                    </div>
-                    <p className="customer-context-hint">
-                      {s.input_type === "email" ? t("customer_email_hint") : t("customer_counter_hint")}
-                    </p>
-
-                    {customerPickerOpen && (
-                      <div id="customer-account-options" className="customer-picker">
-                        <div className="customer-picker-title">{t("customer_picker_title")}</div>
-                        <div className="grid gap-2">
-                          {customers.map((c) => {
-                            const walkInAccount = c.customer_type === "B2C_WalkIn";
-                            const tier = c.discount_tier.match(/^TRADE_(\d+)$/)?.[1];
-                            return (
-                              <Button
-                                key={c.client_id}
-                                variant="outline"
-                                disabled={!!s.quote}
-                                aria-pressed={effectiveClient === c.client_id}
-                                onClick={() => {
-                                  setClientId(c.client_id);
-                                  setCustomerPickerOpen(false);
-                                }}
-                                className={`h-auto min-h-[58px] w-full justify-start px-3 py-2.5 text-left ${effectiveClient === c.client_id ? "!border-[var(--primary)] !bg-[var(--primary-soft)] !ring-1 !ring-[var(--primary)]" : ""}`}
-                              >
-                                <span className={`customer-option-icon ${walkInAccount ? "" : "customer-option-icon--trade"}`} aria-hidden>
-                                  {walkInAccount ? <Store size={17} /> : <Building2 size={17} />}
-                                </span>
-                                <span className="customer-option-copy">
-                                  <strong>{walkInAccount ? t("customer_walkin") : t("customer_trade_account")}</strong>
-                                  <small>{walkInAccount ? t("customer_walkin_hint") : t("customer_account_id", { id: c.client_id })}</small>
-                                </span>
-                                {tier && <Badge variant="info">{t("customer_tier", { n: tier })}</Badge>}
-                              </Button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                <div role="group" aria-label={t("client_id")}>
+                  <div className="mb-1.5 font-semibold">{t("client_id")}</div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {customers.map((c) => (
+                      <button key={c.client_id} type="button" disabled={!!s.quote} aria-pressed={effectiveClient === c.client_id} onClick={() => setClientId(c.client_id)} className="tile">
+                        <span className="block font-semibold leading-tight">{c.customer_type === "B2B" ? c.client_id : t("walk_in")}</span>
+                        <span className="block break-all text-xs soft">{c.customer_type === "B2B" ? `B2B, ${c.discount_tier}` : c.client_id}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
                 {s.blockers.length > 0 && (
                   <div>
@@ -323,9 +252,9 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                     <ul className="space-y-1.5">
                       {visibleBlockers.map((b) => (
                         <li key={b.line_no}>
-                          <Button type="button" variant="outline" className="h-auto min-h-11 w-full items-start justify-start whitespace-normal py-3 text-left text-sm" onClick={() => setSelected(b.line_no)}>
+                          <button type="button" className="tile text-sm" onClick={() => setSelected(b.line_no)}>
                             <b>{t("line_n", { n: b.line_no })}:</b> {b.reason}
-                          </Button>
+                          </button>
                         </li>
                       ))}
                     </ul>
@@ -344,7 +273,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                   <div className="space-y-1.5">
                     <label className="block font-semibold">
                       {t("valid_until")}
-                      <Input type="date" value={validUntil} min={plusDays(0)} onChange={(e) => setValidUntil(e.target.value)} className="mt-1 font-normal" />
+                      <input type="date" value={validUntil} min={plusDays(0)} onChange={(e) => setValidUntil(e.target.value)} className="field mt-1 font-normal" />
                     </label>
                   </div>
                 )}
@@ -428,7 +357,7 @@ function ConfirmResult({ s }: { s: SessionView }) {
         )}
         <div>
           <dt className="soft">{t("client")}</dt>
-          <dd className="break-all font-semibold">{!s.client_id || s.client_id.endsWith("-WALKIN") ? t("customer_walkin") : `${t("customer_trade_account")} · ${s.client_id}`}</dd>
+          <dd className="break-all font-semibold">{s.client_id}</dd>
         </div>
         {rescued.length > 0 && (
           <div>
@@ -437,9 +366,16 @@ function ConfirmResult({ s }: { s: SessionView }) {
             <dd className="text-xs soft">{t("rescued_note", { n: rescued.length })}</dd>
           </div>
         )}
+        {c.processing_time_seconds != null && (
+          <div>
+            <dt className="soft">{t("time_to_confirm")}</dt>
+            <dd className="text-xl font-bold tabular text-[#12304d]">{c.processing_time_seconds} s</dd>
+            <dd className="text-xs soft">{t("time_target_note")}</dd>
+          </div>
+        )}
       </dl>
       <div className="my-2 border-t-2 border-dashed border-[var(--rule)]" />
-      <ResultStory />
+      <ResultStory session={s} />
     </div>
   );
 }

@@ -7,7 +7,6 @@ import { api, ApiError } from "@/client/api";
 import { useI18n } from "@/client/i18n";
 import { Notice, PosKey, SoftKeys, Terminal, Vfd } from "@/components/pos/Terminal";
 import { EMAIL_SAMPLE, SAMPLE_ORDERS } from "@/components/story/samples";
-import { Textarea } from "@/components/ui/input";
 
 type Mode = "counter" | "email";
 
@@ -135,13 +134,13 @@ function IntakePage() {
               </button>
             </div>
           ) : (
-            <Textarea
+            <textarea
               id="intake"
               value={text}
               onChange={(e) => setText(e.target.value)}
               rows={14}
               placeholder={t(isEmail ? "intake_placeholder_email" : "intake_placeholder_list")}
-              className="min-h-0 flex-1 resize-none rounded-none border-0 bg-transparent px-[18px] py-3 font-mono text-[15px] leading-7 shadow-none hover:border-transparent focus:border-transparent focus:ring-0"
+              className="font-mono mt-1 w-full flex-1 resize-none bg-transparent px-[18px] py-2 text-[15px] leading-7 placeholder:text-slate-400"
             />
           )}
         </div>
@@ -158,8 +157,8 @@ function IntakePage() {
               </details>
             </div>
             <div role="tablist" aria-label={t("flow_label")} className="grid gap-2">
-              <FlowTile id="counter-mode-tab" ref={(el) => { if (el) modeButtons.current[0] = el; }} active={!isEmail} onClick={() => setMode("counter")} onKeyDown={(e) => onModeKeyDown(e, 0)} icon={<ClipboardList size={20} />} title={t("mode_counter")} description={t("mode_counter_sub")} />
-              <FlowTile id="email-mode-tab" ref={(el) => { if (el) modeButtons.current[1] = el; }} active={isEmail} onClick={() => setMode("email")} onKeyDown={(e) => onModeKeyDown(e, 1)} icon={<Mail size={20} />} title={t("mode_email")} description={t("mode_email_sub")} />
+              <FlowTile id="counter-mode-tab" ref={(el) => { if (el) modeButtons.current[0] = el; }} active={!isEmail} onClick={() => setMode("counter")} onKeyDown={(e) => onModeKeyDown(e, 0)} icon={<ClipboardList size={20} />} title={t("mode_counter")} />
+              <FlowTile id="email-mode-tab" ref={(el) => { if (el) modeButtons.current[1] = el; }} active={isEmail} onClick={() => setMode("email")} onKeyDown={(e) => onModeKeyDown(e, 1)} icon={<Mail size={20} />} title={t("mode_email")} />
             </div>
             {error && (
               <Notice tone="bad" alert>
@@ -192,14 +191,12 @@ const FlowTile = forwardRef<HTMLButtonElement, {
   onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
   icon: React.ReactNode;
   title: string;
-  description: string;
-}>(function FlowTile({ id, active, onClick, onKeyDown, icon, title, description }, ref) {
+}>(function FlowTile({ id, active, onClick, onKeyDown, icon, title }, ref) {
   return (
-    <button id={id} ref={ref} type="button" role="tab" aria-controls="intake-panel" aria-selected={active} tabIndex={active ? 0 : -1} onClick={onClick} onKeyDown={onKeyDown} className="flow-tile tile flex items-start gap-3">
-      <span className="flow-tile-icon mt-0.5 flex-none">{icon}</span>
-      <span className="min-w-0">
-        <span className="block font-[family-name:var(--font-key)] text-base font-semibold leading-tight">{title}</span>
-        <span className="flow-tile-description mt-1 block text-xs leading-5">{description}</span>
+    <button id={id} ref={ref} type="button" role="tab" aria-controls="intake-panel" aria-selected={active} tabIndex={active ? 0 : -1} onClick={onClick} onKeyDown={onKeyDown} className="tile flex items-start gap-3">
+      <span className="mt-0.5 flex-none">{icon}</span>
+      <span>
+        <span className="block font-[family-name:var(--font-key)] text-lg font-semibold leading-tight">{title}</span>
       </span>
     </button>
   );
