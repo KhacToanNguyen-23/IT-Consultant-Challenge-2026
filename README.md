@@ -1,92 +1,80 @@
-# SiteDesk · IT Consultant Challenge 2026 (Round 2: Build-a-thon)
+# SiteDesk
 
-> **From Raw Material List to Confirmed POS Order in < 2 Minutes**  
-> Target: Company A (Denmark · Norway · Sweden) | In-Store Counter Assistant
+**Turn a customer's material list into a reviewable, stock-aware order at the counter.**
 
----
+SiteDesk is a prototype built for the **IT Consultant Challenge 2026, Round 2**. It helps building-material retailers process lists that arrive as pasted text, PDF, spreadsheet, CSV, or customer email. The associate can review product matches, unit conversions, stock exceptions, and substitutions before confirming an order.
 
-## 🏗️ Architecture Stack
-* **Frontend:** Next.js 14 (React, TypeScript, Tailwind CSS)
-* **Backend:** Python FastAPI (REST API, Pydantic, SQLAlchemy)
-* **Database:** PostgreSQL 15 (Docker container)
-* **Orchestration:** Docker Compose
+The project focuses on a practical integration problem: add a consistent workflow beside existing POS/ERP systems without pretending to replace them.
 
----
+## What the prototype demonstrates
 
-## 🚀 Quickstart for Team Members (Chạy 1 lệnh duy nhất)
+- **Two connected journeys:** handle a walk-in customer's list at the counter, or prepare an email quote and re-check price and stock when the customer returns.
+- **Reviewable product matching:** local multilingual embeddings retrieve candidates; hard rules block incompatible or incomplete matches; associates resolve exceptions and customers approve substitutions.
+- **Order-ready quantities:** convert requested units into sellable pack sizes and make rounding visible.
+- **Resilient hand-off:** if matching is unavailable, use rule-based suggestions and manual catalog search; if the POS connector is unavailable, export a CSV with a reference for manual entry.
+- **A measurable foundation:** record the challenge's time-to-serve, substitution-acceptance, and zero-touch indicators so a future pilot can assess them with real data.
 
-### 1. Yêu cầu tiên quyết
-* Máy tính đã cài đặt **Docker Desktop** (bật sẵn Docker Desktop).
-* Không cần cài thêm Python, Node.js hay PostgreSQL trên máy cá nhân.
+## How it works
 
-### 2. Khởi chạy toàn bộ hệ thống
+```mermaid
+flowchart LR
+    A[Associate · Next.js] -->|review list and decisions| B[SiteDesk Core API · FastAPI]
+    B --> C[Parsing · conversion · hard rules]
+    C --> D[AI gateway]
+    D --> E[Local multilingual embeddings]
+    D -. optional, ambiguous lines only .-> F[External LLM]
+    B <--> G[(PostgreSQL · pgvector)]
+    B --> H[POS connector]
+    H --> I[Simulated POS · mock-pos]
+    H -. fallback .-> J[CSV for manual entry]
+```
+
+The LLM is optional and does not rank or select SKUs. It can extract attributes from ambiguous lines; values without evidence in the customer's text are discarded. Hard rules remain in control, and the associate confirms the final order. With no API key configured, the LLM stays disabled.
+
+## Technology
+
+| Layer | Technology |
+| --- | --- |
+| Web application | Next.js 14, React, TypeScript, Tailwind CSS |
+| Core API | Python, FastAPI, Pydantic, SQLAlchemy |
+| Catalog search | `multilingual-e5-small` embeddings and pgvector |
+| Database | PostgreSQL 15 with pgvector |
+| POS integration | FastAPI mock service representing a simulated POS/ERP |
+| Local environment | Docker Compose |
+
+## Run locally
+
+**Requirements:** Docker Desktop (or Docker Engine with the Compose plugin).
+
 ```bash
-# 1. Clone repository
 git clone https://github.com/KhacToanNguyen-23/IT-Consultant-Challenge-2026.git
 cd IT-Consultant-Challenge-2026
-
-# 2. Tạo file cấu hình môi trường từ mẫu
 cp .env.example .env
-
-# 3. Khởi động cả 4 services (Frontend + Backend + PostgreSQL/pgvector + mock-pos)
 docker compose up --build
 ```
 
-### 3. Địa chỉ truy cập
-* 🌐 **Frontend (Web Counter UI):** [http://localhost:3001/login](http://localhost:3001/login)
-* ⚡ **Backend API & Swagger Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
-* 🧪 **mock-pos [simulated] POS/ERP:** [http://localhost:8001/docs](http://localhost:8001/docs)
-* 🗄️ **PostgreSQL Database:** `localhost:5432` (`user: postgres`, `password: password123`, `db: sitedesk_db`)
+In PowerShell, use `Copy-Item .env.example .env` instead of `cp`.
 
----
+Open the application at **[http://localhost:3001](http://localhost:3001)**. The API documentation is at [http://localhost:8000/docs](http://localhost:8000/docs), and the simulated POS API is at [http://localhost:8001/docs](http://localhost:8001/docs).
 
-## 🧭 Màn hình & luồng
-* `/` — nhận danh sách: **Tại quầy** (Luồng 1: paste/PDF/XLSX/CSV) hoặc **Email báo giá** (Luồng 2: dán email khách).
-* `/sessions/[id]` — xem trước dòng đã đọc → Analyze → bảng rà soát (exceptions first, chip thuộc tính, quy đổi, tồn, thay thế) → Confirm (POS hoặc CSV fallback) / Lưu báo giá.
-* `/quotes`, `/quotes/[id]` — Luồng 2: SAVED → SENT → ghi nhận khách xác nhận → Prepare (kiểm lại giá/tồn, diff trước→sau) → in báo giá / phiếu soạn → Confirm. Hết hạn tính khi mở, có Huỷ.
-* Header có 2 công tắc demo **AI fail** / **POS fail** (MVP-FR-033). Trang báo giá có mục *Demo: đổi giá/tồn trên mock-pos* để quay cảnh diff.
+On first startup, the local embedding model is downloaded and cached in a Docker volume. This is roughly 0.5 GB. The app can run without an external LLM key; configure one only in your local `.env` if you want to exercise the optional extraction path. Never commit `.env` or API keys.
 
-## 🤖 Data & AI
-* **Seed:** `python mock-pos/seeds/generate.py` sinh 62 SKU / 5 nhóm (deterministic, có validator). Backend tự sync khi khởi động.
-* **Matching:** `multilingual-e5-small` (local, CPU) + pgvector top-10 → hard rules (must-match loại hẳn, thiếu thuộc tính → hỏi lại, gap 0.05 → cap 0.89). Model tải nền khi khởi động (~0.5 GB lần đầu, cache ở volume `hf_cache`); chưa sẵn sàng / AI fail → tự chuyển chế độ luật.
-* **Lệnh:**
-  ```bash
-  docker compose exec backend pytest -q                       # unit tests (the integration suite needs TEST_DATABASE_URL, see backend/tests/conftest.py)
-  docker compose exec backend python -m scripts.reindex_catalog
-  docker compose exec backend python -m scripts.evaluate --perf 20   # → backend/reports/evaluation_<date>.md
-  ```
-* **Đánh giá:** `backend/seeds/evaluation.jsonl` (98 dòng, label do AI soạn, `reviewed=false` → **cần người duyệt từng dòng** trước khi trích số). Không chỉnh luật/alias dựa trên bộ này.
-* Bảng DB tạo bằng `create_all` khi khởi động (chưa có Alembic).
+## Demo and engineering notes
 
-## 🧠 LLM (DeepSeek) & 🌐 EN/VI
-* **LLM chỉ dùng cho dòng mơ hồ** (không rõ nhóm hàng / thiếu thuộc tính bắt buộc) để trích thuộc tính. Mỗi giá trị phải có *evidence* là chuỗi có thật trong dòng của khách, nếu không bị loại → LLM không thể bịa "C24". Luật luôn thắng; JSON hỏng → thử lại 1 lần → về rules-only. Không có LLM rerank.
-* Cấu hình DeepSeek: điền `LLM_API_KEY` trong `.env` (không commit), mặc định `LLM_BASE_URL=https://api.deepseek.com`, `LLM_MODEL=deepseek-chat`, rồi `docker compose up -d backend`. Không có key → LLM `disabled`, hệ thống chạy như cũ. ⚠️ DeepSeek không phải nhà cung cấp EU/sovereign — chỉ dùng cho demo; chỉ gửi văn bản đã che email/SĐT.
-* **Song ngữ:** nút **EN / VI** trên header (lưu trong trình duyệt). Frontend gửi `X-Lang`; backend trả thông báo, lý do chặn, nhãn tồn và trang in theo ngôn ngữ (`?lang=` cho trang in).
->
-> Nếu đã chạy bản cũ (image `postgres:15-alpine`), chạy `docker compose down -v` một lần để tạo lại volume với image pgvector.
+- [Demo cases and walkthrough](docs/demo-case-sheet.md)
+- [Round 2 implementation plan](docs/round2-plan.md)
+- [System requirements](docs/SiteDesk_MVP_SRS.md)
+- [Contribution workflow](CONTRIBUTING.md)
+- [Initial matching evaluation](backend/reports/evaluation_2026-11-06.md) — preliminary results on 98 lines; labels are AI-assisted and have not been fully human-reviewed, so they do not establish production accuracy or satisfy the stated sample-size target.
 
-## 📁 Cấu trúc thư mục (Monorepo)
+The demo catalog contains 62 seeded products. POS, prices, and inventory are simulated; no stock is reserved and SiteDesk does not send email. Email and phone numbers are masked before AI processing, but this prototype does not guarantee removal of every personal detail. It has not been validated against live POS/ERP systems or production catalogs.
+
+## Repository layout
+
 ```text
-├── docker-compose.yml     # FE + BE + PostgreSQL/pgvector + mock-pos
-├── .env.example           # Biến môi trường mẫu (copy sang .env, không commit .env)
-├── CONTRIBUTING.md        # Phân vùng file, quy tắc đổi schema, quy trình PR
-├── docs/                  # SRS v2, đối chiếu Flow 1, kế hoạch Round 2
-├── backend/               # FastAPI Core
-│   ├── main.py            # Entry, CORS, error handlers (SRS §7 envelope)
-│   ├── api/               # sessions (Flow 1), quotes (Flow 2), catalog/admin
-│   ├── services/          # parser, pii, matcher, conversion, pipeline, connector, pos_client
-│   ├── ai/                # AI Gateway: embedding (local e5), LLM (optional)
-│   ├── db/                # SQLAlchemy models theo DDL SRS §6.1
-│   ├── seeds/ scripts/    # bộ đánh giá D22, evaluate/reindex
-│   └── tests/             # unit + integration (conftest.py)
-├── mock-pos/              # [simulated] POS/ERP + seed catalog (62 SKU)
-└── frontend/              # Next.js App Router (counter UI, quotes)
+backend/       FastAPI API, matching pipeline, AI gateway, persistence, tests
+frontend/      Next.js associate interface and quote journeys
+mock-pos/      Simulated POS/ERP API and deterministic demo catalog
+docs/          Requirements, demo walkthroughs, architecture and evaluation notes
+docker-compose.yml
 ```
-
----
-
-## 📦 Deliverables Vòng 2 Checklist (Hạn 09/11/2026 - 22:00)
-* [ ] `MVP.mp4`: Video Demo ứng dụng (dưới 7 phút, tiếng Anh)
-* [ ] `User_Journey.pdf`: Sơ đồ hành trình người dùng (tối đa 2 trang)
-* [ ] `System_Diagram.pdf`: Sơ đồ kiến trúc Inside/Outside theo C4 Model (tối đa 2 trang)
-* [ ] `AI_Journal.pdf`: Nhật ký ứng dụng AI theo template của Netcompany
