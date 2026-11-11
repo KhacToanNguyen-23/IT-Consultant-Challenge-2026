@@ -14,20 +14,15 @@ The project focuses on a practical integration problem: add a consistent workflo
 - **Resilient hand-off:** if matching is unavailable, use rule-based suggestions and manual catalog search; if the POS connector is unavailable, export a CSV with a reference for manual entry.
 - **A measurable foundation:** record the challenge's time-to-serve, substitution-acceptance, and zero-touch indicators so a future pilot can assess them with real data.
 
-## How it works
+## Product visuals
 
-```mermaid
-flowchart LR
-    A[Associate · Next.js] -->|review list and decisions| B[SiteDesk Core API · FastAPI]
-    B --> C[Parsing · conversion · hard rules]
-    C --> D[AI gateway]
-    D --> E[Local multilingual embeddings]
-    D -. optional, ambiguous lines only .-> F[External LLM]
-    B <--> G[(PostgreSQL · pgvector)]
-    B --> H[POS connector]
-    H --> I[Simulated POS · mock-pos]
-    H -. fallback .-> J[CSV for manual entry]
-```
+### Customer journeys
+
+![Two end-to-end SiteDesk journeys: in-store counter order and email quote to pick-up](docs/assets/user-journeys.png)
+
+### System architecture
+
+![SiteDesk system context and container architecture](docs/assets/system-architecture.png)
 
 The LLM is optional and does not rank or select SKUs. It can extract attributes from ambiguous lines; values without evidence in the customer's text are discarded. Hard rules remain in control, and the associate confirms the final order. With no API key configured, the LLM stays disabled.
 
