@@ -1,75 +1,77 @@
 # SiteDesk
 
-**Turn a customer's material list into a reviewable, stock-aware order at the counter.**
+**From a contractor’s material list to an order a counter associate can stand behind.**
 
-SiteDesk is a prototype built for the **IT Consultant Challenge 2026, Round 2**. It helps building-material retailers process lists that arrive as pasted text, PDF, spreadsheet, CSV, or customer email. The associate can review product matches, unit conversions, stock exceptions, and substitutions before confirming an order.
+SiteDesk is our response to the **IT Consultant Challenge 2026**. It starts with a familiar moment at a building-materials counter: a customer hands over a long list, while the associate has to interpret product descriptions, check quantities and availability, and re-enter the order across fragmented store systems.
 
-The project focuses on a practical integration problem: add a consistent workflow beside existing POS/ERP systems without pretending to replace them.
+Our focus is the decision at the counter. SiteDesk helps the associate move the list forward, makes uncertain lines visible, and leaves the final choice with the people serving the customer.
 
-## What the prototype demonstrates
+## Round 1 — The problem we chose
 
-- **Two connected journeys:** handle a walk-in customer's list at the counter, or prepare an email quote and re-check price and stock when the customer returns.
-- **Reviewable product matching:** local multilingual embeddings retrieve candidates; hard rules block incompatible or incomplete matches; associates resolve exceptions and customers approve substitutions.
-- **Order-ready quantities:** convert requested units into sellable pack sizes and make rounding visible.
-- **Resilient hand-off:** if matching is unavailable, use rule-based suggestions and manual catalog search; if the POS connector is unavailable, export a CSV with a reference for manual entry.
-- **A measurable foundation:** record the challenge's time-to-serve, substitution-acceptance, and zero-touch indicators so a future pilot can assess them with real data.
+The case described a Danish construction retailer operating across Denmark, Norway, and Sweden. Local systems and ways of working had grown apart. At the store counter, staff manually searched and re-keyed material lists, while stock-out advice could vary by associate. The resulting delays and order errors affected both customer experience and fulfilment.
 
-## Product visuals
+Our Round 1 proposal focused on the counter as the point where those problems meet. It set three goals for a future rollout:
 
-### Customer journeys
+| Round 1 goal | Proposed target |
+| --- | ---: |
+| Time to serve a material list | About 12 minutes to under 2 minutes |
+| Out-of-stock lines saved through an accepted alternative | At least 30% |
+| Lines matched with no edits at a score above 90% | At least 70% |
 
-![Two end-to-end SiteDesk journeys: in-store counter order and email quote to pick-up](docs/assets/user-journeys.png)
+The 12-minute figure is the baseline measured in Round 1 discovery; the under-2-minute figure and the other percentages are proposal targets. None is a result proven by this MVP or by a live-store pilot.
 
-### System architecture
+## Round 2 — What the challenge asked us to prove
 
-![SiteDesk system context and container architecture](docs/assets/system-architecture.png)
+Round 2 moved the work from proposal to demonstration. The MVP had to show its core functionality, its main user journeys, and the value it could bring. If the product had changed since Round 1, the team had to explain what changed and why. The work was assessed on reliable functionality, a reasonable system design, appropriate AI use with human validation, and clear reasoning tied to the original problem.
 
-The LLM is optional and does not rank or select SKUs. It can extract attributes from ambiguous lines; values without evidence in the customer's text are discarded. Hard rules remain in control, and the associate confirms the final order. With no API key configured, the LLM stays disabled.
+The submission package called for four items: an MVP demo video, a user journey, a system context diagram, and an AI Journal. The sections below show how SiteDesk responds to that brief and link to the project materials available here.
 
-## Technology
+## How SiteDesk answers Round 2
 
-| Layer | Technology |
+### 1. A counter list becomes a reviewable order
+
+An associate brings in a customer’s list from a PDF or pasted text. SiteDesk turns it into order lines, suggests catalog matches, converts requested quantities into sellable units, and brings uncertain, unavailable, or rounded lines forward for review. The associate can resolve a line, ask the customer about an alternative, and confirm the order.
+
+If the simulated POS is unavailable, the order can be handed off as a CSV for manual entry. The workflow is designed to keep the counter moving when an integration fails.
+
+### 2. An email request becomes a quote, then an approved order
+
+The associate can also paste a customer email and prepare a quote. The customer’s approval is recorded before the order is confirmed. When the customer returns, SiteDesk checks the simulated price and stock again, so the associate can resolve changes before completing the hand-off.
+
+This second journey addresses a different part of the same problem: a quote is useful only if the store can revisit it and confirm what is actually available.
+
+### 3. AI assists; people decide
+
+Product suggestions are treated as suggestions, not decisions. Required product attributes must satisfy hard constraints; an unclear or unsafe match stays visible for review. Associates choose how to resolve exceptions, and customers must accept proposed substitutes. Every order still needs a human confirmation.
+
+### 4. Value is measured without overstating the result
+
+The MVP records the three measures carried forward from Round 1: time to serve, accepted substitutions, and zero-touch matching. In this demo they provide evidence that the workflow can be measured. They do **not** establish that the Round 1 targets have been met in a real store.
+
+### What changed from Round 1
+
+Round 1 described a wider, multi-market business case. For Round 2, we narrowed that ambition to two demonstrable journeys: the in-store counter order and the email-to-quote journey. Store data and the POS hand-off are simulated, and a quote does not reserve stock. That scope let us demonstrate the decisions and failure paths that matter at the counter without presenting a prototype as a production deployment.
+
+## The system behind the story
+
+The diagram shows how the associate, customer, SiteDesk, and simulated store services interact. It is here to explain the boundaries of the MVP—not to make the technology stack the story.
+
+![SiteDesk system context and architecture](docs/assets/system-architecture.png)
+
+The two journeys are shown together below.
+
+![SiteDesk counter-order and email-quote user journeys](docs/assets/user-journeys.png)
+
+## Project and submission materials
+
+| Material | What it contains |
 | --- | --- |
-| Web application | Next.js 14, React, TypeScript, Tailwind CSS |
-| Core API | Python, FastAPI, Pydantic, SQLAlchemy |
-| Catalog search | `multilingual-e5-small` embeddings and pgvector |
-| Database | PostgreSQL 15 with pgvector |
-| POS integration | FastAPI mock service representing a simulated POS/ERP |
-| Local environment | Docker Compose |
+| [User Journey (PDF)](<docs/diagrams/User Journey.pdf>) | The counter-order and email-quote journeys, including decision points and MVP boundaries. |
+| [System Diagram (PDF)](<docs/diagrams/System Diagram.pdf>) | System context and architecture for the interactions demonstrated in the MVP. |
+| [MVP System Requirements Specification (PDF)](docs/SiteDesk_MVP_SRS.pdf) · [Markdown source](docs/SiteDesk_MVP_SRS.md) | The scope and behavior used to guide the Round 2 implementation. |
+| [Demo case sheet](docs/demo-case-sheet.md) | The sample scenarios used to walk through the product and its failure paths. |
+| [AI Journal source (DOCX)](<docs/ai-journal/AI Journal.docx>) | The editable journal source; the challenge submission requested a PDF. |
 
-## Run locally
+## Prototype boundaries
 
-**Requirements:** Docker Desktop (or Docker Engine with the Compose plugin).
-
-```bash
-git clone https://github.com/KhacToanNguyen-23/IT-Consultant-Challenge-2026.git
-cd IT-Consultant-Challenge-2026
-cp .env.example .env
-docker compose up --build
-```
-
-In PowerShell, use `Copy-Item .env.example .env` instead of `cp`.
-
-Open the application at **[http://localhost:3001](http://localhost:3001)**. The API documentation is at [http://localhost:8000/docs](http://localhost:8000/docs), and the simulated POS API is at [http://localhost:8001/docs](http://localhost:8001/docs).
-
-On first startup, the local embedding model is downloaded and cached in a Docker volume. This is roughly 0.5 GB. The app can run without an external LLM key; configure one only in your local `.env` if you want to exercise the optional extraction path. Never commit `.env` or API keys.
-
-## Project documents
-
-- [MVP System Requirements Specification (PDF)](docs/SiteDesk_MVP_SRS.pdf) · [Markdown source](docs/SiteDesk_MVP_SRS.md)
-- [User Journey (PDF)](<docs/diagrams/User Journey.pdf>)
-- [System Diagram (PDF)](<docs/diagrams/System Diagram.pdf>)
-- [Demo cases and walkthrough](docs/demo-case-sheet.md)
-- [Contribution workflow](CONTRIBUTING.md)
-
-The demo catalog contains 62 seeded products. POS, prices, and inventory are simulated; no stock is reserved and SiteDesk does not send email. Email and phone numbers are masked before AI processing, but this prototype does not guarantee removal of every personal detail. It has not been validated against live POS/ERP systems or production catalogs.
-
-## Repository layout
-
-```text
-backend/       FastAPI API, matching pipeline, AI gateway, persistence, tests
-frontend/      Next.js associate interface and quote journeys
-mock-pos/      Simulated POS/ERP API and deterministic demo catalog
-docs/          Requirements, demo walkthroughs, architecture and evaluation notes
-docker-compose.yml
-```
+This is a competition MVP, not a live store deployment. Catalog, customer, price, stock, and POS behavior are simulated. SiteDesk drafts email replies but does not send email, and quotes do not reserve stock. The demo is not a validation of production accuracy, live POS/ERP integration, or the Round 1 business targets.
