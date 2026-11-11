@@ -59,13 +59,13 @@ Open the application at **[http://localhost:3001](http://localhost:3001)**. The 
 
 On first startup, the local embedding model is downloaded and cached in a Docker volume. This is roughly 0.5 GB. The app can run without an external LLM key; configure one only in your local `.env` if you want to exercise the optional extraction path. Never commit `.env` or API keys.
 
-## Demo and engineering notes
+## Project documents
 
+- [MVP System Requirements Specification (PDF)](docs/SiteDesk_MVP_SRS.pdf) · [Markdown source](docs/SiteDesk_MVP_SRS.md)
+- [User Journey (PDF)](<docs/diagrams/User Journey.pdf>)
+- [System Diagram (PDF)](<docs/diagrams/System Diagram.pdf>)
 - [Demo cases and walkthrough](docs/demo-case-sheet.md)
-- [Round 2 implementation plan](docs/round2-plan.md)
-- [System requirements](docs/SiteDesk_MVP_SRS.md)
 - [Contribution workflow](CONTRIBUTING.md)
-- [Initial matching evaluation](backend/reports/evaluation_2026-11-06.md) — preliminary results on 98 lines; labels are AI-assisted and have not been fully human-reviewed, so they do not establish production accuracy or satisfy the stated sample-size target.
 
 The demo catalog contains 62 seeded products. POS, prices, and inventory are simulated; no stock is reserved and SiteDesk does not send email. Email and phone numbers are masked before AI processing, but this prototype does not guarantee removal of every personal detail. It has not been validated against live POS/ERP systems or production catalogs.
 
